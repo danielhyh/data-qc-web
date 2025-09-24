@@ -30,8 +30,8 @@
 
     <!-- 上报进度步骤条 -->
     <ContentWrap class="progress-card">
-      <el-steps :active="currentStep" align-center :process-status="getProcessStatus()">
-        <el-step title="准备">
+      <el-steps :active="currentStep" align-center :process-status="getProcessStatus()" >
+        <el-step title="准备" @click="changeSteps(0)">
           <template #icon>
             <el-tooltip content="准备上报文件" placement="top">
               <el-icon>
@@ -40,7 +40,7 @@
             </el-tooltip>
           </template>
         </el-step>
-        <el-step title="上传文件">
+        <el-step title="上传文件" @click="changeSteps(1)">
           <template #icon>
             <el-tooltip content="上传数据文件" placement="top">
               <el-icon>
@@ -49,7 +49,7 @@
             </el-tooltip>
           </template>
         </el-step>
-        <el-step title="前置质控">
+        <el-step title="前置质控" @click="changeSteps(2)">
           <template #icon>
             <el-tooltip content="数据格式验证" placement="top">
               <el-icon>
@@ -58,7 +58,7 @@
             </el-tooltip>
           </template>
         </el-step>
-        <el-step title="提交上报">
+        <el-step title="提交上报" @click="changeSteps(3)">
           <template #icon>
             <el-tooltip content="提交至管理端" placement="top">
               <el-icon>
@@ -190,10 +190,11 @@
               <el-table-column prop="status" label="状态" width="120">
                 <template #default="{ row }">
                   <div class="file-status">
-                    <el-icon v-if="row.status === 'uploaded'" class="status-icon success">
+                    <el-icon v-if="row.status === 1"/>
+                    <el-icon v-if="row.status === 2" class="status-icon success">
                       <CircleCheck />
                     </el-icon>
-                    <el-icon v-else-if="row.status === 'failed'" class="status-icon error">
+                    <el-icon v-else-if="row.status === 3" class="status-icon error">
                       <CircleClose />
                     </el-icon>
                     <el-icon v-else class="status-icon waiting">
@@ -216,7 +217,7 @@
               <el-table-column label="操作" fixed="right" width="200">
                 <template #default="{ row }">
                   <el-button
-                    v-if="row.status === 'uploaded'"
+                    v-if="row.status === 2"
                     link
                     type="primary"
                     size="small"
@@ -224,16 +225,24 @@
                   >
                     查看数据
                   </el-button>
-                  <el-button
-                    v-if="row.status === 'failed'"
-                    link
-                    type="warning"
-                    size="small"
-                    @click="reuploadFile(row)"
+                  <el-upload
+                    v-if="row.status === 3"
+                    action="#"
+                    :auto-upload="false"
+                    :on-change="handleFileChange"
+                    accept=".xlsx"
+                    :show-file-list="false"
                   >
-                    重新上传
-                  </el-button>
-                  <el-button link type="danger" size="small" @click="removeFile(row)">
+                    <el-button
+                        link
+                        type="warning"
+                        size="small"
+                        @click="reuploadFile(row)"
+                      >
+                      重新上传
+                    </el-button>
+                  </el-upload>
+                  <el-button v-if="row.uploadStatus === 2" link type="danger" size="small" @click="removeFile(row)">
                     删除
                   </el-button>
                 </template>
@@ -241,7 +250,7 @@
             </el-table>
 
             <div class="upload-actions">
-              <el-button @click="currentStep = 0">返回准备</el-button>
+              <el-button @click="currentTask.currentStep = 0">返回准备</el-button>
               <el-button type="primary" @click="startPreQC" :disabled="!allFilesUploaded">
                 开始前置质控
               </el-button>
@@ -543,9 +552,15 @@ const allFilesUploaded = computed(() => {
 
 // ==================== 方法定义 ====================
 
+function changeSteps (step: number) {
+  if (step <= currentTask.value.maxCurrentStep) { // 超出当前步骤范围，不执行任何操作
+    currentTask.value.currentStep = step
+  }
+}
+
 // 获取步骤状态
 const getProcessStatus = () => {
-  if (currentStep.value === 3) return 'success'
+  if (currentTask.value.currentStep === 3) return 'success'
   return 'process'
 }
 
@@ -583,10 +598,10 @@ const getFileTypeText = (type: string) => {
 // 获取文件状态文本
 const getFileStatusText = (status: string) => {
   const map: Record<string, string> = {
-    pending: '待上传',
-    uploading: '上传中',
-    uploaded: '已上传',
-    failed: '上传失败'
+    0: '待上传',
+    1: '上传中',
+    2: '已上传',
+    3: '上传失败'
   }
   return map[status] || status
 }
@@ -701,16 +716,20 @@ const getTemplateColor = (tableType: string): string => {
 
 // 开始上传
 const startUpload = async () => {
+  if (currentTask.value.taskId) { // 如果有任务id说明当前上报流程已经存在，不再重复创建任务
+    return
+  }
   try {
     loading.value = true
+    const res = await ReportDataApi.createReportTask({ reportTaskId: currentTask.value.id, currentStep: 1  })
+    console.log(res)
 
     message.notify('正在创建上报任务...')
 
     // 切换到上传文件步骤
     currentTask.value.currentStep = 1
-
-    // 更新上报进度为1-上传文件阶段
-    // await updateReportProgress(1)
+    currentTask.value.maxCurrentStep = 1
+    currentTask.value.taskId = res.data
 
     message.notifySuccess('上报任务创建成功，现在可以上传文件')
 
@@ -875,7 +894,8 @@ const viewFileData = async (file: any) => {
 
 // 重新上传文件
 const reuploadFile = (file: any) => {
-  message.notify(`重新上传 ${file.name}`)
+  console.log('重新上传文件:', file)
+  // message.notify(`重新上传 ${file.name}`)
 }
 
 // 删除文件
@@ -911,6 +931,8 @@ const startPreQC = async () => {
 
   try {
     currentTask.value.currentStep = 2
+    currentTask.value.maxCurrentStep = 2
+
     message.notifySuccess('前置质控通过，所有检查项均已通过，可以提交上报')
   } catch (error) {
     console.error('前置质控失败:', error)
@@ -941,6 +963,7 @@ const viewQCErrors = async (row: any) => {
 const fixAndReupload = (row: any) => {
   message.notify(`请修正 ${row.tableName} 的错误后重新上传`)
   currentTask.value.currentStep = 1
+  
 }
 
 // 返回上传
@@ -976,6 +999,7 @@ const submitReport = async () => {
     loading.value = true
     // await ReportDataApi.submitReport(currentTask.value.id)
     currentTask.value.currentStep = 3
+    currentTask.value.maxCurrentStep = 3
 
     // 更新上报进度为3-提交上报阶段
     // await updateReportProgress(3)
@@ -1047,21 +1071,23 @@ const loadCurrentTask = async () => {
     const task = await ReportDataApi.getCurrentActiveTask()
 
     if (task) {
+      task.maxCurrentStep = task.currentStep // 保存原始步骤，用于后续判断是否可以向后点击下一步)
+
       currentTask.value = task
       console.log('加载的任务数据:', task) // 调试日志
 
       // currentStep 现在是计算属性，会自动从 task.currentStep 获取
 
       // 如果有任务ID，加载相关数据
-      if (task.id) {
+      if (task.taskId) {
         // 加载文件列表
         if (currentStep.value >= 1) {
-          await loadFileList(task.id)
+          await loadFileList(task.taskId)
         }
 
         // 加载质控结果
         if (currentStep.value >= 2) {
-          await loadQCResults(task.id)
+          await loadQCResults(task.taskId)
         }
 
         // 加载提交信息
@@ -1096,8 +1122,9 @@ const loadFileList = async (taskId: number) => {
       if (serverFile) {
         return {
           ...localFile,
-          status: serverFile.status,
-          size: serverFile.size,
+          id: serverFile.id,
+          status: serverFile.uploadStatus,
+          size: serverFile.fileSize,
           recordCount: serverFile.recordCount
         }
       }
