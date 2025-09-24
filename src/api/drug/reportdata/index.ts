@@ -200,11 +200,11 @@ export const ReportDataApi = {
     return request.delete({ url: `/drug/report-data/file/delete?id=${id}` })
   },
 
-  // 查看文件数据
-  getFileData: (id: number, page?: number, pageSize?: number): Promise<any> => {
+  // 查询医疗机构数据、药瓶目录、入库、出库、使用
+  getFileData: (type:string, taskId: number, id: number, pageNo?: number, pageSize?: number): Promise<any> => {
     return request.get({
-      url: '/drug/report-data/file/data',
-      params: { id, page: page || 1, pageSize: pageSize || 10 }
+      url: `/drug/report-data/file/data/${type}`,
+      params: { taskId, id, pageNo: pageNo || 1, pageSize: pageSize || 10 }
     })
   },
 
@@ -244,10 +244,10 @@ export const ReportDataApi = {
   },
 
   // 获取质控错误详情
-  getQCErrors: (taskId: number, tableName: string): Promise<QCErrorVO[]> => {
+  getQCErrors: (taskId: number, tableType: string): Promise<QCErrorVO[]> => {
     return request.get({
-      url: '/drug/report-data/qc/errors',
-      params: { taskId, tableName }
+      url: '/drug/report-data/qc/error-messages',
+      params: { taskId, tableType }
     })
   },
 

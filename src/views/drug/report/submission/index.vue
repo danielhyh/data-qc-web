@@ -181,7 +181,7 @@
           <div class="file-list">
             <h4>文件上传状态</h4>
             <el-table :data="fileList" stripe>
-              <el-table-column prop="name" label="文件名称" width="200" />
+              <el-table-column prop="name" label="标准文件名称" width="200" />
               <el-table-column prop="type" label="数据类型" width="150">
                 <template #default="{ row }">
                   <el-tag size="small">{{ getFileTypeText(row.type) }}</el-tag>
@@ -223,10 +223,11 @@
                     size="small"
                     @click="viewFileData(row)"
                   >
-                    查看数据
+                    查看详情
                   </el-button>
-                  <el-upload
-                    v-if="row.status === 3"
+                  <div class="upload-button">
+                    <el-upload
+                    v-if="[0, 2, 3].includes(row.status)"
                     action="#"
                     :auto-upload="false"
                     :on-change="handleFileChange"
@@ -237,12 +238,13 @@
                         link
                         type="warning"
                         size="small"
-                        @click="reuploadFile(row)"
                       >
                       重新上传
                     </el-button>
                   </el-upload>
-                  <el-button v-if="row.uploadStatus === 2" link type="danger" size="small" @click="removeFile(row)">
+                  </div>
+                  
+                  <el-button v-if="[2,3].includes(row.status)" link type="danger" size="small" @click="removeFile(row)">
                     删除
                   </el-button>
                 </template>
@@ -271,15 +273,44 @@
 
           <!-- 质控详情表格 -->
           <el-table :data="preQCResult.details" stripe>
-            <el-table-column prop="tableName" label="数据表" width="180" />
-            <el-table-column prop="checkItem" label="检查项" width="200" />
-            <el-table-column prop="result" label="检查结果" width="100">
+            <el-table-column prop="name" label="标准文件名称" width="200" />
+            <el-table-column prop="status" label="上传状态" width="120">
               <template #default="{ row }">
-                <el-tag :type="row.passed ? 'success' : 'danger'" size="small">
-                  {{ row.passed ? '通过' : '失败' }}
-                </el-tag>
+                <div class="file-status">
+                  <el-icon v-if="row.status === 1"/>
+                  <el-icon v-if="row.status === 2" class="status-icon success">
+                    <CircleCheck />
+                  </el-icon>
+                  <el-icon v-else-if="row.status === 3" class="status-icon error">
+                    <CircleClose />
+                  </el-icon>
+                  <el-icon v-else class="status-icon waiting">
+                    <Clock />
+                  </el-icon>
+                  <span>{{ getFileStatusText(row.status) }}</span>
+                </div>
               </template>
             </el-table-column>
+            <el-table-column prop="qcPreStatus" label="质检状态" width="120">
+              <template #default="{ row }">
+                <div class="file-status">
+                  <el-button
+                    link
+                    type="primary"
+                    size="small"
+                    @click="viewQCErrors(row)"
+                  >
+                   <span>{{ getFileQcStatusText(row.qcPreStatus) }}</span>
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="size" label="上报文件大小" width="120">
+              <template #default="{ row }">
+                {{ formatFileSize(row.size) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileFormat" label="上报文件格式" width="150"/>
             <el-table-column prop="errorCount" label="错误数" width="100">
               <template #default="{ row }">
                 <span :class="{ 'error-count': row.errorCount > 0 }">
@@ -287,20 +318,18 @@
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="message" label="说明" min-width="300" show-overflow-tooltip />
             <el-table-column label="操作" width="150" fixed="right">
               <template #default="{ row }">
                 <el-button
-                  v-if="row.errorCount > 0"
                   link
                   type="primary"
                   size="small"
-                  @click="viewQCErrors(row)"
+                  @click="viewFileData(row)"
                 >
                   查看详情
                 </el-button>
                 <el-button
-                  v-if="!row.passed"
+                  v-if="row.qcPreStatus === 4"
                   link
                   type="warning"
                   size="small"
@@ -383,17 +412,23 @@
         v-loading="dataViewDialog.loading"
       >
         <el-table-column
-          v-for="column in dataViewDialog.columns"
-          :key="column.prop"
-          :prop="column.prop"
-          :label="column.label"
-          :width="column.width"
-          show-overflow-tooltip
-        />
-      </el-table>
-      <template #footer>
-        <el-button @click="dataViewDialog.visible = false">关闭</el-button>
-      </template>
+            v-for="column in dataViewDialog.columns"
+            :key="column.key"
+            :prop="column.prop"
+            :label="column.label"
+            :width="column.width"
+            show-overflow-tooltip
+          />
+        </el-table>
+        <div class="dialog-page">
+            <!-- 分页 -->
+            <Pagination
+              :total="excelDetailTotal"
+              v-model:page="queryParams.pageNo"
+              v-model:limit="queryParams.pageSize"
+              @pagination="getExcelDetailData"
+            />
+          </div>
     </el-dialog>
 
     <!-- 错误详情对话框 -->
@@ -462,6 +497,7 @@ import {ImportTemplateApi} from '@/api/drug/task/template'
 import {TemplateFieldApi} from '@/api/drug/task/template'
 import download from '@/utils/download'
 import {getDictLabel, DICT_TYPE, getDictOptions} from '@/utils/dict'
+import { el } from 'element-plus/es/locale'
 
 // 定义组件名称
 defineOptions({name: 'DrugReportSubmission'})
@@ -499,11 +535,11 @@ const currentTask = ref<any>({
 
 // 文件列表
 const fileList = ref([
-  {id: 1, name: '医疗机构基本情况.xlsx', type: 'hospital', status: 'pending', size: 0, recordCount: 0},
-  {id: 2, name: '医疗机构药品目录.xlsx', type: 'catalog', status: 'pending', size: 0, recordCount: 0},
-  {id: 3, name: '医疗机构入库情况.xlsx', type: 'inbound', status: 'pending', size: 0, recordCount: 0},
-  {id: 4, name: '医疗机构出库情况.xlsx', type: 'outbound', status: 'pending', size: 0, recordCount: 0},
-  {id: 5, name: '医疗机构使用情况.xlsx', type: 'usage', status: 'pending', size: 0, recordCount: 0}
+  {id: 1, name: '医疗机构基本情况.xlsx', type: 'hospital', status: 0, size: 0, recordCount: 0},
+  {id: 2, name: '医疗机构药品目录.xlsx', type: 'catalog', status: 0, size: 0, recordCount: 0},
+  {id: 3, name: '医疗机构入库情况.xlsx', type: 'inbound', status: 0, size: 0, recordCount: 0},
+  {id: 4, name: '医疗机构出库情况.xlsx', type: 'outbound', status: 0, size: 0, recordCount: 0},
+  {id: 5, name: '医疗机构使用情况.xlsx', type: 'usage', status: 0, size: 0, recordCount: 0}
 ])
 
 // 前置质控结果
@@ -519,13 +555,41 @@ const submitInfo = ref({
   totalRecords: 12580
 })
 
+const excelDetailTotal = ref(0)
+const queryParams = ref({
+  pageNo: 1,
+  pageSize: 100,
+})
+
 // 数据查看对话框
 const dataViewDialog = reactive({
   visible: false,
   loading: false,
   fileName: '',
   data: [],
-  columns: []
+  columns: [],
+  columnsMap: new Map([
+    ['hospital',  // 医院信息
+    [{ prop: 'orderNo', label: 'ID', width: '80' }, { prop: 'uploadDate', label: '数据上报日期' },
+     { prop: 'domainCode', label: '省级行政区划代码' }, { prop: 'organizationCode', label: '组织机构代码' },
+     { prop: 'hospitalCode', label: '医院机构代码' }, { prop: 'organizationName', label: '组织机构名称', width: '150'  },
+     { prop: 'unitManager', label: '单位负责人' }, { prop: 'statisticsManager', label: '统计负责人' },
+     { prop: '', label: '年度药瓶总收入（元）', width: '150'  }, { prop: 'bedCount', label: '实有床位数' }]],
+    ['catalog', 
+    [{ prop: 'orderNo', label: 'ID', width: '80' }, { prop: 'ypid', label: '国家药品编码（YPID）' },
+     { prop: 'hospitalDrugId', label: '院内药品唯一码'}, { prop: 'provinceDrugId', label: '省级药品集中采购平台药瓶编码' },
+     { prop: 'productName', label: '通用名' }, { prop: 'productName', label: '产品名称' }, { prop: 'productName', label: '商品名' }]], // 药品目录
+    ['inbound',
+    [{ prop: 'orderNo', label: 'ID', width: '80' }, { prop: 'ypid', label: '国家药品编码（YPID）' },
+    { prop: 'productName', label: '产品名称' }, { prop: 'inboundTotalAmount', label: '入库总金额（元）' },
+    { prop: 'inboundPackQuantity', label: '入库数量（最小销售包装单位）' }]], // 入库记录
+    ['outbound', [{ prop: 'orderNo', label: 'ID', width: '80' },{ prop: 'ypid', label: '国家药品编码（YPID）' },
+    { prop: 'productName', label: '产品名称' },{ prop: 'outboundPackQuantity', label: '出库数量（最小销售包装单位）' },
+    { prop: 'outboundDosageQuantity', label: '出库数量（最小制剂单位）' }]], // 出库记录
+    ['usage', [{ prop: 'orderNo', label: 'ID', width: '80' }, { prop: 'ypid', label: '国家药品编码（YPID）' },
+    { prop: 'productName', label: '产品名称' }, { prop: 'usageTotalAmount', label: '销售总金额（元）' },
+    { prop: 'usageDosageQuantity', label: '销售数量' }]] // 使用记录
+  ])
 })
 
 // 错误详情对话框
@@ -547,7 +611,7 @@ const remainingDays = computed(() => {
 
 // 所有文件是否已上传
 const allFilesUploaded = computed(() => {
-  return fileList.value.every(file => file.status === 'uploaded')
+  return fileList.value.every(file => file.status === 2)
 })
 
 // ==================== 方法定义 ====================
@@ -602,6 +666,18 @@ const getFileStatusText = (status: string) => {
     1: '上传中',
     2: '已上传',
     3: '上传失败'
+  }
+  return map[status] || status
+}
+
+// 获取质检状态
+const getFileQcStatusText =  (status: string) => {
+  const map: Record<string, string> = {
+    0: '未前置',
+    1: '前置中',
+    2: '前置通过',
+    3: '前置警告',
+    4: '前置未通过'
   }
   return map[status] || status
 }
@@ -721,10 +797,10 @@ const startUpload = async () => {
   }
   try {
     loading.value = true
-    const res = await ReportDataApi.createReportTask({ reportTaskId: currentTask.value.id, currentStep: 1  })
-    console.log(res)
-
+    
     message.notify('正在创建上报任务...')
+    const res = await ReportDataApi.createReportTask({ reportTaskId: currentTask.value.id, currentStep: 1  })
+    
 
     // 切换到上传文件步骤
     currentTask.value.currentStep = 1
@@ -768,92 +844,12 @@ const handleFileChange = async (uploadFile: any) => {
         'Content-Type': 'multipart/form-data'
       }
     })
+    message.notifySuccess(isZip ? '压缩包上传成功，正在解析文件...' : '文件上传成功')
 
-    if (response && response.taskId) {
-      // 更新当前任务ID
-      currentTask.value.taskId = response.taskId
-      message.notifySuccess(isZip ? '压缩包上传成功，正在解析文件...' : '文件上传成功')
+    // 立即加载文件列表
+    await loadFileList(currentTask.value.taskId)
 
-      // 轮询获取任务进度和文件列表
-      let retryCount = 0
-      const maxRetries = 30 // 最多轮询60秒
-      const retryDelay = 2000 // 每2秒轮询一次
 
-      const pollProgress = async () => {
-        while (retryCount < maxRetries) {
-          try {
-            // 获取任务进度
-            const progress = await request.get({
-              url: `/drug/import-task/task-progress/${response.taskId}`
-            })
-
-            if (progress) {
-              // 更新进度信息
-              if (progress.progressPercentage !== undefined) {
-                console.log(`任务进度: ${progress.progressPercentage}%`)
-              }
-
-              // 检查任务状态
-              if (progress.status === 'COMPLETED' || progress.status === 4) {
-                // 任务完成
-                message.notifySuccess('文件解析完成')
-                break
-              } else if (progress.status === 'FAILED' || progress.status === 5) {
-                // 任务失败
-                message.notifyError('文件解析失败')
-                break
-              }
-            }
-          } catch (e) {
-            console.log('获取任务进度失败:', e)
-          }
-
-          retryCount++
-          await new Promise(resolve => setTimeout(resolve, retryDelay))
-        }
-      }
-
-      // 异步轮询进度
-      pollProgress()
-
-      // 立即加载文件列表
-      await loadFileList(response.taskId)
-
-      // 更新文件状态
-      if (isZip) {
-        // 压缩包：更新所有文件状态
-        fileList.value = fileList.value.map(f => ({
-          ...f,
-          status: 'uploaded',
-          size: f.size || Math.floor(Math.random() * 1024000),
-          recordCount: f.recordCount || Math.floor(Math.random() * 1000)
-        }))
-      } else {
-        // 单个文件：根据文件名识别类型并更新状态
-        const fileName = file.name.toLowerCase()
-        let fileType = ''
-
-        if (fileName.includes('基本') || fileName.includes('情况') || fileName.includes('hospital')) {
-          fileType = 'hospital'
-        } else if (fileName.includes('目录') || fileName.includes('catalog')) {
-          fileType = 'catalog'
-        } else if (fileName.includes('入库') || fileName.includes('inbound')) {
-          fileType = 'inbound'
-        } else if (fileName.includes('出库') || fileName.includes('outbound')) {
-          fileType = 'outbound'
-        } else if (fileName.includes('使用') || fileName.includes('usage')) {
-          fileType = 'usage'
-        }
-
-        const targetFile = fileList.value.find(f => f.type === fileType)
-        if (targetFile) {
-          targetFile.name = file.name
-          targetFile.status = 'uploaded'
-          targetFile.size = file.size
-          targetFile.recordCount = Math.floor(Math.random() * 1000)
-        }
-      }
-    }
   } catch (error) {
     console.error('文件上传失败:', error)
     message.notifyError('文件上传失败，请重试')
@@ -864,22 +860,36 @@ const handleFileChange = async (uploadFile: any) => {
 
 // 查看文件数据
 const viewFileData = async (file: any) => {
+  excelDetailTotal.value = 0
+  queryParams.value.pageNo = 1
+  dataViewDialog.file = file // 存储文件对象
+  getExcelDetailData()
+}
+
+// 分页查询文件数据
+const getExcelDetailData = async () => {
+  const file = dataViewDialog.file
+
   dataViewDialog.loading = true
   dataViewDialog.fileName = file.name
   dataViewDialog.visible = true
-
   try {
-    const result = await ReportDataApi.getFileData(file.id, 1, 100)
+    const result = await ReportDataApi.getFileData(file.type, file.taskId, file.id, queryParams.value.pageNo, queryParams.value.pageSize)
+    console.log('加载数据成功:', result)
 
     // 动态生成列
-    if (result.data && result.data.length > 0) {
-      const firstRow = result.data[0]
-      dataViewDialog.columns = Object.keys(firstRow).map(key => ({
-        prop: key,
-        label: key,
-        width: key.length > 10 ? 200 : 120
-      }))
-      dataViewDialog.data = result.data
+    if (result?.total) {
+      excelDetailTotal.value = result.total
+      const list = result.list
+      const defaultColumns = dataViewDialog.columnsMap.get(file.type)
+      defaultColumns.forEach(item => {
+        item.key = `${file.type}-${item.prop}`
+      })
+      list.forEach((item, index) => {
+        item.orderNo = (queryParams.value.pageNo - 1) * queryParams.value.pageSize + index + 1
+      })
+      dataViewDialog.columns = defaultColumns
+      dataViewDialog.data = list
     } else {
       dataViewDialog.columns = []
       dataViewDialog.data = []
@@ -892,6 +902,7 @@ const viewFileData = async (file: any) => {
   }
 }
 
+
 // 重新上传文件
 const reuploadFile = (file: any) => {
   console.log('重新上传文件:', file)
@@ -900,12 +911,17 @@ const reuploadFile = (file: any) => {
 
 // 删除文件
 const removeFile = (file: any) => {
-  message.confirm(`确定删除文件 ${file.name}？`).then(() => {
-    file.status = 'pending'
-    file.size = 0
-    file.recordCount = 0
-    message.notifySuccess('文件已删除')
-  }).catch(() => {
+  message.confirm(`确定删除文件 ${file.name}？`).then(async () => {
+    try {
+      await ReportDataApi.deleteFile(file.id)
+      message.notifySuccess('文件已删除')
+      file.status = 'pending'
+      file.size = 0
+      file.recordCount = 0
+    } catch (error) {
+      console.error('文件已删除失败:', error)
+      message.notifyError('文件已删除失败')
+    }
   })
 }
 
@@ -926,31 +942,41 @@ const updateReportProgress = async (progress: number) => {
 
 // 开始前置质控
 const startPreQC = async () => {
-  loading.value = true
   message.notify('正在进行前置质控...')
-
-  try {
-    currentTask.value.currentStep = 2
-    currentTask.value.maxCurrentStep = 2
-
-    message.notifySuccess('前置质控通过，所有检查项均已通过，可以提交上报')
-  } catch (error) {
-    console.error('前置质控失败:', error)
-    message.notifyError('前置质控失败，请重试')
-  } finally {
-    loading.value = false
+  if (currentTask.value.maxCurrentStep === 1) { // 更新任务进度到2
+    loading.value = true
+    try {
+      await updateReportProgress(2) // 更新上报进度为2-前置质控阶段
+      currentTask.value.currentStep = 2
+      currentTask.value.maxCurrentStep = 2
+      await operateQCResults(currentTask.value.taskId) // 执行前置质控操作
+      await loadQCResults(currentTask.value.taskId)
+    } catch (error) {
+      console.error('前置质控失败:', error)
+      message.notifyError('前置质控失败，请重试')
+    } finally {
+      loading.value = false
+    }
+  } else { // 说明是 节点 3或者4 跳到节点1 或者 2，不需要改状态
+    loading.value = true
+    try {
+      await operateQCResults(currentTask.value.taskId) // 执行前置质控操作
+      currentTask.value.currentStep = 2
+    } catch (error) {
+      console.error('前置质控失败:', error)
+      message.notifyError('前置质控失败，请重试')
+    } finally {
+      loading.value = false
+    }
   }
 }
 
 // 查看质控错误
 const viewQCErrors = async (row: any) => {
-  if (!currentTask.value.id) return
-
-  errorDialog.tableName = row.tableName
+  errorDialog.tableName = row.name
   errorDialog.visible = true
-
   try {
-    const errors = await ReportDataApi.getQCErrors(currentTask.value.id, row.tableName)
+    const errors = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.type)
     errorDialog.errors = errors
   } catch (error) {
     console.error('获取错误详情失败:', error)
@@ -961,9 +987,8 @@ const viewQCErrors = async (row: any) => {
 
 // 修复并重新上传
 const fixAndReupload = (row: any) => {
-  message.notify(`请修正 ${row.tableName} 的错误后重新上传`)
+  message.notify(`请修正 ${row.name} 的错误后重新上传`)
   currentTask.value.currentStep = 1
-  
 }
 
 // 返回上传
@@ -1122,6 +1147,7 @@ const loadFileList = async (taskId: number) => {
       if (serverFile) {
         return {
           ...localFile,
+          taskId: currentTask.value.taskId,
           id: serverFile.id,
           status: serverFile.uploadStatus,
           size: serverFile.fileSize,
@@ -1135,13 +1161,37 @@ const loadFileList = async (taskId: number) => {
   }
 }
 
+// 执行前置质控
+async function operateQCResults (taskId: number) {
+  try {
+    // 执行前置质控
+    console.log('执行前置质控...', taskId)
+    const preQC = await ReportDataApi.executePreQC(taskId)
+  } catch (error) {
+    console.error('执行前置质控失败:', error)
+  }
+}
+
 // 加载质控结果
 const loadQCResults = async (taskId: number) => {
   try {
     // 加载前置质控结果
     if (currentStep.value >= 2) {
-      const preQC = await ReportDataApi.getPreQCResult(taskId)
-      preQCResult.value = preQC
+      const files = await ReportDataApi.getFileList(taskId)
+      preQCResult.value.passed = !files.find(item => item.qcPreStatus === 4)
+      // 更新本地文件列表状态
+      preQCResult.value.details = fileList.value.map(localFile => {
+        const serverFile = files.find((f: any) => f.fileType === localFile.type)
+        if (serverFile) {
+          return {
+            ...localFile,
+            qcPreStatus: serverFile.qcPreStatus,
+            fileFormat: serverFile.fileFormat,
+            errorCount: serverFile.errorCount
+          }
+        }
+        return localFile
+      })
     }
   } catch (error) {
     console.error('加载质控结果失败:', error)
@@ -1435,6 +1485,9 @@ const loadQCResults = async (taskId: number) => {
   color: #f56c6c;
   font-weight: 500;
 }
+.upload-button {
+  display: inline-block;
+}
 
 .qc-actions {
   margin-top: 20px;
@@ -1460,6 +1513,11 @@ const loadQCResults = async (taskId: number) => {
   display: flex;
   gap: 12px;
   justify-content: center;
+}
+
+.dialog-page {
+  overflow: hidden;
+  padding-top: 0;
 }
 
 /* 响应式设计 */
