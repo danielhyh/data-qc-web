@@ -272,7 +272,12 @@
           </div>
 
           <!-- 质控详情表格 -->
-          <el-table :data="preQCResult.details" stripe>
+          <el-table :data="preQCResult.details" stripe @selection-change="handleSelectionChange">
+            <el-table-column
+              type="selection"
+              width="55"
+              prop="selected"
+              :selectable="checkboxDisabled"/>
             <el-table-column prop="name" label="标准文件名称" width="200" />
             <el-table-column prop="status" label="上传状态" width="120">
               <template #default="{ row }">
@@ -296,6 +301,7 @@
                 <div class="file-status">
                   <el-button
                     link
+                    :class="['status-badge', row.qcPreStatus === 4 ? 'qc-fail' : 'qc-passed']"
                     type="primary"
                     size="small"
                     @click="viewQCErrors(row)"
@@ -341,6 +347,20 @@
             </el-table-column>
           </el-table>
 
+          <!-- 错误详情对话框 -->
+          <div  v-if="errorDialog.visible" class="quality-details">
+            <h4>质检初审不通过</h4>
+            <div class="quality-details-content">
+              <div class="detail-item">
+                <span class="detail-label">文件名称:</span>
+                <span>{{ errorDialog.fileName }}</span>
+              </div>
+              <div class="detail-item">
+                  <span class="detail-label">未通过原因：</span>
+                  <span id="failureReason">{{ errorDialog.errors}}</span>
+              </div>
+            </div>
+          </div>
           <div class="qc-actions">
             <el-button @click="backToUpload">返回上传</el-button>
             <el-button @click="downloadQCReport('pre')">
@@ -349,7 +369,7 @@
               </el-icon>
               下载质控报告
             </el-button>
-            <el-button type="primary" @click="submitReport" :disabled="!preQCResult.passed">
+            <el-button type="primary" @click="submitReport">
               提交上报
             </el-button>
           </div>
@@ -404,56 +424,17 @@
       :title="`查看数据 - ${dataViewDialog.fileName}`"
       width="80%"
       top="5vh"
-    >
-      <el-table
-        :data="dataViewDialog.data"
-        stripe
-        max-height="500"
-        v-loading="dataViewDialog.loading"
-      >
-        <el-table-column
-            v-for="column in dataViewDialog.columns"
-            :key="column.key"
-            :prop="column.prop"
-            :label="column.label"
-            :width="column.width"
-            show-overflow-tooltip
+    >  
+      <component :is="excelDetailTarget" :dataViewDialog="dataViewDialog" ref="excelDetail" />
+      <div class="dialog-page">
+          <!-- 分页 -->
+          <Pagination
+            :total="excelDetailTotal"
+            v-model:page="queryParams.pageNo"
+            v-model:limit="queryParams.pageSize"
+            @pagination="getExcelDetailData"
           />
-        </el-table>
-        <div class="dialog-page">
-            <!-- 分页 -->
-            <Pagination
-              :total="excelDetailTotal"
-              v-model:page="queryParams.pageNo"
-              v-model:limit="queryParams.pageSize"
-              @pagination="getExcelDetailData"
-            />
-          </div>
-    </el-dialog>
-
-    <!-- 错误详情对话框 -->
-    <el-dialog
-      v-model="errorDialog.visible"
-      :title="`质控错误详情 - ${errorDialog.tableName}`"
-      width="70%"
-      top="10vh"
-    >
-      <el-table :data="errorDialog.errors" stripe max-height="400">
-        <el-table-column prop="row" label="行号" width="80" />
-        <el-table-column prop="column" label="列名" width="120" />
-        <el-table-column prop="value" label="错误值" width="150" show-overflow-tooltip />
-        <el-table-column prop="errorType" label="错误类型" width="120">
-          <template #default="{ row }">
-            <el-tag size="small" type="danger">{{ row.errorType }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="message" label="错误说明" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="suggestion" label="修复建议" min-width="200" show-overflow-tooltip />
-      </el-table>
-      <template #footer>
-        <el-button @click="errorDialog.visible = false">关闭</el-button>
-        <el-button type="primary" @click="exportErrors">导出错误清单</el-button>
-      </template>
+        </div>
     </el-dialog>
 
     <!-- Excel预览弹窗 -->
@@ -497,7 +478,11 @@ import {ImportTemplateApi} from '@/api/drug/task/template'
 import {TemplateFieldApi} from '@/api/drug/task/template'
 import download from '@/utils/download'
 import {getDictLabel, DICT_TYPE, getDictOptions} from '@/utils/dict'
-import { el } from 'element-plus/es/locale'
+import hospitalDetails from './excel-detail/hospital.vue'
+import inboundDetails from './excel-detail/inbound.vue'
+import outboundDetails from './excel-detail/outbound.vue'
+import usageDetails from './excel-detail/usage.vue'
+import catalogDetails from './excel-detail/catalog.vue'
 
 // 定义组件名称
 defineOptions({name: 'DrugReportSubmission'})
@@ -518,7 +503,6 @@ const excelPreviewRef = ref()
 const currentStep = computed(() => {
   return currentTask.value.currentStep || 0
 })
-
 const loading = ref(false)
 
 // 当前任务信息
@@ -543,6 +527,8 @@ const fileList = ref([
   {id: 5, name: '医疗机构使用情况.xlsx', type: 'usage', status: 0, size: 0, recordCount: 0}
 ])
 
+const selectedFileIds = ref([])
+
 // 前置质控结果
 const preQCResult = ref({
   passed: false,
@@ -563,44 +549,40 @@ const queryParams = ref({
 })
 
 // 数据查看对话框
-const dataViewDialog = reactive({
+const dataViewDialog = ref({
   visible: false,
   loading: false,
   fileName: '',
-  data: [],
-  columns: [],
-  columnsMap: new Map([
-    ['hospital',  // 医院信息
-    [{ prop: 'orderNo', label: 'ID', width: '80' }, { prop: 'uploadDate', label: '数据上报日期' },
-     { prop: 'domainCode', label: '省级行政区划代码' }, { prop: 'organizationCode', label: '组织机构代码' },
-     { prop: 'hospitalCode', label: '医院机构代码' }, { prop: 'organizationName', label: '组织机构名称', width: '150'  },
-     { prop: 'unitManager', label: '单位负责人' }, { prop: 'statisticsManager', label: '统计负责人' },
-     { prop: '', label: '年度药瓶总收入（元）', width: '150'  }, { prop: 'bedCount', label: '实有床位数' }]],
-    ['catalog', 
-    [{ prop: 'orderNo', label: 'ID', width: '80' }, { prop: 'ypid', label: '国家药品编码（YPID）' },
-     { prop: 'hospitalDrugId', label: '院内药品唯一码'}, { prop: 'provinceDrugId', label: '省级药品集中采购平台药瓶编码' },
-     { prop: 'productName', label: '通用名' }, { prop: 'productName', label: '产品名称' }, { prop: 'productName', label: '商品名' }]], // 药品目录
-    ['inbound',
-    [{ prop: 'orderNo', label: 'ID', width: '80' }, { prop: 'ypid', label: '国家药品编码（YPID）' },
-    { prop: 'productName', label: '产品名称' }, { prop: 'inboundTotalAmount', label: '入库总金额（元）' },
-    { prop: 'inboundPackQuantity', label: '入库数量（最小销售包装单位）' }]], // 入库记录
-    ['outbound', [{ prop: 'orderNo', label: 'ID', width: '80' },{ prop: 'ypid', label: '国家药品编码（YPID）' },
-    { prop: 'productName', label: '产品名称' },{ prop: 'outboundPackQuantity', label: '出库数量（最小销售包装单位）' },
-    { prop: 'outboundDosageQuantity', label: '出库数量（最小制剂单位）' }]], // 出库记录
-    ['usage', [{ prop: 'orderNo', label: 'ID', width: '80' }, { prop: 'ypid', label: '国家药品编码（YPID）' },
-    { prop: 'productName', label: '产品名称' }, { prop: 'usageTotalAmount', label: '销售总金额（元）' },
-    { prop: 'usageDosageQuantity', label: '销售数量' }]] // 使用记录
-  ])
+  data: []
 })
+const activeFile = ref()
+
 
 // 错误详情对话框
-const errorDialog = reactive({
+const errorDialog = ref({
   visible: false,
-  tableName: '',
+  fileName: '',
+  qcPreStatusLabel: '',
   errors: []
 })
 
 // ==================== 计算属性 ====================
+const excelDetailTarget  = computed(() => {
+    if (activeFile.value.type === 'hospital') {
+    return hospitalDetails
+  } else if (activeFile.value.type === 'catalog') {
+    return catalogDetails
+  } else if (activeFile.value.type === 'inbound') {
+    return inboundDetails
+  } else if (activeFile.value.type === 'outbound') {
+    return outboundDetails
+  } else if (activeFile.value.type === 'usage') {
+    return usageDetails
+  } else {
+    return null
+  }
+})
+
 
 // 计算剩余天数
 const remainingDays = computed(() => {
@@ -616,6 +598,14 @@ const allFilesUploaded = computed(() => {
 })
 
 // ==================== 方法定义 ====================
+
+function checkboxDisabled (row) {
+  return [2,3].includes(row.qcPreStatus)
+}
+
+function handleSelectionChange (val) {
+  selectedFileIds.value = val.map(item => item.id)
+}
 
 function changeSteps (step: number) {
   if (step <= currentTask.value.maxCurrentStep) { // 超出当前步骤范围，不执行任何操作
@@ -863,17 +853,17 @@ const handleFileChange = async (uploadFile: any) => {
 const viewFileData = async (file: any) => {
   excelDetailTotal.value = 0
   queryParams.value.pageNo = 1
-  dataViewDialog.file = file // 存储文件对象
+  activeFile.value = file // 存储文件对象
   getExcelDetailData()
 }
 
 // 分页查询文件数据
 const getExcelDetailData = async () => {
-  const file = dataViewDialog.file
+  const file = activeFile.value
 
-  dataViewDialog.loading = true
-  dataViewDialog.fileName = file.name
-  dataViewDialog.visible = true
+  dataViewDialog.value.loading = true
+  dataViewDialog.value.fileName = file.name
+  dataViewDialog.value.visible = true
   try {
     const result = await ReportDataApi.getFileData(file.type, file.taskId, file.id, queryParams.value.pageNo, queryParams.value.pageSize)
     console.log('加载数据成功:', result)
@@ -882,24 +872,18 @@ const getExcelDetailData = async () => {
     if (result?.total) {
       excelDetailTotal.value = result.total
       const list = result.list
-      const defaultColumns = dataViewDialog.columnsMap.get(file.type)
-      defaultColumns.forEach(item => {
-        item.key = `${file.type}-${item.prop}`
-      })
       list.forEach((item, index) => {
         item.orderNo = (queryParams.value.pageNo - 1) * queryParams.value.pageSize + index + 1
       })
-      dataViewDialog.columns = defaultColumns
-      dataViewDialog.data = list
+      dataViewDialog.value.data = list
     } else {
-      dataViewDialog.columns = []
-      dataViewDialog.data = []
+      dataViewDialog.value.data = []
     }
   } catch (error) {
     console.error('加载数据失败:', error)
     message.notifyError('加载数据失败')
   } finally {
-    dataViewDialog.loading = false
+    dataViewDialog.value.loading = false
   }
 }
 
@@ -963,6 +947,7 @@ const startPreQC = async () => {
     try {
       await operateQCResults(currentTask.value.taskId) // 执行前置质控操作
       currentTask.value.currentStep = 2
+      await loadQCResults(currentTask.value.taskId)
     } catch (error) {
       console.error('前置质控失败:', error)
       message.notifyError('前置质控失败，请重试')
@@ -974,15 +959,23 @@ const startPreQC = async () => {
 
 // 查看质控错误
 const viewQCErrors = async (row: any) => {
-  errorDialog.tableName = row.name
-  errorDialog.visible = true
+  if (row.qcPreStatus !== 4) {
+    return
+  }
   try {
-    const errors = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.type)
-    errorDialog.errors = errors
+    console.log('查看质控错误:', row)
+    // const errors = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.type)
+    const errors = `洒洒水，网络流行词，源于粤语发音“湿湿碎”的空耳，原指琐碎的小事，后引申为表示事情
+    很轻松或不足挂齿的含义。该词本义侧重描述事物的微小性，在传播过程中逐渐演变为表达“小意思”的轻松态度。其词源可追溯至粤语短语“湿湿碎”（sap1 sap1 seoi3）的音译变形，原指细碎琐事，后经网络传播形成现有语义。 [1]
+`
+    errorDialog.value.errors = errors
+    errorDialog.value.fileName = row.name
+    errorDialog.value.visible = true
+    console.log('查看质控错误成功:', errorDialog)
   } catch (error) {
     console.error('获取错误详情失败:', error)
     message.notifyError('获取错误详情失败')
-    errorDialog.errors = []
+    errorDialog.value.errors = []
   }
 }
 
@@ -1015,23 +1008,27 @@ const downloadQCReport = async (type: 'pre' | 'post') => {
 
 // 提交上报
 const submitReport = async () => {
-  if (!currentTask.value.id) return
+  let fileIds = selectedFileIds.value
+  if (preQCResult.value.passed) {
+    fileIds = preQCResult.value.details.map(item => item.id)
+  }
+  return
 
+  if (!fileIds.length) {
+    message.warning('请选择需要提交的文件')
+    return
+  }
   try {
     await message.confirm(
       '确认提交上报？提交后将完成上报流程'
     )
-
     loading.value = true
-    // await ReportDataApi.submitReport(currentTask.value.id)
+    await ReportDataApi.submitReport(currentTask.value.taskId, fileIds)
+    await updateReportProgress(3) // 更新上报进度为3-前置质控阶段
     currentTask.value.currentStep = 3
     currentTask.value.maxCurrentStep = 3
-
-    // 更新上报进度为3-提交上报阶段
-    // await updateReportProgress(3)
-
+    await loadQCResults(currentTask.value.taskId)
     message.notifySuccess('数据已成功提交上报')
-
   } catch (error: any) {
     if (error !== 'cancel') {
       console.error('提交上报失败:', error)
@@ -1062,10 +1059,10 @@ const viewReportHistory = () => {
 
 // 导出错误清单
 const exportErrors = async () => {
-  if (!currentTask.value.id || !errorDialog.tableName) return
+  if (!currentTask.value.id || !errorDialog.value.tableName) return
 
   try {
-    await ReportDataApi.exportErrors(currentTask.value.id, errorDialog.tableName)
+    await ReportDataApi.exportErrors(currentTask.value.id, errorDialog.value.tableName)
     message.notifySuccess('错误清单导出成功')
   } catch (error) {
     console.error('导出错误清单失败:', error)
@@ -1179,7 +1176,7 @@ const loadQCResults = async (taskId: number) => {
     // 加载前置质控结果
     if (currentStep.value >= 2) {
       const files = await ReportDataApi.getFileList(taskId)
-      preQCResult.value.passed = !files.find(item => item.qcPreStatus === 4)
+      preQCResult.value.passed = !files.find(item => [0, 1, 4, null].includes(item.qcPreStatus))
       // 更新本地文件列表状态
       preQCResult.value.details = fileList.value.map(localFile => {
         const serverFile = files.find((f: any) => f.fileType === localFile.type)
@@ -1519,6 +1516,60 @@ const loadQCResults = async (taskId: number) => {
 .dialog-page {
   overflow: hidden;
   padding-top: 0;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 60px;
+}
+
+.qc-fail {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.qc-passed {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+
+/* 质检不通过样式 */
+.quality-details {
+  display: block;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 6px;
+  padding: 15px;
+  margin: 20px;
+  h4 {
+    color: #c53030;
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .quality-details-content {
+    color: #666;
+    font-size: 13px;
+    line-height: 1.5;
+    .detail-item {
+      margin-bottom: 8px;
+    }
+    .detail-label {
+      font-weight: 600;
+      color: #333;
+      display: inline-block;
+      width: 80px;
+    }
+  }
 }
 
 /* 响应式设计 */

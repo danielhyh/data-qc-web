@@ -276,10 +276,10 @@ export const ReportDataApi = {
 
   // ==================== 上报提交相关API ====================
   // 提交上报
-  submitReport: (taskId: number): Promise<boolean> => {
+  submitReport: (taskId: number, fileIds: Array): Promise<boolean> => {
     return request.post({
       url: '/drug/report-data/submit',
-      data: { taskId }
+      data: { taskId, fileIds }
     })
   },
 
