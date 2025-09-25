@@ -9,6 +9,77 @@ import { ThemeTypes } from '@/types/theme'
 
 const { wsCache } = useCache()
 
+// 机构用户的样式配置
+const institutionThemeConfig = {
+  // 面包屑
+  breadcrumb: true,
+  // 面包屑图标
+  breadcrumbIcon: true,
+  // 折叠图标
+  hamburger: true,
+  // 全屏图标
+  screenfull: true,
+  // 尺寸图标
+  size: true,
+  // 多语言图标
+  locale: true,
+  // 消息图标
+  message: true,
+  // 标签页
+  tagsView: true,
+  // 标签页
+  tagsViewImmerse: false,
+  // 标签页图标
+  tagsViewIcon: true,
+  // logo
+  logo: true,
+  // 菜单手风琴
+  uniqueOpened: true,
+  // 固定header
+  fixedHeader: true,
+  // 页脚
+  footer: false,
+  // 灰色模式
+  greyMode: false,
+  // layout布局
+  layout: 'top' as LayoutType,
+  // 暗黑模式
+  isDark: false,
+  // 组件尺寸
+  currentSize: 'default' as ElementPlusSize,
+  // 主题相关
+  theme: {
+    // 主题色
+    elColorPrimary: '#409eff',
+    // 左侧菜单边框颜色
+    leftMenuBorderColor: 'inherit',
+    // 左侧菜单背景颜色
+    leftMenuBgColor: '#151515',
+    // 左侧菜单浅色背景颜色
+    leftMenuBgLightColor: '#242424',
+    // 左侧菜单选中背景颜色
+    leftMenuBgActiveColor: 'var(--el-color-primary)',
+    // 左侧菜单收起选中背景颜色
+    leftMenuCollapseBgActiveColor: 'var(--el-color-primary)',
+    // 左侧菜单字体颜色
+    leftMenuTextColor: '#bfcbd9',
+    // 左侧菜单选中字体颜色
+    leftMenuTextActiveColor: '#fff',
+    // logo字体颜色
+    logoTitleTextColor: '#fff',
+    // logo边框颜色
+    logoBorderColor: '#151515',
+    // 头部背景颜色
+    topHeaderBgColor: '#151515',
+    // 头部字体颜色
+    topHeaderTextColor: '#fff',
+    // 头部悬停颜色
+    topHeaderHoverColor: '#242424',
+    // 头部边框颜色
+    topToolBorderColor: '#151515'
+  }
+}
+
 interface AppState {
   breadcrumb: boolean
   breadcrumbIcon: boolean
@@ -283,6 +354,34 @@ export const useAppStore = defineStore('app', {
     },
     setFooter(footer: boolean) {
       this.footer = footer
+    },
+    // 根据用户角色加载配置
+    loadConfigByRoles(roles: string[]) {
+      if (roles.includes('institution_admin')) {
+        // 应用机构用户配置
+        this.breadcrumb = institutionThemeConfig.breadcrumb
+        this.breadcrumbIcon = institutionThemeConfig.breadcrumbIcon
+        this.hamburger = institutionThemeConfig.hamburger
+        this.screenfull = institutionThemeConfig.screenfull
+        this.size = institutionThemeConfig.size
+        this.locale = institutionThemeConfig.locale
+        this.message = institutionThemeConfig.message
+        this.tagsView = institutionThemeConfig.tagsView
+        this.tagsViewImmerse = institutionThemeConfig.tagsViewImmerse
+        this.tagsViewIcon = institutionThemeConfig.tagsViewIcon
+        this.logo = institutionThemeConfig.logo
+        this.uniqueOpened = institutionThemeConfig.uniqueOpened
+        this.fixedHeader = institutionThemeConfig.fixedHeader
+        this.footer = institutionThemeConfig.footer
+        this.greyMode = institutionThemeConfig.greyMode
+        this.setLayout(institutionThemeConfig.layout)
+        this.setIsDark(institutionThemeConfig.isDark)
+        this.setCurrentSize(institutionThemeConfig.currentSize)
+        // 直接替换主题配置而不是合并，确保机构主题完全生效
+        this.theme = { ...institutionThemeConfig.theme }
+        wsCache.set(CACHE_KEY.THEME, this.theme)
+        this.setCssVarTheme()
+      }
     }
   },
   persist: false

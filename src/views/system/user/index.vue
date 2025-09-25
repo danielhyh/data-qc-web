@@ -11,13 +11,13 @@
         class="h-full selector-card">
         <el-row :gutter="12" class="selector-content">
           <!-- 左侧：地区树 -->
-          <el-col :span="11">
+          <el-col :span="12">
             <div class="section-title">地区</div>
             <RegionTree @node-click="handleRegionNodeClick" />
           </el-col>
 
           <!-- 右侧：机构列表 -->
-          <el-col :span="13">
+          <el-col :span="12">
             <div class="section-title">机构</div>
             <div v-if="!selectedRegionId" class="empty-state">
               <Icon icon="ep:pointer" class="empty-icon" />
@@ -43,9 +43,6 @@
               >
                 <div class="org-info">
                   <span class="org-name">{{ org.name }}</span>
-                  <el-tag v-if="org.orgType" size="small" type="info">
-                    {{ org.orgType }}
-                  </el-tag>
                 </div>
               </div>
             </div>
@@ -368,6 +365,19 @@ const handleRegionNodeClick = async (row) => {
   // 加载该地区下的机构列表
   if (row.code) {
     await loadOrgList(row.code)
+    // 点击区域时，直接将该区域下的所有机构ids传递给查询接口
+    if (orgList.value.length > 0) {
+      const allOrgIds = orgList.value.map(org => org.id)
+      selectedOrgIds.value = allOrgIds
+      queryParams.deptIds = allOrgIds.join(',')
+    } else {
+      // 如果该地区下没有机构，传递一个不存在的ID，避免查询所有用户
+      selectedOrgIds.value = []
+      queryParams.deptIds = '-1'
+    }
+  } else {
+    selectedOrgIds.value = []
+    queryParams.deptIds = undefined
   }
   // 刷新用户列表
   await getList()
@@ -558,10 +568,10 @@ onMounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 
   .org-item {
-    padding: 8px 12px;
+    padding: 6px 10px;
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 4px;
     cursor: pointer;
@@ -584,7 +594,7 @@ onMounted(() => {
       justify-content: space-between;
 
       .org-name {
-        font-weight: 500;
+        font-size: 13px;
         flex: 1;
       }
     }

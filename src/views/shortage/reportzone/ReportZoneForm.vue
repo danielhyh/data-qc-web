@@ -32,38 +32,125 @@
         />
       </el-form-item>
       <el-form-item label="可填报机构" prop="reportableOrgs">
-        <el-card class="w-full h-350px !overflow-y-scroll" shadow="never">
-          <template #header>
-            全选/全不选:
-            <el-switch
-              v-model="treeNodeAll"
-              active-text="是"
-              inactive-text="否"
-              inline-prompt
-              @change="handleCheckedTreeNodeAll()"
-            />
-            全部展开/折叠:
-            <el-switch
-              v-model="deptExpand"
-              active-text="展开"
-              inactive-text="折叠"
-              inline-prompt
-              @change="handleCheckedTreeExpand"
-            />
-            父子联动:
-            <el-switch v-model="checkStrictly" active-text="是" inactive-text="否" inline-prompt />
-          </template>
-          <el-tree
-            ref="treeRef"
-            :check-strictly="!checkStrictly"
-            :data="deptOptions"
-            :props="defaultProps"
-            default-expand-all
-            empty-text="加载中，请稍后"
-            node-key="id"
-            show-checkbox
-          />
-        </el-card>
+        <div class="org-selector-container">
+          <el-row :gutter="12">
+            <!-- 左侧：地区树 -->
+            <el-col :span="10">
+              <el-card shadow="never" class="selector-card">
+                <template #header>
+                  <div class="card-header">
+                    <span>选择地区</span>
+                  </div>
+                </template>
+                <el-tree
+                  ref="areaTreeRef"
+                  :data="areaTreeData"
+                  :props="areaTreeProps"
+                  node-key="code"
+                  highlight-current
+                  default-expand-all
+                  @node-click="handleAreaNodeClick"
+                >
+                  <template #default="{ node, data }">
+                    <span class="tree-node">
+                      <Icon :icon="getAreaIcon(data.level)" class="node-icon" />
+                      <span>{{ node.label }}</span>
+                    </span>
+                  </template>
+                </el-tree>
+              </el-card>
+            </el-col>
+
+            <!-- 右侧：机构树 -->
+            <el-col :span="14">
+              <el-card shadow="never" class="selector-card">
+                <template #header>
+                  <div class="card-header">
+                    <span>选择机构</span>
+                    <div class="header-actions">
+                      全选/全不选:
+                      <el-switch
+                        v-model="treeNodeAll"
+                        active-text="是"
+                        inactive-text="否"
+                        inline-prompt
+                        @change="handleCheckedTreeNodeAll()"
+                        :disabled="!selectedArea"
+                      />
+                      全部展开/折叠:
+                      <el-switch
+                        v-model="deptExpand"
+                        active-text="展开"
+                        inactive-text="折叠"
+                        inline-prompt
+                        @change="handleCheckedTreeExpand"
+                        :disabled="!selectedArea"
+                      />
+                      父子联动:
+                      <el-switch
+                        v-model="checkStrictly"
+                        active-text="是"
+                        inactive-text="否"
+                        inline-prompt
+                        :disabled="!selectedArea"
+                      />
+                    </div>
+                  </div>
+                </template>
+
+                <!-- 机构等级多选框 -->
+                <div v-if="selectedArea" class="institution-level-filter">
+                  <span class="filter-label">机构等级筛选：</span>
+                  <el-select
+                    v-model="selectedInstitutionLevels"
+                    multiple
+                    placeholder="选择机构等级"
+                    collapse-tags
+                    collapse-tags-tooltip
+                    clearable
+                    @change="handleInstitutionLevelChange"
+                    class="level-selector"
+                  >
+                    <el-option
+                      v-for="dict in getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL)"
+                      :key="dict.value"
+                      :label="dict.label"
+                      :value="dict.value"
+                    />
+                  </el-select>
+                </div>
+
+                <div v-if="!selectedArea" class="empty-state">
+                  <Icon icon="ep:pointer" class="empty-icon" />
+                  <p>请先选择左侧地区</p>
+                </div>
+
+                <el-tree
+                  v-else
+                  ref="treeRef"
+                  :check-strictly="!checkStrictly"
+                  :data="filteredDeptOptions"
+                  :props="defaultProps"
+                  :default-expand-all="deptExpand"
+                  empty-text="该地区暂无机构"
+                  node-key="id"
+                  show-checkbox
+                >
+                  <template #default="{ node, data }">
+                    <div class="dept-node">
+                      <span>{{ node.label }}</span>
+                      <dict-tag
+                        :type="DICT_TYPE.INSTITUTION_LEVEL"
+                        :value="data.hospitalLevel"
+                        class="ml-2"
+                      />
+                    </div>
+                  </template>
+                </el-tree>
+              </el-card>
+            </el-col>
+          </el-row>
+        </div>
       </el-form-item>
       <el-form-item label="备注说明" prop="remark">
         <el-input
@@ -85,6 +172,7 @@
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { ReportZoneApi, type ReportZoneVO } from '@/api/shortage'
 import { Editor } from '@/components/Editor'
+import { Icon } from '@/components/Icon'
 import * as DeptApi from '@/api/system/dept'
 import { defaultProps, handleTree } from '@/utils/tree'
 
@@ -108,11 +196,25 @@ const formData = ref({
 })
 
 // 部门树相关
-const deptOptions = ref<any[]>([]) // 部门树形结构
+const deptOptions = ref<any[]>([]) // 原始部门树形结构
+const filteredDeptOptions = ref<any[]>([]) // 过滤后的部门树形结构
 const deptExpand = ref(true) // 展开/折叠
 const treeRef = ref() // 部门树组件 Ref
 const treeNodeAll = ref(false) // 全选/全不选
 const checkStrictly = ref(true) // 是否严格模式，即父子不关联
+
+// 地区树相关
+const areaTreeRef = ref() // 地区树组件 Ref
+const areaTreeData = ref<any[]>([]) // 地区树形结构
+const selectedArea = ref<any>(null) // 选中的地区
+
+const areaTreeProps = {
+  label: 'name',
+  children: 'children'
+}
+
+// 机构等级筛选相关
+const selectedInstitutionLevels = ref<number[]>([]) // 选中的机构等级
 
 const formRules = reactive({
   zoneName: [{ required: true, message: '专区名称不能为空', trigger: 'blur' }],
@@ -122,7 +224,115 @@ const formRules = reactive({
 
 const formRef = ref() // 表单 Ref
 
-// 自动生成专区编码
+// 获取区域图标
+const getAreaIcon = (level: number) => {
+  const icons = {
+    1: 'ep:location',     // 省
+    2: 'ep:map-location', // 市
+    3: 'ep:place'         // 区
+  }
+  return icons[level] || 'ep:location'
+}
+
+// 处理地区节点点击
+const handleAreaNodeClick = async (data: any) => {
+  selectedArea.value = data
+
+  // 切换地区时，重置相关状态
+  selectedInstitutionLevels.value = []
+  treeNodeAll.value = false
+
+  // 加载该地区的机构数据
+  await loadDeptData(data.code)
+}
+
+// 加载机构数据
+const loadDeptData = async (areaCode: string) => {
+  try {
+    // 这里需要根据实际的API调用地区下的机构数据
+    const data = await DeptApi.getDeptPage({ areaCode, pageSize: 1000 })
+    deptOptions.value = handleTree(data)
+
+    // 应用机构等级筛选
+    applyInstitutionLevelFilter()
+  } catch (error) {
+    console.error('加载机构数据失败:', error)
+    deptOptions.value = []
+    filteredDeptOptions.value = []
+  }
+}
+
+// 处理机构等级变化
+const handleInstitutionLevelChange = () => {
+  applyInstitutionLevelFilter()
+}
+
+// 应用机构等级筛选
+const applyInstitutionLevelFilter = () => {
+  if (selectedInstitutionLevels.value.length === 0) {
+    // 如果没有选择等级，显示所有机构
+    filteredDeptOptions.value = deptOptions.value
+  } else {
+    // 筛选指定等级的机构
+    filteredDeptOptions.value = filterTreeByLevel(deptOptions.value, selectedInstitutionLevels.value)
+  }
+}
+
+// 递归筛选树节点
+const filterTreeByLevel = (nodes: any[], levels: number[]): any[] => {
+  return nodes.filter(node => {
+    // 如果当前节点匹配等级条件，保留
+    if (levels.includes(node.hospitalLevel)) {
+      return true
+    }
+
+    // 如果有子节点，递归筛选子节点
+    if (node.children && node.children.length > 0) {
+      const filteredChildren = filterTreeByLevel(node.children, levels)
+      if (filteredChildren.length > 0) {
+        // 如果有符合条件的子节点，保留当前节点但更新子节点
+        return { ...node, children: filteredChildren }
+      }
+    }
+
+    return false
+  }).map(node => {
+    if (node.children && node.children.length > 0) {
+      return { ...node, children: filterTreeByLevel(node.children, levels) }
+    }
+    return node
+  })
+}
+
+// 初始化地区树数据
+const initAreaTree = async () => {
+  try {
+    // 这里应该调用获取地区树的API
+    // 为了演示，先使用一个简单的数据结构
+    areaTreeData.value = await getAreaTreeData()
+  } catch (error) {
+    console.error('初始化地区树失败:', error)
+  }
+}
+
+// 获取地区树数据（这里需要根据实际API实现）
+const getAreaTreeData = async () => {
+  // 示例数据结构，实际应该从API获取
+  return [
+    {
+      code: '610000',
+      name: '陕西省',
+      level: 1,
+      children: [
+        { code: '610100', name: '西安市', level: 2 },
+        { code: '610200', name: '铜川市', level: 2 },
+        { code: '610300', name: '宝鸡市', level: 2 },
+        // 更多城市...
+      ]
+    }
+    // 更多省份...
+  ]
+}
 const generateZoneCode = async () => {
   const maxRetries = 5
   let attempt = 0
@@ -184,21 +394,24 @@ const open = async (type: string, id?: number) => {
   dialogTitle.value = type === 'create' ? '新增专区' : '编辑专区'
   formType.value = type
   resetForm()
-  
-  // 加载部门数据
-  deptOptions.value = handleTree(await DeptApi.getSimpleDeptList())
-  
+
+  // 初始化地区树数据
+  await initAreaTree()
+
   // 修改时，设置数据
   if (id) {
     formLoading.value = true
     try {
       const data = await ReportZoneApi.get(id)
       Object.assign(formData.value, data)
-      
-      // 设置已选择的部门
+
+      // 如果有选择的机构，需要处理回显
       if (data.reportableOrgs) {
         await nextTick()
         const deptIds = data.reportableOrgs.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+
+        // 这里可能需要根据已选择的机构找到对应的地区并加载机构树
+        // 暂时简化处理，直接设置选中状态
         deptIds.forEach(deptId => {
           treeRef.value?.setChecked(deptId, true, false)
         })
@@ -258,13 +471,19 @@ const resetForm = () => {
     remark: '',
     reportableOrgs: '',
   }
-  
+
+  // 重置地区和机构相关状态
+  selectedArea.value = null
+  selectedInstitutionLevels.value = []
+  deptOptions.value = []
+  filteredDeptOptions.value = []
+
   // 重置部门树状态
   treeNodeAll.value = false
   deptExpand.value = true
   checkStrictly.value = true
   treeRef.value?.setCheckedNodes([])
-  
+
   formRef.value?.resetFields()
 }
 
@@ -285,7 +504,8 @@ const getDefaultNoticeContent = (): string => {
 
 /** 全选/全不选 */
 const handleCheckedTreeNodeAll = () => {
-  treeRef.value.setCheckedNodes(treeNodeAll.value ? deptOptions.value : [])
+  if (!selectedArea.value) return
+  treeRef.value.setCheckedNodes(treeNodeAll.value ? filteredDeptOptions.value : [])
 }
 
 /** 展开/折叠全部 */
@@ -299,3 +519,94 @@ const handleCheckedTreeExpand = () => {
   }
 }
 </script>
+
+<style scoped lang="scss">
+.org-selector-container {
+  .selector-card {
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+
+    :deep(.el-card__header) {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+    }
+
+    :deep(.el-card__body) {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .header-actions {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      font-size: 14px;
+    }
+  }
+
+  .tree-node {
+    display: flex;
+    align-items: center;
+    flex: 1;
+
+    .node-icon {
+      margin-right: 6px;
+      color: var(--el-color-primary);
+    }
+  }
+
+  .institution-level-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    .filter-label {
+      font-size: 14px;
+      color: var(--el-text-color-regular);
+      white-space: nowrap;
+    }
+
+    .level-selector {
+      flex: 1;
+      max-width: 300px;
+    }
+  }
+
+  .dept-node {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--el-text-color-secondary);
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      color: var(--el-border-color-darker);
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+}
+</style>

@@ -7,7 +7,7 @@
     />
 
     <!-- 统计概览 -->
-    <div class="stats-overview">
+<!--    <div class="stats-overview">
       <el-row :gutter="16">
         <el-col :xs="12" :sm="6" :md="6" :lg="6">
           <StatCard title="药品总数" :value="statistics.totalDrugs" icon="Box" color="#409eff" />
@@ -41,7 +41,7 @@
           />
         </el-col>
       </el-row>
-    </div>
+    </div>-->
 
     <!-- 搜索区域 -->
     <ContentWrap>

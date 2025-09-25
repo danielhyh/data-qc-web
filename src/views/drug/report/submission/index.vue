@@ -518,6 +518,7 @@ const excelPreviewRef = ref()
 const currentStep = computed(() => {
   return currentTask.value.currentStep || 0
 })
+
 const loading = ref(false)
 
 // 当前任务信息
