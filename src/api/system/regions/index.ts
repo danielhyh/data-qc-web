@@ -50,6 +50,6 @@ export const RegionsApi = {
 
   // 获取区域树(带机构数量)
   getRegionsTreeWithOrgCount: async () => {
-    return await request.get({ url: `/system/regions/tree-with-org-count` })
+    return await request.get({ url: `/system/area-org/area-tree` })
   },
-}
+}

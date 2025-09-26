@@ -190,7 +190,7 @@ const loading = ref(true) // 列表的加载中
 const list = ref() // 列表的数据
 const queryParams = reactive({
   pageNo: 1,
-  pageSize: 100,
+  pageSize: -1,
   name: undefined,
   status: undefined,
   areaCode: undefined // 使用areaCode匹配后端接口
@@ -199,7 +199,7 @@ const queryFormRef = ref() // 搜索的表单
 const isExpandAll = ref(true) // 是否展开，默认全部展开
 const refreshTable = ref(true) // 重新渲染表格状态
 const userList = ref<UserApi.UserVO[]>([]) // 用户列表
-const selectedRegionId = ref<number | undefined>() // 选中的地区ID
+const selectedRegionId = ref<string | undefined>() // 选中的地区Code
 const selectedRegionCode = ref<string | undefined>() // 选中的地区代码
 const activeTab = ref('dept') // 当前激活的标签页
 
@@ -241,7 +241,10 @@ const getList = async () => {
   loading.value = true
   try {
     const data = await DeptApi.getDeptPage(queryParams)
-    list.value = handleTree(data)
+    console.log('原始数据:', data)
+    const treeData = handleTree(data)
+    console.log('处理后的树形数据:', treeData)
+    list.value = treeData
   } finally {
     loading.value = false
   }
@@ -249,7 +252,8 @@ const getList = async () => {
 
 /** 处理地区被点击 */
 const handleRegionNodeClick = async (row) => {
-  selectedRegionId.value = row.id
+  // 使用 code 作为 selectedRegionId，因为新的地区树API返回的是code
+  selectedRegionId.value = row.code
   selectedRegionCode.value = row.code
   queryParams.areaCode = row.code
   // 刷新机构列表
@@ -280,6 +284,7 @@ const resetQuery = () => {
   queryParams.pageNo = 1
   queryParams.areaCode = undefined
   selectedRegionId.value = undefined
+  selectedRegionCode.value = undefined
   queryFormRef.value.resetFields()
   handleQuery()
 }

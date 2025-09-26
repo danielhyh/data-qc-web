@@ -9,6 +9,7 @@ export interface ReportTaskVO {
   endDate: Date // 上报截止时间
   status: number // 状态：1-未开始 2-进行中 3-已结束 4-已关闭（系统自动计算）
   description: string // 任务描述
+  reportableOrgs: string // 可填报机构ID列表，逗号分隔
 }
 
 // 填报任务设置 API

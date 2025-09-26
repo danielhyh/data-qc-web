@@ -35,10 +35,10 @@
           class="!w-240px"
         />
       </el-form-item>
-      <el-form-item label="状态（0无效 1有效）" prop="status">
+      <el-form-item label="状态（0有效 1无效）" prop="status">
         <el-select
           v-model="queryParams.status"
-          placeholder="请选择状态（0无效 1有效）"
+          placeholder="请选择状态（0有效 1无效）"
           clearable
           class="!w-240px"
         >
@@ -87,7 +87,7 @@
       <el-table-column label="部门ID，关联system_dept表" align="center" prop="deptId" />
       <el-table-column label="无法上报原因" align="center" prop="unableReportReason" />
       <el-table-column label="备注说明" align="center" prop="remark" />
-      <el-table-column label="状态（0无效 1有效）" align="center" prop="status" />
+      <el-table-column label="状态（0有效 1无效）" align="center" prop="status" />
       <el-table-column
         label="创建时间"
         align="center"

@@ -322,7 +322,8 @@
             </div>
             <div class="legend-section">
               <div class="distribution-legend">
-                <div v-for="item in supplyDistribution" :key="item.supplyStatus"
+                <div
+v-for="item in supplyDistribution" :key="item.supplyStatus"
                      class="legend-item-compact">
                   <div class="legend-dot" :style="{ backgroundColor: getStatusColor(item.supplyStatus) }"></div>
                   <span class="legend-label">{{ item.statusName }}</span>
@@ -502,7 +503,8 @@
               :stroke-width="6"
               :show-text="false"
             />
-            <span class="stock-days-text"
+            <span
+class="stock-days-text"
                   :style="{ color: getStockDaysColor(scope.row.avgStockDays) }">
               {{ scope.row.avgStockDays.toFixed(1) }}
             </span>

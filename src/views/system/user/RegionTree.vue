@@ -14,16 +14,19 @@
           :data="regionList"
           :expand-on-click-node="false"
           :filter-node-method="filterNode"
-          :props="defaultProps"
+          :props="areaTreeProps"
           default-expand-all
           highlight-current
-          node-key="id"
+          node-key="code"
           @node-click="handleNodeClick"
         >
           <template #default="{ node, data }">
             <span class="tree-node">
               <Icon :icon="getRegionIcon(data.level)" class="node-icon" />
-              <span>{{ node.label }}</span>
+              <span class="node-label">
+                {{ node.label }}
+                <span v-if="data.orgCount !== undefined" class="org-count">({{ data.orgCount }})</span>
+              </span>
             </span>
           </template>
         </el-tree>
@@ -44,18 +47,24 @@ const regionName = ref('')
 const regionList = ref<Tree[]>([]) // 树形结构
 const treeRef = ref<InstanceType<typeof ElTree>>()
 
+// 地区树属性配置
+const areaTreeProps = {
+  label: 'name',
+  children: 'children'
+}
+
 /** 获得地区树 */
 const getTree = async () => {
   try {
-    // 直接使用简单列表API
-    const res = await RegionsApi.getSimpleRegionsList()
-    regionList.value = handleTree(res)
+    // 使用带机构数量的地区树API
+    const res = await AreaOrgApi.getAreaTree()
+    regionList.value = res || []
 
     // 默认选择第一个顶级节点（陕西省）
     nextTick(() => {
       if (regionList.value.length > 0) {
         const firstNode = regionList.value[0]
-        treeRef.value?.setCurrentKey(firstNode.id)
+        treeRef.value?.setCurrentKey(firstNode.code) // 使用code作为key
         handleNodeClick(firstNode)
       }
     })
@@ -121,6 +130,18 @@ onMounted(async () => {
   .node-icon {
     margin-right: 6px;
     color: var(--el-color-primary);
+  }
+
+  .node-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .org-count {
+      color: var(--el-text-color-secondary);
+      font-size: 12px;
+      font-weight: normal;
+    }
   }
 }
 </style>

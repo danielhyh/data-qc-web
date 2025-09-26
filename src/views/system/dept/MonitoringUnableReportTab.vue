@@ -18,15 +18,6 @@
             class="!w-240px"
           />
         </el-form-item>
-        <el-form-item label="无法上报原因" prop="unableReportReason">
-          <el-input
-            v-model="queryParams.unableReportReason"
-            placeholder="请输入无法上报原因"
-            clearable
-            @keyup.enter="handleQuery"
-            class="!w-240px"
-          />
-        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select
             v-model="queryParams.status"

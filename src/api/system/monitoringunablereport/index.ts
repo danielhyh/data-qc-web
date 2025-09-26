@@ -7,7 +7,7 @@ export interface MonitoringUnableReportVO {
   deptName?: string // 机构名称
   unableReportReason: string // 无法上报原因
   remark: string // 备注说明
-  status: number // 状态（0无效 1有效）
+  status: number // 状态（0有效 1无效）
   createTime?: Date // 创建时间
 }
 

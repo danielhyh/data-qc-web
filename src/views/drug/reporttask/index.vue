@@ -128,14 +128,14 @@
       />
       <el-table-column label="操作" align="center" width="180px" fixed="right">
         <template #default="scope">
-          <el-button
+<!--          <el-button
             link
             type="primary"
             @click="openForm('update', scope.row.id)"
             v-hasPermi="['drug:report-task:update']"
           >
             编辑
-          </el-button>
+          </el-button>-->
 
           <el-button
             v-if="scope.row.status !== 2"
@@ -197,14 +197,9 @@ const { t } = useI18n() // 国际化
 const loading = ref(true) // 列表的加载中
 const list = ref<ReportTaskVO[]>([]) // 列表的数据
 const total = ref(0) // 列表的总页数
-const activeTask = ref<ReportTaskVO | null>(null) // 当前激活任务
-
 // 动态列表标题
 const listTitle = computed(() => {
-  if (activeTask.value) {
-    return `填报任务列表 - 当前激活：${activeTask.value.taskName}（${formatDate(activeTask.value.startDate)} 至 ${formatDate(activeTask.value.endDate)}）`
-  }
-  return '填报任务列表 - 暂无激活任务'
+  return '填报任务列表'
 })
 const queryParams = reactive({
   pageNo: 1,
@@ -226,8 +221,6 @@ const getList = async () => {
     const data = await ReportTaskApi.getReportTaskPage(queryParams)
     list.value = data.list
     total.value = data.total
-    // 同时获取当前激活任务
-    await getCurrentActiveTask()
   } finally {
     loading.value = false
   }
@@ -287,22 +280,6 @@ const handleDeactivate = async (id: number) => {
 /** 表格行样式 */
 const getRowClassName = ({ row }) => {
   return row.status === 2 ? 'active-row' : ''
-}
-
-/** 获取当前激活任务 */
-const getCurrentActiveTask = async () => {
-  try {
-    const data = await ReportTaskApi.getCurrentActiveTask()
-    activeTask.value = data
-  } catch {
-    activeTask.value = null
-  }
-}
-
-/** 格式化日期 */
-const formatDate = (date: string | Date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN')
 }
 
 /** 初始化 **/

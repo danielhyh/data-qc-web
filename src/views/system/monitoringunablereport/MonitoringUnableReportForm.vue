@@ -24,20 +24,21 @@
         </el-select>
       </el-form-item>
       <el-form-item label="无法上报原因" prop="unableReportReason">
-        <el-input v-model="formData.unableReportReason" placeholder="请输入无法上报原因" />
+        <el-input v-model="formData.unableReportReason" type="textarea" placeholder="请输入无法上报原因" />
       </el-form-item>
       <el-form-item label="备注说明" prop="remark">
-        <el-input v-model="formData.remark" placeholder="请输入备注说明" />
+        <el-input v-model="formData.remark" type="textarea" placeholder="请输入备注说明" />
       </el-form-item>
       <el-form-item label="状态" prop="status">
-        <el-select v-model="formData.status" placeholder="请选择状态" class="!w-240px">
-          <el-option
+        <el-radio-group v-model="formData.status">
+          <el-radio
             v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
             :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
+            :label="dict.value"
+          >
+            {{ dict.label }}
+          </el-radio>
+        </el-radio-group>
       </el-form-item>
     </el-form>
     <template #footer>
@@ -66,7 +67,7 @@ const formData = ref({
   deptId: undefined,
   unableReportReason: undefined,
   remark: undefined,
-  status: undefined,
+  status: 0,
 })
 const formRules = reactive({
   deptId: [{ required: true, message: '所属机构不能为空', trigger: 'blur' }],
@@ -136,7 +137,7 @@ const resetForm = () => {
     deptId: undefined,
     unableReportReason: undefined,
     remark: undefined,
-    status: undefined,
+    status: 0,
   }
   formRef.value?.resetFields()
 }
