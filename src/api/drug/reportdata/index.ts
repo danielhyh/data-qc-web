@@ -111,6 +111,14 @@ export interface FileValidationResult {
   message: string
 }
 
+export interface HistoricalFilingTaskListVO {
+  pageNo: number
+  pageSize: number
+  reportYear?: Date
+  reportStatus?: string
+  taskName?: string
+}
+
 // 药品数据上报 API - 整合所有相关接口
 export const ReportDataApi = {
   // ==================== 上报任务相关API ====================
@@ -335,5 +343,10 @@ export const ReportDataApi = {
     return request.get({
       url: `/drug/report-data/review/history?taskId=${taskId}`
     })
+  },
+
+  // 获取历史填报任务列表
+  getHistoricalFilingTaskList: (params: HistoricalFilingTaskListVO): Promise<any> => {
+    return request.get({ url: '/drug/report-data/history', params })
   }
 }
