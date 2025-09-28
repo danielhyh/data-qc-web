@@ -18,6 +18,7 @@ export interface OrgItem {
   hasReported?: boolean
   orgType?: string
   status: number
+  userCount?: number
 }
 
 // 获取区域树

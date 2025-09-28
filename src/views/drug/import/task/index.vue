@@ -1,836 +1,560 @@
 <template>
-  <div class="drug-import-container">
-    <!-- 页面头部 -->
-    <PageHeader
-      title="药品数据导入管理"
-      content="支持批量导入药品相关数据，提供完整的进度监控和任务管理功能"
-    />
-
-    <!-- 统计概览卡片 -->
-    <div class="stats-overview">
-      <el-row :gutter="20">
-        <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-          <StatCard
-            title="今日任务"
-            :value="statistics.todayTasks"
-            icon="Calendar"
-            color="#409eff"
-            :trend="statistics.taskGrowthRate"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-          <StatCard
-            title="进行中"
-            :value="statistics.runningTasks"
-            icon="Loading"
-            color="#e6a23c"
-            status="processing"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-          <StatCard
-            title="成功率"
-            :value="statistics.successRate"
-            suffix="%"
-            icon="CircleCheck"
-            color="#67c23a"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-          <StatCard
-            title="平均耗时"
-            :value="formatAverageProcessingTime(statistics.averageProcessingTime).value"
-            :suffix="formatAverageProcessingTime(statistics.averageProcessingTime).unit"
-            icon="Clock"
-            color="#909399"
-          />
-        </el-col>
-      </el-row>
+  <div class="flex h-full">
+    <!-- 左侧地区树选择器 -->
+    <div
+      ref="selectorPanel"
+      class="selector-panel"
+      :style="{ width: selectorWidth + 'px' }"
+    >
+      <ContentWrap class="h-full selector-card" title="地区">
+        <RegionTree @node-click="handleRegionSelect" />
+      </ContentWrap>
     </div>
 
-    <!-- 搜索和操作区域 -->
-    <ContentWrap>
-      <el-form
-        class="-mb-15px"
-        :model="queryParams"
-        ref="queryFormRef"
-        :inline="true"
-        label-width="68px"
-      >
-        <el-form-item label="任务编号" prop="taskNo">
-          <el-input
-            v-model="queryParams.taskNo"
-            placeholder="请输入任务编号"
-            clearable
-            @keyup.enter="handleQuery"
-            class="!w-240px"
-          />
-        </el-form-item>
-        <el-form-item label="任务名称" prop="taskName">
-          <el-input
-            v-model="queryParams.taskName"
-            placeholder="请输入任务名称"
-            clearable
-            @keyup.enter="handleQuery"
-            class="!w-240px"
-          />
-        </el-form-item>
-        <el-form-item label="任务状态" prop="status">
-          <el-select
-            v-model="queryParams.status"
-            placeholder="请选择状态"
-            clearable
-            class="!w-240px"
-          >
-            <el-option label="全部" value="" />
-            <el-option
-              v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_TASK_STATUS)"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="创建时间" prop="createTime">
-          <el-date-picker
-            v-model="queryParams.createTime"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            class="!w-240px"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-          <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-          <el-button type="primary" @click="openBatchImport">
-            <el-icon><Upload /></el-icon>
-            批量导入
-          </el-button>
-          <el-button @click="downloadTemplate">
-            <el-icon><Download /></el-icon>
-            下载模板
-          </el-button>
-          <el-button type="success" @click="handleExport" :loading="exportLoading">
-            <Icon icon="ep:download" class="mr-5px" /> 导出
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </ContentWrap>
+    <!-- 拖拽分隔条 -->
+    <div
+      class="resize-handle"
+      @mousedown="startResize"
+    ></div>
 
-    <!-- 列表 -->
-    <ContentWrap>
-      <el-table v-loading="loading" :data="taskList" :show-overflow-tooltip="true">
-        <el-table-column label="任务编号" align="center" prop="taskNo" width="200"/>
-        <el-table-column type="expand">
-          <template #default="{ row }">
-            <TaskExpandContent :task="row" />
-          </template>
-        </el-table-column>
-        <el-table-column label="任务名称" align="center" prop="taskName" />
-        <el-table-column label="文件名称" align="center" prop="fileName" />
-        <el-table-column label="状态" align="center" prop="status">
-          <template #default="{ row }">
-            <el-tag
-              :type="getDictColorType(DICT_TYPE.DRUG_TASK_STATUS, row.status)"
-              size="small"
-              effect="dark"
+    <!-- 右侧内容区域 -->
+    <div class="flex-1 ml-5">
+      <ContentWrap>
+        <!-- 搜索工作栏 -->
+        <el-form
+            class="-mb-15px"
+            :model="queryParams"
+            ref="queryFormRef"
+            :inline="true"
+            label-width="80px"
+        >
+          <el-form-item label="填报任务" prop="reportTaskId">
+            <el-select
+                v-model="queryParams.reportTaskId"
+                placeholder="请选择填报任务"
+                clearable
+                class="!w-200px"
             >
-              {{ getDictLabel(DICT_TYPE.DRUG_TASK_STATUS, row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="进度" align="center" prop="progressPercent">
-          <template #default="{ row }">
-            <el-progress
-              :percentage="row.progressPercent || 0"
-              :stroke-width="8"
-              :show-text="false"
-              :status="getProgressStatus(row.status)"
+              <el-option
+                  v-for="task in reportTaskList"
+                  :key="task.id"
+                  :label="task.taskName"
+                  :value="task.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="机构名称" prop="deptName">
+            <el-input
+                v-model="queryParams.deptName"
+                placeholder="请输入机构名称"
+                clearable
+                class="!w-200px"
             />
-            <div class="progress-text">{{ row.progressPercent }}%</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="处理统计" align="center">
-          <template #default="{ row }">
-            <div class="stats-column">
-              <div class="stat-row">
-                <span class="stat-label">文件:</span>
-                <span class="stat-value">{{ row.successFiles }}/{{ row.totalFiles }}</span>
-              </div>
-              <div class="stat-row">
-                <span class="stat-label">记录:</span>
-                <span class="stat-value"
-                >{{ formatNumber(row.successRecords) }}/{{ formatNumber(row.totalRecords) }}</span
-                >
-              </div>
-              <div class="stat-row" v-if="row.qualityScore">
-                <span class="stat-label">质量分:</span>
-                <span class="stat-value quality-score" :class="getQualityScoreClass(row.qualityScore)">
-                  {{ row.qualityScore }}
-                </span>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
+          </el-form-item>
+          <el-form-item label="联系人" prop="contactPerson">
+            <el-input
+                v-model="queryParams.contactPerson"
+                placeholder="请输入联系人"
+                clearable
+                class="!w-160px"
+            />
+          </el-form-item>
+          <el-form-item label="上报状态" prop="reportStatus">
+            <el-select
+                v-model="queryParams.reportStatus"
+                placeholder="请选择上报状态"
+                clearable
+                class="!w-180px"
+            >
+              <el-option
+                  v-for="dict in getIntDictOptions(DICT_TYPE.REPORT_STATUS)"
+                  :key="dict.value"
+                  :label="dict.label"
+                  :value="dict.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
+            <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+            <el-button
+                type="primary"
+                plain
+                @click="openForm('create')"
+                v-hasPermi="['drug:import-task:create']"
+            >
+              <Icon icon="ep:plus" class="mr-5px" /> 新增
+            </el-button>
+            <el-button
+                type="success"
+                plain
+                @click="handleExport"
+                :loading="exportLoading"
+                v-hasPermi="['drug:import-task:export']"
+            >
+              <Icon icon="ep:download" class="mr-5px" /> 导出
+            </el-button>
+          </el-form-item>
+        </el-form>
 
-        <el-table-column prop="durationMs" label="耗时" width="100" align="center">
-          <template #default="{ row }">
-            <span>{{ formatDurationFromMs(row.durationMs) || '-' }}</span>
-          </template>
-        </el-table-column>
+        <!-- 批量操作按钮 -->
+        <div class="mb-15px" v-if="multipleSelection.length > 0">
+          <el-button
+              type="warning"
+              plain
+              @click="handleBatchPostQc"
+              :disabled="multipleSelection.length === 0"
+          >
+            <Icon icon="ep:check" class="mr-5px" /> 批量后置质控
+          </el-button>
+          <el-button
+              type="danger"
+              plain
+              @click="handleBatchReject"
+              :disabled="multipleSelection.length === 0"
+          >
+            <Icon icon="ep:close" class="mr-5px" /> 批量驳回
+          </el-button>
+          <el-button
+              type="success"
+              plain
+              @click="handleBatchApprove"
+              :disabled="multipleSelection.length === 0"
+          >
+            <Icon icon="ep:circle-check" class="mr-5px" /> 批量通过
+          </el-button>
+          <el-text type="info" class="ml-10px">
+            已选择 {{ multipleSelection.length }} 项
+          </el-text>
+        </div>
+      </ContentWrap>
 
-        <el-table-column
-          prop="creator"
-          label="创建人"
-          width="100"
-          align="center"
-          show-overflow-tooltip
-        />
+      <!-- 列表 -->
+      <ContentWrap>
+        <!-- 当前选择的地区信息 -->
+        <div v-if="selectedRegion" class="mb-15px">
+          <el-tag type="info" size="large">
+            <Icon icon="ep:location" class="mr-5px" />
+            当前地区：{{ getRegionDisplayName(selectedRegion) }}
+          </el-tag>
+        </div>
 
-        <el-table-column
-          label="创建时间"
-          align="center"
-          prop="createTime"
-          :formatter="dateFormatter"
-          width="180px"
-        />
-        <el-table-column label="操作" align="center" min-width="150px">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <router-link :to="'/drug-import/monitor/' + row.id">
-                <el-button type="primary" link> 查看进度 </el-button>
-              </router-link>
-
+        <el-table
+          v-loading="loading"
+          :data="list"
+          :show-overflow-tooltip="true"
+          @selection-change="handleSelectionChange"
+        >
+          <el-table-column type="selection" width="55" />
+          <el-table-column label="任务编号" align="center" prop="taskNo" width="180" />
+          <el-table-column label="任务名称" align="center" prop="taskName" width="150" />
+          <el-table-column label="所属市" align="center" prop="cityName" width="100" />
+          <el-table-column label="所属区县" align="center" prop="districtName" width="100" />
+          <el-table-column label="机构名称" align="center" prop="deptName" width="150" />
+          <el-table-column label="联系人" align="center" prop="contactPerson" width="100" />
+          <el-table-column label="联系人电话" align="center" prop="contactPhone" width="120" />
+          <el-table-column label="文件数量" align="center" prop="totalFiles" width="80" />
+          <el-table-column label="总记录数" align="center" prop="totalRecords" width="100" />
+          <el-table-column label="上报状态" align="center" prop="reportStatus" width="100">
+            <template #default="scope">
+              <dict-tag :type="DICT_TYPE.REPORT_STATUS" :value="scope.row.reportStatus" />
+            </template>
+          </el-table-column>
+          <el-table-column label="备注说明" align="center" prop="description" min-width="120" />
+          <el-table-column label="操作" align="center" min-width="400px" fixed="right">
+            <template #default="scope">
               <el-button
-                v-if="row.canRetry"
-                type="warning"
-                link
-                @click="handleRetry(row)"
+                  link
+                  type="primary"
+                  @click="handleViewData(scope.row)"
+                  size="small"
               >
-                重试
+                查看数据
               </el-button>
-
               <el-button
-                v-if="row.canCancel"
-                type="danger"
-                link
-                @click="handleCancel(row)"
+                  link
+                  type="info"
+                  @click="handleViewLog(scope.row)"
+                  size="small"
               >
-                取消
+                上报日志
               </el-button>
-
-              <el-dropdown trigger="click" @command="(command) => handleMoreAction(command, row)">
-                <el-button link> 更多 </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="detail"> 查看详情 </el-dropdown-item>
-                    <el-dropdown-item command="download" v-if="isTaskCompleted(row.status)">
-                      下载报告
-                    </el-dropdown-item>
-                    <el-dropdown-item command="errorFile" v-if="row.hasErrorFile">
-                      下载错误文件
-                    </el-dropdown-item>
-                    <el-dropdown-item command="delete" divided> 删除任务 </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-      <!-- 分页 -->
-      <Pagination
-        :total="total"
-        v-model:page="queryParams.pageNo"
-        v-model:limit="queryParams.pageSize"
-        @pagination="loadTaskList"
-      />
-    </ContentWrap>
-
-    <!-- 批量导入模态框 -->
-    <BatchImportModal v-model="batchImportVisible" @success="handleImportSuccess" />
-
-    <!-- 进度监控模态框 -->
-    <ProgressMonitorModal
-      v-model="progressMonitorVisible"
-      :task-id="selectedTaskId"
-      @retry="handleRetryFromMonitor"
-    />
-
-    <!-- 任务详情模态框 -->
-    <TaskDetailModal v-model="taskDetailVisible" :task-id="selectedTaskId" />
-
-    <!-- 重试确认对话框 -->
-    <RetryConfirmDialog
-      v-model="retryDialogVisible"
-      :task="selectedTask"
-      @confirm="handleRetryConfirm"
-    />
+              <!-- 后置质控按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
+              <el-button
+                  v-if="canShowPostQcButton(scope.row.reportStatus)"
+                  link
+                  type="warning"
+                  @click="handlePostQc(scope.row)"
+                  size="small"
+              >
+                后置质控
+              </el-button>
+              <!-- 驳回按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
+              <el-button
+                  v-if="canShowRejectButton(scope.row.reportStatus)"
+                  link
+                  type="danger"
+                  @click="handleReject(scope.row)"
+                  size="small"
+              >
+                驳回
+              </el-button>
+              <!-- 通过按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
+              <el-button
+                  v-if="canShowApproveButton(scope.row.reportStatus)"
+                  link
+                  type="success"
+                  @click="handleApprove(scope.row)"
+                  size="small"
+              >
+                通过
+              </el-button>
+              <el-button
+                  link
+                  type="primary"
+                  @click="openForm('update', scope.row.id)"
+                  v-hasPermi="['drug:import-task:update']"
+                  size="small"
+              >
+                编辑
+              </el-button>
+              <el-button
+                  link
+                  type="danger"
+                  @click="handleDelete(scope.row.id)"
+                  v-hasPermi="['drug:import-task:delete']"
+                  size="small"
+              >
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <Pagination
+            :total="total"
+            v-model:page="queryParams.pageNo"
+            v-model:limit="queryParams.pageSize"
+            @pagination="getList"
+        />
+      </ContentWrap>
+    </div>
   </div>
+
+  <!-- 表单弹窗：添加/修改 -->
+  <ImportTaskForm ref="formRef" @success="getList" />
+
+  <!-- 日志弹窗 -->
+  <ReportLogDialog ref="reportLogRef" />
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
-import { Upload, Download, View, RefreshRight, Close, Delete } from '@element-plus/icons-vue'
-import type { FormInstance } from 'element-plus'
-import { dateFormatter } from '@/utils/formatTime'
-import {
-  DrugBatchImportApi,
-  type ImportTaskRespVO,
-  type ImportTaskPageReqVO,
-  type ImportStatisticsVO, TASK_STATUS
-} from '@/api/drug/task'
-import { DICT_TYPE, getDictLabel, getDictColorType, getIntDictOptions } from '@/utils/dict'
+import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
+import download from '@/utils/download'
+import { getDataManageImportTaskPage, exportDataManageImportTask, DataManageImportTaskVO, getReportTaskList, ReportTaskVO, executePostQc, rejectTask, approveTask, batchExecutePostQc, batchRejectTask, batchApproveTask } from '@/api/drug/dataManage'
+import { ImportTaskApi } from '@/api/drug/batch'
+import ImportTaskForm from './ImportTaskForm.vue'
+import RegionTree from '@/views/system/user/RegionTree.vue'
+import ReportLogDialog from './ReportLogDialog.vue'
+import { ElMessageBox } from 'element-plus'
 
-// 导入组件
-import PageHeader from '@/components/PageHeader/index.vue'
-import StatCard from '@/components/StatCard/index.vue'
-import BatchImportModal from './components/BatchImportModal.vue'
-import ProgressMonitorModal from './components/ProgressMonitorModal.vue'
-import TaskDetailModal from './components/TaskDetailModal.vue'
-import RetryConfirmDialog from './components/RetryConfirmDialog.vue'
-import TaskExpandContent from './components/TaskExpandContent.vue'
+/** 药品数据导入任务 列表 */
+defineOptions({ name: 'ImportTask' })
 
-/** 页面组件名称 */
-defineOptions({ name: 'DrugImportIndex' })
+const message = useMessage() // 消息弹窗
+const { t } = useI18n() // 国际化
 
-// ========================= 响应式数据 =========================
+const loading = ref(true) // 列表的加载中
+const list = ref<DataManageImportTaskVO[]>([]) // 列表的数据
+const total = ref(0) // 列表的总页数
+const selectedRegion = ref<any>(null) // 选中的地区节点
+const reportTaskList = ref<ReportTaskVO[]>([]) // 填报任务列表
+const multipleSelection = ref<DataManageImportTaskVO[]>([]) // 多选数据
 
-const loading = ref(false)
-const refreshing = ref(false)
-const exportLoading = ref(false)
-const router = useRouter() // 路由
-const queryFormRef = ref<FormInstance>()
-
-/** 查询参数 */
-const queryParams = reactive<ImportTaskPageReqVO>({
+// 面板拖拽相关
+const selectorPanel = ref<HTMLElement>()
+const selectorWidth = ref(320) // 默认宽度
+const isResizing = ref(false)
+const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
-  taskNo: undefined,
-  taskName: undefined,
-  status: undefined,
-  fileName: undefined,
-  creator: undefined,
-  createTime: undefined
+  reportTaskId: undefined, // 填报任务ID
+  deptName: undefined,
+  contactPerson: undefined,
+  reportStatus: undefined,
+  regionCode: undefined, // 地区代码
 })
+const queryFormRef = ref() // 搜索的表单
+const exportLoading = ref(false) // 导出的加载中
 
-/** 任务列表数据 */
-const taskList = ref<ImportTaskRespVO[]>([])
-const total = ref(0)
+/** 开始拖拽调整大小 */
+const startResize = (e: MouseEvent) => {
+  isResizing.value = true
+  const startX = e.clientX
+  const startWidth = selectorWidth.value
 
-/** 统计数据 */
-const statistics = reactive<ImportStatisticsVO>({
-  totalTasks: 0,
-  successTasks: 0,
-  failedTasks: 0,
-  partialSuccessTasks: 0,
-  runningTasks: 0,
-  successRate: 0,
-  averageProcessingTime: 0,
-  totalRecordsProcessed: 0,
-  todayTasks: 0,
-  yesterdayTasks: 0,
-  taskGrowthRate: 0
-})
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (!isResizing.value) return
+    const diff = moveEvent.clientX - startX
+    const newWidth = Math.max(250, Math.min(600, startWidth + diff)) // 限制最小250px，最大600px
+    selectorWidth.value = newWidth
+  }
 
-/** 模态框控制 */
-const batchImportVisible = ref(false)
-const progressMonitorVisible = ref(false)
-const taskDetailVisible = ref(false)
-const retryDialogVisible = ref(false)
+  const onMouseUp = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
 
-/** 选中的任务 */
-const selectedTaskId = ref<number>()
-const selectedTask = ref<ImportTaskRespVO>()
-
-// ========================= 生命周期 =========================
-
-onMounted(() => {
-  initPage()
-})
-
-// ========================= 核心方法 =========================
-
-/** 初始化页面 */
-const initPage = async () => {
-  await Promise.all([loadTaskList(), loadStatistics()])
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+  document.body.style.cursor = 'ew-resize'
+  document.body.style.userSelect = 'none'
+  e.preventDefault()
 }
 
-/** 加载任务列表 */
-const loadTaskList = async () => {
+/** 获取填报任务列表 */
+const getReportTaskListData = async () => {
+  try {
+    const data = await getReportTaskList()
+    reportTaskList.value = data
+  } catch (error) {
+    console.error('获取填报任务列表失败:', error)
+  }
+}
+
+/** 查询列表 */
+const getList = async () => {
   loading.value = true
   try {
-    const { list, total: totalCount } = await DrugBatchImportApi.getTaskPage(queryParams)
-    taskList.value = list || []
-    total.value = totalCount || 0
-  } catch (error) {
-    ElMessage.error('加载任务列表失败')
-    console.error('加载任务列表失败:', error)
+    const data = await getDataManageImportTaskPage(queryParams)
+    list.value = data.list
+    total.value = data.total
   } finally {
     loading.value = false
   }
 }
 
-/** 加载统计数据 */
-const loadStatistics = async () => {
-  try {
-    const data = await DrugBatchImportApi.getImportStatistics()
-    Object.assign(statistics, data)
-  } catch (error) {
-    console.error('加载统计数据失败:', error)
-  }
+/** 地区选择处理 */
+const handleRegionSelect = (region: any) => {
+  selectedRegion.value = region
+  queryParams.regionCode = region?.code
+  queryParams.pageNo = 1
+  getList()
 }
 
-/** 搜索查询 */
+/** 获取地区显示名称 */
+const getRegionDisplayName = (region: any) => {
+  if (!region) return ''
+  const levelNames = { 1: '省', 2: '市', 3: '区县' }
+  return `${region.name}(${levelNames[region.level] || ''})`
+}
+
+/** 搜索按钮操作 */
 const handleQuery = () => {
   queryParams.pageNo = 1
-  loadTaskList()
+  getList()
 }
 
-/** 重置查询 */
+/** 重置按钮操作 */
 const resetQuery = () => {
-  queryFormRef.value?.resetFields()
-  loadTaskList()
+  queryFormRef.value.resetFields()
+  handleQuery()
 }
 
-/** 刷新页面 */
-const handleRefresh = async () => {
-  refreshing.value = true
+/** 添加/修改操作 */
+const formRef = ref()
+const reportLogRef = ref() // 日志弹窗ref
+const openForm = (type: string, id?: number) => {
+  formRef.value.open(type, id)
+}
+
+/** 删除按钮操作 */
+const handleDelete = async (id: number) => {
   try {
-    await Promise.all([loadTaskList(), loadStatistics()])
-    ElMessage.success('刷新成功')
-  } catch (error) {
-    ElMessage.error('刷新失败')
-  } finally {
-    refreshing.value = false
-  }
+    // 删除的二次确认
+    await message.delConfirm()
+    // 发起删除
+    await ImportTaskApi.deleteImportTask(id)
+    message.success(t('common.delSuccess'))
+    // 刷新列表
+    await getList()
+  } catch {}
 }
 
-/** 导出数据 */
+/** 导出按钮操作 */
 const handleExport = async () => {
   try {
-    await ElMessageBox.confirm('确认导出当前查询条件下的任务数据？', '确认导出', {
-      type: 'warning'
-    })
-
+    // 导出的二次确认
+    await message.exportConfirm()
+    // 发起导出
     exportLoading.value = true
-    await DrugBatchImportApi.exportTaskList(queryParams)
-    ElMessage.success('导出成功')
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error('导出失败')
-    }
+    const data = await exportDataManageImportTask(queryParams)
+    download.excel(data, '药品数据导入任务_机构信息.xls')
+  } catch {
   } finally {
     exportLoading.value = false
   }
 }
 
-// ========================= 业务操作方法 =========================
-
-/** 打开批量导入 */
-const openBatchImport = () => {
-  router.push({
-    name: 'DrugImportBatch'
-  })
+/** 多选处理 */
+const handleSelectionChange = (selection: DataManageImportTaskVO[]) => {
+  multipleSelection.value = selection
 }
 
-/** 导入成功处理 */
-const handleImportSuccess = (taskId: number, taskNo: string) => {
-  ElNotification({
-    type: 'success',
-    title: '导入任务创建成功',
-    message: `任务编号：${taskNo}，您可以在进度监控中查看处理状态`,
-    duration: 5000
-  })
-
-  // 刷新列表并自动打开进度监控
-  loadTaskList()
-  selectedTaskId.value = taskId
-  progressMonitorVisible.value = true
+/** 查看数据 */
+const handleViewData = (row: DataManageImportTaskVO) => {
+  // TODO: 跳转到数据查看页面或打开弹窗
+  message.info(`查看数据功能待实现 - 任务ID: ${row.id}`)
 }
 
-/** 处理任务重试 */
-const handleRetry = (task: ImportTaskRespVO) => {
-  selectedTask.value = task
-  retryDialogVisible.value = true
+/** 上报日志 */
+const handleViewLog = (row: DataManageImportTaskVO) => {
+  // 打开日志弹窗
+  reportLogRef.value.open(row.id, row.taskName)
 }
 
-/** 从监控页面重试 */
-const handleRetryFromMonitor = (taskId: number) => {
-  const task = taskList.value.find((t) => t.id === taskId)
-  if (task) {
-    handleRetry(task)
-  }
-}
-
-/** 重试确认 */
-const handleRetryConfirm = async (params: any) => {
+/** 单个后置质控 */
+const handlePostQc = async (row: DataManageImportTaskVO) => {
   try {
-    const result = await DrugBatchImportApi.retryImportTask(params)
+    await message.confirm('确认对此任务执行后置质控吗？')
+    await executePostQc(row.id!)
+    message.success('后置质控执行成功')
+    await getList()
+  } catch {}
+}
 
-    ElNotification({
-      type: 'success',
-      title: '重试任务已启动',
-      message: `批次编号：${result.retryBatchNo}`,
-      duration: 3000
+/** 单个驳回 */
+const handleReject = async (row: DataManageImportTaskVO) => {
+  try {
+    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因（可选）', '驳回任务', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请输入驳回原因...'
     })
-
-    // 刷新列表
-    loadTaskList()
-
-    // 自动打开进度监控
-    selectedTaskId.value = params.taskId
-    progressMonitorVisible.value = true
+    await rejectTask(row.id!, reason || undefined)
+    message.success('任务驳回成功')
+    await getList()
   } catch (error) {
-    ElMessage.error('重试任务失败')
-  }
-}
-
-/** 取消任务 */
-const handleCancel = async (task: ImportTaskRespVO) => {
-  try {
-    await ElMessageBox.confirm(`确认取消任务"${task.taskName}"？取消后将无法恢复。`, '确认取消', {
-      type: 'warning'
-    })
-
-    await DrugBatchImportApi.cancelTask(task.id)
-    ElMessage.success('任务已取消')
-    loadTaskList()
-  } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error('取消任务失败')
+      console.error('驳回任务失败:', error)
     }
   }
 }
 
-/** 更多操作处理 */
-const handleMoreAction = async (command: string, task: ImportTaskRespVO) => {
-  switch (command) {
-    case 'detail':
-      await router.push('/drug-import/detail/' + task.id)
-      break
-
-    case 'download':
-      try {
-        // 实现下载报告逻辑
-        ElMessage.success('报告下载已开始')
-      } catch (error) {
-        ElMessage.error('下载报告失败')
-      }
-      break
-
-    case 'errorFile':
-      try {
-        if (task.errorFilePath) {
-          // 实现错误文件下载逻辑
-          ElMessage.success('错误文件下载已开始')
-        } else {
-          ElMessage.warning('未找到错误文件')
-        }
-      } catch (error) {
-        ElMessage.error('下载错误文件失败')
-      }
-      break
-
-    case 'delete':
-      await handleDeleteTask(task)
-      break
-  }
+/** 单个通过 */
+const handleApprove = async (row: DataManageImportTaskVO) => {
+  try {
+    await message.confirm('确认通过此任务吗？')
+    await approveTask(row.id!)
+    message.success('任务通过成功')
+    await getList()
+  } catch {}
 }
 
-/** 删除任务 */
-const handleDeleteTask = async (task: ImportTaskRespVO) => {
+/** 批量后置质控 */
+const handleBatchPostQc = async () => {
   try {
-    await ElMessageBox.confirm(`确认删除任务"${task.taskName}"？删除后将无法恢复。`, '确认删除', {
-      type: 'error',
-      confirmButtonText: '确认删除',
-      confirmButtonClass: 'el-button--danger'
+    await message.confirm(`确认对选中的 ${multipleSelection.value.length} 个任务执行后置质控吗？`)
+    const ids = multipleSelection.value.map(item => item.id!)
+    await batchExecutePostQc(ids)
+    message.success('批量后置质控执行成功')
+    multipleSelection.value = []
+    await getList()
+  } catch {}
+}
+
+/** 批量驳回 */
+const handleBatchReject = async () => {
+  try {
+    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因（可选）', `批量驳回 ${multipleSelection.value.length} 个任务`, {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: '请输入驳回原因...'
     })
-
-    // 这里需要实现删除API
-    // await DrugBatchImportApi.deleteTask(task.id)
-
-    ElMessage.success('任务已删除')
-    loadTaskList()
-  } catch (error: any) {
+    const ids = multipleSelection.value.map(item => item.id!)
+    await batchRejectTask(ids, reason || undefined)
+    message.success('批量驳回成功')
+    multipleSelection.value = []
+    await getList()
+  } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除任务失败')
+      console.error('批量驳回失败:', error)
     }
   }
 }
 
-/** 下载模板 */
-const downloadTemplate = () => {
-  const downloadUrl = 'http://cdn.fangliyun.com/drug-data-guard-suite/药品数据导入模板_2024.zip'
-
-  // 创建隐藏的 a 标签进行下载
-  const link = document.createElement('a')
-  link.href = downloadUrl
-  link.download = '药品数据导入模板_2024.zip' // 指定下载文件名
-  link.style.display = 'none'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-
-  ElMessage.success('模板开始下载')
+/** 批量通过 */
+const handleBatchApprove = async () => {
+  try {
+    await message.confirm(`确认通过选中的 ${multipleSelection.value.length} 个任务吗？`)
+    const ids = multipleSelection.value.map(item => item.id!)
+    await batchApproveTask(ids)
+    message.success('批量通过成功')
+    multipleSelection.value = []
+    await getList()
+  } catch {}
 }
 
-// ========================= 工具方法 =========================
-
-/** 格式化平均处理时间 - 智能选择合适的单位 */
-const formatAverageProcessingTime = (milliseconds: number) => {
-  if (!milliseconds || milliseconds === 0) {
-    return { value: 0, unit: '秒' }
-  }
-
-  // 小于1秒，显示毫秒
-  if (milliseconds < 1000) {
-    return { value: Math.round(milliseconds), unit: '毫秒' }
-  }
-
-  // 小于60秒，显示秒
-  const seconds = milliseconds / 1000
-  if (seconds < 60) {
-    return { value: Math.round(seconds * 10) / 10, unit: '秒' }
-  }
-
-  // 小于3600秒（1小时），显示分钟
-  if (seconds < 3600) {
-    const minutes = seconds / 60
-    return { value: Math.round(minutes * 10) / 10, unit: '分钟' }
-  }
-
-  // 大于等于1小时，显示小时
-  const hours = seconds / 3600
-  return { value: Math.round(hours * 10) / 10, unit: '小时' }
+/** 按钮显示逻辑 - 后置质控 */
+const canShowPostQcButton = (reportStatus: number) => {
+  // 只在状态为1(已上报,审核中)、5(已重报,审核中)时显示
+  return reportStatus === 1 || reportStatus === 5
 }
 
-/** 格式化毫秒数为可读时间 */
-const formatDurationFromMs = (durationMs: number) => {
-  if (!durationMs || durationMs === 0) return null
-
-  const seconds = Math.floor(durationMs / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-
-  if (hours > 0) {
-    return `${hours}小时${minutes % 60}分钟`
-  } else if (minutes > 0) {
-    return `${minutes}分钟${seconds % 60}秒`
-  } else {
-    return `${seconds}秒`
-  }
+/** 按钮显示逻辑 - 驳回 */
+const canShowRejectButton = (reportStatus: number) => {
+  // 只在状态为1(已上报,审核中)、5(已重报,审核中)时显示
+  return reportStatus === 1 || reportStatus === 5
 }
 
-/** 获取进度条状态 */
-const getProgressStatus = (status: number) => {
-  if (status === TASK_STATUS.COMPLETED) return 'success'
-  if (status === TASK_STATUS.FAILED) return 'exception'
-  if (status === TASK_STATUS.CANCELLED) return 'warning'
-  return undefined
+/** 按钮显示逻辑 - 通过 */
+const canShowApproveButton = (reportStatus: number) => {
+  // 只在状态为1(已上报,审核中)、5(已重报,审核中)时显示
+  return reportStatus === 1 || reportStatus === 5
 }
 
-/** 判断任务是否已完成 */
-const isTaskCompleted = (status: number) => {
-  // 完成状态：值为5
-  return status === 5
-}
-
-/** 获取质量评分样式类 */
-const getQualityScoreClass = (score: number) => {
-  if (score >= 90) return 'excellent'
-  if (score >= 80) return 'good'
-  if (score >= 70) return 'average'
-  if (score >= 60) return 'poor'
-  return 'very-poor'
-}
-
-/** 格式化数字 */
-const formatNumber = (num: number) => {
-  if (!num) return '0'
-  return num.toLocaleString()
-}
+/** 初始化 **/
+onMounted(async () => {
+  await getReportTaskListData()
+  getList()
+})
 </script>
-
-<style scoped>
-.drug-import-container {
-  padding: 20px;
-  background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
-}
-
-.stats-overview {
-  margin-bottom: 20px;
-}
-
-.search-card {
-  margin-bottom: 20px;
-  border-radius: 8px;
-}
-
-.search-form {
-  margin-bottom: 0;
-}
-
-.table-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.table-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.table-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.progress-text {
-  text-align: center;
-  font-size: 12px;
-  color: #606266;
-  margin-top: 4px;
-}
-
-.stats-column {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-}
-
-.stat-label {
-  color: #909399;
-}
-
-.stat-value {
-  color: #303133;
-  font-weight: 500;
-}
-
-.quality-score {
-  font-weight: 600;
-}
-
-.quality-score.excellent {
-  color: #67c23a;
-}
-
-.quality-score.good {
-  color: #409eff;
-}
-
-.quality-score.average {
-  color: #e6a23c;
-}
-
-.quality-score.poor {
-  color: #f56c6c;
-}
-
-.quality-score.very-poor {
-  color: #909399;
-}
-
-.action-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
-}
-
-.pagination-wrapper {
-  display: flex;
-  justify-content: end;
-  margin-top: 20px;
-  padding: 20px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .drug-import-container {
-    padding: 10px;
-  }
-
-  .search-form :deep(.el-form-item) {
-    width: 100%;
-    margin-right: 0;
-  }
-
-  .table-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-}
-
-/* 表格样式优化 */
-:deep(.el-table) {
-  border-radius: 8px;
+<style scoped lang="scss">
+.selector-panel {
+  flex-shrink: 0;
+  min-width: 250px;
+  max-width: 600px;
+  height: 100vh;
   overflow: hidden;
 }
 
-:deep(.el-table th) {
-  background-color: #fafafa;
-  color: #606266;
-  font-weight: 600;
+.selector-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  :deep(.el-card__body) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+  }
 }
 
-:deep(.el-table .el-table__expand-icon) {
-  color: #409eff;
-}
+.resize-handle {
+  width: 5px;
+  background: var(--el-border-color-light);
+  cursor: ew-resize;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
 
-:deep(.el-table .el-table__expanded-cell) {
-  background-color: #f8f9fa;
-  padding: 20px;
-}
-
-/* 进度条样式 */
-:deep(.el-progress-bar__outer) {
-  border-radius: 4px;
-}
-
-:deep(.el-progress-bar__inner) {
-  border-radius: 4px;
-}
-
-/* 标签样式 */
-:deep(.el-tag) {
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* 卡片样式 */
-:deep(.el-card) {
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-:deep(.el-card__header) {
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #fafafa;
+  &:hover {
+    background: var(--el-color-primary);
+  }
 }
 </style>

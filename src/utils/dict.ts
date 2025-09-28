@@ -1,8 +1,8 @@
 /**
  * 数据字典工具类
  */
-import {useDictStoreWithOut} from '@/store/modules/dict'
-import {ElementPlusInfoType} from '@/types/elementPlus'
+import { useDictStoreWithOut } from '@/store/modules/dict'
+import { ElementPlusInfoType } from '@/types/elementPlus'
 
 const dictStore = useDictStoreWithOut()
 
@@ -221,5 +221,7 @@ export enum DICT_TYPE {
   REPORT_PROGRESS = 'report_progress', // 上报进度
 
   // ========== 导入模板模块 ==========
-  IMPORT_TABLE_TYPE = 'import_table_type' // 导入表类型
+  IMPORT_TABLE_TYPE = 'import_table_type', // 导入表类型
+
+  REPORT_STATUS = 'report_status' // 填报任务状态
 }

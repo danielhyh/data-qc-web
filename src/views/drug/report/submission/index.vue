@@ -296,17 +296,17 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="qcPreStatus" label="质检状态" width="120">
+            <el-table-column prop="qcStatus" label="质检状态" width="120">
               <template #default="{ row }">
                 <div class="file-status">
                   <el-button
                     link
-                    :class="['status-badge', row.qcPreStatus === 4 ? 'qc-fail' : 'qc-passed']"
+                    :class="['status-badge', row.qcStatus === 4 ? 'qc-fail' : 'qc-passed']"
                     type="primary"
                     size="small"
                     @click="viewQCErrors(row)"
                   >
-                   <span>{{ getFileQcStatusText(row.qcPreStatus) }}</span>
+                   <span>{{ getFileQcStatusText(row.qcStatus) }}</span>
                   </el-button>
                 </div>
               </template>
@@ -335,7 +335,7 @@
                   查看详情
                 </el-button>
                 <el-button
-                  v-if="row.qcPreStatus === 4"
+                  v-if="row.qcStatus === 4"
                   link
                   type="warning"
                   size="small"
@@ -562,7 +562,7 @@ const activeFile = ref()
 const errorDialog = ref({
   visible: false,
   fileName: '',
-  qcPreStatusLabel: '',
+  qcStatusLabel: '',
   errors: []
 })
 
@@ -600,7 +600,7 @@ const allFilesUploaded = computed(() => {
 // ==================== 方法定义 ====================
 
 function checkboxDisabled (row) {
-  return [2,3].includes(row.qcPreStatus)
+  return [2,3].includes(row.qcStatus)
 }
 
 function handleSelectionChange (val) {
@@ -959,7 +959,7 @@ const startPreQC = async () => {
 
 // 查看质控错误
 const viewQCErrors = async (row: any) => {
-  if (row.qcPreStatus !== 4) {
+  if (row.qcStatus !== 4) {
     return
   }
   try {
@@ -1091,7 +1091,7 @@ const loadCurrentTask = async () => {
   try {
     loading.value = true
     // 使用 ReportDataController 的接口获取当前激活任务
-    const task = await ReportDataApi.getCurrentActiveTask()
+    const task = await ReportDataApi.getCurrentActiveTask(457)
 
     if (task) {
       task.maxCurrentStep = task.currentStep // 保存原始步骤，用于后续判断是否可以向后点击下一步)
@@ -1176,14 +1176,14 @@ const loadQCResults = async (taskId: number) => {
     // 加载前置质控结果
     if (currentStep.value >= 2) {
       const files = await ReportDataApi.getFileList(taskId)
-      preQCResult.value.passed = !files.find(item => [0, 1, 4, null].includes(item.qcPreStatus))
+      preQCResult.value.passed = !files.find(item => [0, 1, 4, null].includes(item.qcStatus))
       // 更新本地文件列表状态
       preQCResult.value.details = fileList.value.map(localFile => {
         const serverFile = files.find((f: any) => f.fileType === localFile.type)
         if (serverFile) {
           return {
             ...localFile,
-            qcPreStatus: serverFile.qcPreStatus,
+            qcStatus: serverFile.qcStatus,
             fileFormat: serverFile.fileFormat,
             errorCount: serverFile.errorCount
           }

@@ -115,8 +115,8 @@ export interface FileValidationResult {
 export const ReportDataApi = {
   // ==================== 上报任务相关API ====================
   // 获取当前激活任务
-  getCurrentActiveTask: (): Promise<ReportTaskRespVO> => {
-    return request.get({ url: '/drug/report-data/current-active' })
+  getCurrentActiveTask: (taskId: number): Promise<ReportTaskRespVO> => {
+    return request.get({ url: '/drug/report-data/current-active' ,params: { taskId: taskId }})
   },
 
   // 创建上报任务

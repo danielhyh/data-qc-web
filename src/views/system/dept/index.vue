@@ -6,8 +6,7 @@
       class="selector-panel"
       :style="{ width: selectorWidth + 'px' }"
     >
-      <ContentWrap class="h-full selector-card">
-        <div class="section-title">地区</div>
+      <ContentWrap class="h-full selector-card" title="地区">
         <RegionTree @node-click="handleRegionNodeClick" />
       </ContentWrap>
     </div>

@@ -19,7 +19,23 @@
           <!-- 右侧：机构列表 -->
           <el-col :span="12">
             <div class="section-title">机构</div>
-            <div v-if="!selectedRegionId" class="empty-state">
+
+            <!-- 机构搜索框 -->
+            <div v-if="selectedRegionId" class="org-search-box">
+              <el-input
+                v-model="orgSearchText"
+                placeholder="搜索机构名称"
+                clearable
+                size="small"
+                @input="handleOrgSearch"
+              >
+                <template #prefix>
+                  <Icon icon="ep:search" />
+                </template>
+              </el-input>
+            </div>
+
+            <div v-if="!selectedRegionId && orgList.length === 0 && !orgLoading" class="empty-state">
               <Icon icon="ep:pointer" class="empty-icon" />
               <p>请先选择左侧地区</p>
             </div>
@@ -28,21 +44,31 @@
               <el-skeleton :rows="3" animated />
             </div>
 
-            <div v-else-if="orgList.length === 0" class="empty-state">
+            <div v-else-if="selectedRegionId && orgList.length === 0" class="empty-state">
               <Icon icon="ep:document-delete" class="empty-icon" />
               <p>该地区暂无机构</p>
             </div>
 
-            <div v-else class="org-list">
+            <div v-else-if="orgList.length > 0" class="org-list">
               <div
-                v-for="org in orgList"
+                v-for="org in filteredOrgList"
                 :key="org.id"
                 class="org-item"
                 :class="{ active: selectedOrgIds.includes(org.id) }"
                 @click="handleOrgClick(org)"
               >
-                <div class="org-info">
-                  <span class="org-name">{{ org.name }}</span>
+                <div class="org-item-content">
+                  <el-tooltip
+                    :content="org.name"
+                    placement="top"
+                    :disabled="!isTextOverflow(org.name)"
+                  >
+                    <div class="org-name">{{ org.name }}</div>
+                  </el-tooltip>
+                  <div class="org-user-count">
+                    <Icon icon="ep:user" class="user-icon" />
+                    {{ org.userCount || 0 }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -279,6 +305,8 @@ const selectedRegionId = ref<number | undefined>() // 选中的地区ID
 const selectedOrgIds = ref<number[]>([]) // 选中的机构ID列表
 const orgList = ref<AreaOrgApi.OrgItem[]>([]) // 机构列表
 const orgLoading = ref(false) // 机构加载状态
+const orgSearchText = ref('') // 机构搜索文本
+const filteredOrgList = ref<AreaOrgApi.OrgItem[]>([]) // 过滤后的机构列表
 
 // 面板拖拽相关
 const selectorPanel = ref<HTMLElement>()
@@ -338,6 +366,8 @@ const resetQuery = () => {
   selectedRegionId.value = undefined
   selectedOrgIds.value = []
   orgList.value = []
+  filteredOrgList.value = []
+  orgSearchText.value = ''
   queryParams.deptIds = undefined
   handleQuery()
 }
@@ -348,20 +378,43 @@ const loadOrgList = async (areaCode: string) => {
   try {
     const res = await AreaOrgApi.getOrgListByArea(areaCode)
     orgList.value = res || []
+    // 重置搜索和过滤
+    orgSearchText.value = ''
+    filteredOrgList.value = orgList.value
     // 重置选中的机构
     selectedOrgIds.value = []
     queryParams.deptIds = undefined
   } catch (error) {
     console.error('加载机构列表失败:', error)
     orgList.value = []
+    filteredOrgList.value = []
   } finally {
     orgLoading.value = false
   }
 }
 
+/** 处理机构搜索 */
+const handleOrgSearch = () => {
+  if (!orgSearchText.value.trim()) {
+    filteredOrgList.value = orgList.value
+  } else {
+    filteredOrgList.value = orgList.value.filter(org =>
+      org.name.toLowerCase().includes(orgSearchText.value.toLowerCase())
+    )
+  }
+}
+
+/** 判断文本是否溢出 - 简单的长度判断 */
+const isTextOverflow = (text: string) => {
+  // 简单的长度判断，可根据实际容器宽度调整
+  return text.length > 3
+}
+
 /** 处理地区被点击 */
 const handleRegionNodeClick = async (row) => {
-  selectedRegionId.value = row.id
+  // 更robust的ID设置逻辑
+  selectedRegionId.value = row.id || row.code || row.value || 'selected'
+
   // 加载该地区下的机构列表
   if (row.code) {
     await loadOrgList(row.code)
@@ -541,6 +594,7 @@ onMounted(() => {
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden; // 添加溢出隐藏
   }
 }
 
@@ -551,6 +605,10 @@ onMounted(() => {
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.org-search-box {
+  margin-bottom: 12px;
 }
 
 .card-header {
@@ -568,14 +626,18 @@ onMounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  min-height: 0;
 
   .org-item {
-    padding: 6px 10px;
+    padding: 12px;
     border: 1px solid var(--el-border-color-lighter);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s;
+    font-size: 13px;
+    color: var(--el-text-color-regular);
+    line-height: 1.4;
 
     &:hover {
       background-color: var(--el-fill-color-light);
@@ -588,14 +650,31 @@ onMounted(() => {
       color: var(--el-color-primary);
     }
 
-    .org-info {
+    .org-item-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .org-name {
+      flex: 1;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .org-user-count {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+      flex-shrink: 0;
 
-      .org-name {
-        font-size: 13px;
-        flex: 1;
+      .user-icon {
+        font-size: 14px;
       }
     }
   }
