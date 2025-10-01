@@ -78,7 +78,7 @@
       <el-form-item label="当前步骤" prop="currentStep">
         <el-input v-model="formData.currentStep" placeholder="请输入当前步骤" />
       </el-form-item>
-      <el-form-item label="上报状态：0未上报、1审核中,2已退回、3已通过,4已上报" prop="reportStatus">
+      <el-form-item label="上报状态" prop="reportStatus">
         <el-radio-group v-model="formData.reportStatus">
           <el-radio
             v-for="dict in getIntDictOptions(DICT_TYPE.REPORT_STATUS)"

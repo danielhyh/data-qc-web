@@ -553,6 +553,42 @@ const remainingRouter: AppRouteRecordRaw[] = [
           hidden: true,
           activeMenu: '/shortage/report-zone'
         }
+      },
+      {
+        path: 'report-view/:taskId',
+        name: 'ShortageReportView',
+        component: () => import('@/views/shortage/reportrecord/components/Report.vue'),
+        meta: {
+          title: '填报记录查看',
+          icon: 'ep:view',
+          noCache: true,
+          canTo: true,
+          hidden: true,
+          activeMenu: '/shortage/reportrecord'
+        }
+      }
+    ]
+  },
+  {
+    path: '/shortage-report',
+    component: Layout,
+    name: 'ShortageReport',
+    meta: {
+      hidden: true
+    },
+    children: [
+      {
+        path: 'report/:taskId',
+        name: 'ShortageReport',
+        component: () => import('@/views/shortage/report/components/Report.vue'),
+        meta: {
+          title: '药品短缺填报',
+          icon: 'ep:edit',
+          noCache: true,
+          canTo: true,
+          hidden: true,
+          activeMenu: '/shortage/report'
+        }
       }
     ]
   }

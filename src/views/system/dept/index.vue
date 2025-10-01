@@ -204,7 +204,7 @@ const activeTab = ref('dept') // 当前激活的标签页
 
 // 面板拖拽相关
 const selectorPanel = ref<HTMLElement>()
-const selectorWidth = ref(320) // 默认宽度
+const selectorWidth = ref(250) // 默认宽度
 const isResizing = ref(false)
 
 /** 开始拖拽调整大小 */

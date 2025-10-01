@@ -223,5 +223,6 @@ export enum DICT_TYPE {
   // ========== 导入模板模块 ==========
   IMPORT_TABLE_TYPE = 'import_table_type', // 导入表类型
 
-  REPORT_STATUS = 'report_status' // 填报任务状态
+  REPORT_STATUS = 'report_status', // 填报任务状态
+  DRUG_REPORT_STATUS = 'drug_report_status', // 填报状态
 }

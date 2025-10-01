@@ -1,217 +1,219 @@
 <template>
-  <ContentWrap>
-    <!-- 搜索工作栏 -->
-    <el-form
-      class="-mb-15px"
-      :model="queryParams"
-      ref="queryFormRef"
-      :inline="true"
-      label-width="68px"
+  <div class="flex h-full">
+    <!-- 左侧地区树选择器 -->
+    <div
+      ref="selectorPanel"
+      class="selector-panel"
+      :style="{ width: selectorWidth + 'px' }"
     >
-      <el-form-item label="专区ID" prop="zoneId">
-        <el-input
-          v-model="queryParams.zoneId"
-          placeholder="请输入专区ID"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="药品配置ID" prop="drugConfigId">
-        <el-input
-          v-model="queryParams.drugConfigId"
-          placeholder="请输入药品配置ID"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="机构ID" prop="deptId">
-        <el-input
-          v-model="queryParams.deptId"
-          placeholder="请输入机构ID"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="填报周期(YYYY-WW)" prop="reportWeek">
-        <el-input
-          v-model="queryParams.reportWeek"
-          placeholder="请输入填报周期(YYYY-WW)"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="填报日期" prop="reportDate">
-        <el-date-picker
-          v-model="queryParams.reportDate"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item label="本周累计使用量" prop="weekUsageAmount">
-        <el-input
-          v-model="queryParams.weekUsageAmount"
-          placeholder="请输入本周累计使用量"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="当日实时库存量" prop="currentStockAmount">
-        <el-input
-          v-model="queryParams.currentStockAmount"
-          placeholder="请输入当日实时库存量"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="供应情况: 1-充足 2-较充足 3-短缺 4-严重短缺" prop="supplyStatus">
-        <el-select
-          v-model="queryParams.supplyStatus"
-          placeholder="请选择供应情况: 1-充足 2-较充足 3-短缺 4-严重短缺"
-          clearable
-          class="!w-240px"
-        >
-          <el-option label="请选择字典生成" value="" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="创建时间" prop="createTime">
-        <el-date-picker
-          v-model="queryParams.createTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-        <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-        <el-button
-          type="primary"
-          plain
-          @click="openForm('create')"
-          v-hasPermi="['shortage:report-record:create']"
-        >
-          <Icon icon="ep:plus" class="mr-5px" /> 新增
-        </el-button>
-        <el-button
-          type="success"
-          plain
-          @click="handleExport"
-          :loading="exportLoading"
-          v-hasPermi="['shortage:report-record:export']"
-        >
-          <Icon icon="ep:download" class="mr-5px" /> 导出
-        </el-button>
-      </el-form-item>
-    </el-form>
-  </ContentWrap>
+      <ContentWrap class="h-full selector-card" title="地区">
+        <RegionTree @node-click="handleRegionSelect" />
+      </ContentWrap>
+    </div>
 
-  <!-- 列表 -->
-  <ContentWrap>
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="编码" align="center" prop="id" />
-      <el-table-column label="专区ID" align="center" prop="zoneId" />
-      <el-table-column label="药品配置ID" align="center" prop="drugConfigId" />
-      <el-table-column label="机构ID" align="center" prop="deptId" />
-      <el-table-column label="填报周期(YYYY-WW)" align="center" prop="reportWeek" />
-      <el-table-column label="填报日期" align="center" prop="reportDate" />
-      <el-table-column label="本周累计使用量" align="center" prop="weekUsageAmount" />
-      <el-table-column label="当日实时库存量" align="center" prop="currentStockAmount" />
-      <el-table-column label="供应情况: 1-充足 2-较充足 3-短缺 4-严重短缺" align="center" prop="supplyStatus" />
-      <el-table-column
-        label="创建时间"
-        align="center"
-        prop="createTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column label="操作" align="center" min-width="120px">
-        <template #default="scope">
-          <el-button
-            link
-            type="primary"
-            @click="openForm('update', scope.row.id)"
-            v-hasPermi="['shortage:report-record:update']"
-          >
-            编辑
-          </el-button>
-          <el-button
-            link
-            type="danger"
-            @click="handleDelete(scope.row.id)"
-            v-hasPermi="['shortage:report-record:delete']"
-          >
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    <!-- 分页 -->
-    <Pagination
-      :total="total"
-      v-model:page="queryParams.pageNo"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-  </ContentWrap>
+    <!-- 拖拽分隔条 -->
+    <div
+      class="resize-handle"
+      @mousedown="startResize"
+    ></div>
 
-  <!-- 表单弹窗：添加/修改 -->
-  <ReportRecordForm ref="formRef" @success="getList" />
+    <!-- 右侧内容区域 -->
+    <div class="flex-1 ml-5">
+      <ContentWrap>
+        <!-- 搜索工作栏 -->
+        <el-form
+          class="-mb-15px"
+          :model="queryParams"
+          ref="queryFormRef"
+          :inline="true"
+          label-width="80px"
+        >
+          <el-form-item label="填报专区" prop="zoneId">
+            <el-select v-model="queryParams.zoneId" placeholder="请选择填报专区" clearable class="!w-240px">
+              <el-option
+                v-for="zone in zoneOptions"
+                :key="zone.id"
+                :label="zone.zoneName"
+                :value="zone.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="填报周期" prop="reportWeek">
+            <el-select v-model="queryParams.reportWeek" placeholder="请选择填报周期" clearable class="!w-200px">
+              <el-option v-for="week in reportWeekOptions" :key="week" :label="week" :value="week" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="机构名称" prop="deptName">
+            <el-input
+              v-model="queryParams.deptName"
+              placeholder="请输入机构名称"
+              clearable
+              class="!w-200px"
+            />
+          </el-form-item>
+          <el-form-item label="联系人" prop="contactPerson">
+            <el-input
+              v-model="queryParams.contactPerson"
+              placeholder="请输入联系人"
+              clearable
+              class="!w-160px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button @click="handleQuery">
+              <Icon icon="ep:search" class="mr-5px" />
+              搜索
+            </el-button>
+            <el-button @click="resetQuery">
+              <Icon icon="ep:refresh" class="mr-5px" />
+              重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </ContentWrap>
+
+      <!-- 列表 -->
+      <ContentWrap>
+        <!-- 当前选择的地区信息 -->
+        <div v-if="selectedRegion" class="mb-15px">
+          <el-tag type="info" size="large">
+            <Icon icon="ep:location" class="mr-5px" />
+            当前地区：{{ getRegionDisplayName(selectedRegion) }}
+          </el-tag>
+        </div>
+
+        <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+          <el-table-column label="所属市" align="center" prop="cityName" width="100" />
+          <el-table-column label="所属区县" align="center" prop="districtName" width="120" />
+          <el-table-column label="机构名称" align="center" prop="deptName" min-width="150" />
+          <el-table-column label="联系人" align="center" prop="contactPerson" width="100" />
+          <el-table-column label="联系电话" align="center" prop="contactPhone" width="120" />
+          <el-table-column label="填报时间" align="center" prop="submitTime" width="180" :formatter="dateFormatter"/>
+          <el-table-column label="填报周期" align="center" prop="reportWeek" width="100" />
+          <el-table-column label="填报完成度" align="center" prop="completionRate" width="120">
+            <template #default="scope">
+              <div class="flex items-center gap-2">
+                <el-progress
+                  :percentage="scope.row.completionRate || 0"
+                  :stroke-width="8"
+                  style="flex: 1"
+                />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="备注" align="center" prop="remark" min-width="120" />
+          <el-table-column label="操作" align="center" width="80px" fixed="right">
+            <template #default="scope">
+              <el-button
+                link
+                type="primary"
+                @click="handleView(scope.row.taskId)"
+              >
+                查看
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <Pagination
+          :total="total"
+          v-model:page="queryParams.pageNo"
+          v-model:limit="queryParams.pageSize"
+          @pagination="getList"
+        />
+      </ContentWrap>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { dateFormatter } from '@/utils/formatTime'
-import download from '@/utils/download'
-import { ReportRecordApi, ReportRecordVO } from '@/api/shortage/reportrecord'
-import ReportRecordForm from './ReportRecordForm.vue'
+import { ReportRecordApi, ReportZoneApi } from '@/api/shortage'
+import RegionTree from '@/views/system/user/RegionTree.vue'
+import { useRouter } from 'vue-router'
+import {dateFormatter} from "@/utils/formatTime";
 
-/** 药品填报记录 列表 */
-defineOptions({ name: 'ReportRecord' })
+/** 填报记录查询列表 */
+defineOptions({ name: 'ReportRecordList' })
 
 const message = useMessage() // 消息弹窗
-const { t } = useI18n() // 国际化
+const router = useRouter() // 路由
 
 const loading = ref(true) // 列表的加载中
-const list = ref<ReportRecordVO[]>([]) // 列表的数据
+const list = ref<any[]>([]) // 列表的数据
 const total = ref(0) // 列表的总页数
+const selectedRegion = ref<any>(null) // 选中的地区节点
+const reportWeekOptions = ref<string[]>([]) // 填报周期选项
+const zoneOptions = ref<any[]>([]) // 填报专区选项
+
+// 面板拖拽相关
+const selectorPanel = ref<HTMLElement>()
+const selectorWidth = ref(250) // 默认宽度设为最小宽度
+const isResizing = ref(false)
+
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
-  zoneId: undefined,
-  drugConfigId: undefined,
-  deptId: undefined,
-  reportWeek: undefined,
-  reportDate: [],
-  weekUsageAmount: undefined,
-  currentStockAmount: undefined,
-  supplyStatus: undefined,
-  createTime: [],
+  regionCode: undefined, // 地区代码
+  zoneId: undefined, // 填报专区ID
+  reportWeek: undefined, // 填报周期
+  deptName: undefined, // 机构名称
+  contactPerson: undefined // 联系人
 })
 const queryFormRef = ref() // 搜索的表单
-const exportLoading = ref(false) // 导出的加载中
+
+/** 开始拖拽调整大小 */
+const startResize = (e: MouseEvent) => {
+  isResizing.value = true
+  const startX = e.clientX
+  const startWidth = selectorWidth.value
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (!isResizing.value) return
+    const diff = moveEvent.clientX - startX
+    const newWidth = Math.max(250, Math.min(600, startWidth + diff)) // 限制最小250px，最大600px
+    selectorWidth.value = newWidth
+  }
+
+  const onMouseUp = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+  document.body.style.cursor = 'ew-resize'
+  document.body.style.userSelect = 'none'
+  e.preventDefault()
+}
 
 /** 查询列表 */
 const getList = async () => {
   loading.value = true
   try {
-    const data = await ReportRecordApi.getReportRecordPage(queryParams)
+    const data = await ReportRecordApi.getReportRecordList(queryParams)
     list.value = data.list
     total.value = data.total
   } finally {
     loading.value = false
   }
+}
+
+/** 地区选择处理 */
+const handleRegionSelect = (region: any) => {
+  selectedRegion.value = region
+  queryParams.regionCode = region?.code
+  queryParams.pageNo = 1
+  getList()
+}
+
+/** 获取地区显示名称 */
+const getRegionDisplayName = (region: any) => {
+  if (!region) return ''
+  const levelNames = { 1: '省', 2: '市', 3: '区县' }
+  return `${region.name}(${levelNames[region.level] || ''})`
 }
 
 /** 搜索按钮操作 */
@@ -226,42 +228,83 @@ const resetQuery = () => {
   handleQuery()
 }
 
-/** 添加/修改操作 */
-const formRef = ref()
-const openForm = (type: string, id?: number) => {
-  formRef.value.open(type, id)
+/** 查看按钮操作 */
+const handleView = (taskId: number) => {
+  // 从列表中找到对应的任务记录
+  const record = list.value.find((r) => r.taskId === taskId)
+  if (!record) return
+
+  // 跳转到填报查看页面,传递专区ID、周期和填报状态
+  router.push({
+    name: 'ShortageReportView',
+    params: { taskId: taskId.toString() },
+    query: {
+      zoneId: record.zoneId?.toString(),
+      reportWeek: record.reportWeek,
+      reportStatus: record.reportStatus?.toString()
+    }
+  })
 }
 
-/** 删除按钮操作 */
-const handleDelete = async (id: number) => {
+/** 加载填报周期选项 */
+const loadReportWeekOptions = async () => {
   try {
-    // 删除的二次确认
-    await message.delConfirm()
-    // 发起删除
-    await ReportRecordApi.deleteReportRecord(id)
-    message.success(t('common.delSuccess'))
-    // 刷新列表
-    await getList()
-  } catch {}
+    const data = await ReportRecordApi.getReportWeeks()
+    reportWeekOptions.value = data
+  } catch (error) {
+    console.error('加载填报周期选项失败:', error)
+  }
 }
 
-/** 导出按钮操作 */
-const handleExport = async () => {
+/** 加载填报专区选项 */
+const loadZoneOptions = async () => {
   try {
-    // 导出的二次确认
-    await message.exportConfirm()
-    // 发起导出
-    exportLoading.value = true
-    const data = await ReportRecordApi.exportReportRecord(queryParams)
-    download.excel(data, '药品填报记录.xls')
-  } catch {
-  } finally {
-    exportLoading.value = false
+    const data = await ReportZoneApi.getOptions()
+    zoneOptions.value = data
+  } catch (error) {
+    console.error('加载填报专区选项失败:', error)
   }
 }
 
 /** 初始化 **/
 onMounted(() => {
-  getList()
+  loadReportWeekOptions()
+  loadZoneOptions()
+  // 不自动加载数据，等待用户选择地区
 })
 </script>
+
+<style scoped lang="scss">
+.selector-panel {
+  flex-shrink: 0;
+  min-width: 250px;
+  max-width: 600px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.selector-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  :deep(.el-card__body) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+  }
+}
+
+.resize-handle {
+  width: 5px;
+  background: var(--el-border-color-light);
+  cursor: ew-resize;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: var(--el-color-primary);
+  }
+}
+</style>

@@ -3,16 +3,19 @@ import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { ElCard, ElRow, ElCol, ElStatistic, ElButton, ElTooltip, ElDivider, ElIcon } from 'element-plus'
 import PageHeader from '@/components/PageHeader/index.vue'
-import { Calendar, DataAnalysis, TrendCharts, Warning, QuestionFilled, Download, Refresh } from '@element-plus/icons-vue'
+import { Calendar, DataAnalysis, TrendCharts, Warning, QuestionFilled, Download, Refresh, View } from '@element-plus/icons-vue'
 import type { ECharts } from 'echarts'
 import { getInstitutionReportStats, exportInstitutionReport, type InstitutionReportStatsVO } from '@/api/drug/statistics'
 import { formatDate } from '@/utils/formatTime'
+import InstitutionReportDialog from '../components/InstitutionReportDialog.vue'
 
 // 数据
 const reportStats = ref<InstitutionReportStatsVO | null>(null)
 const loading = ref(false)
 const currentYear = ref(new Date().getFullYear().toString())
 const selectedArea = ref<string>('')  // 选中的区域
+const institutionDialogRef = ref() // 机构详情弹框引用
+const currentReportId = ref<number>(1) // 当前报告ID，实际使用时应从外部传入或选择
 
 // 图表实例
 const progressChart = ref<HTMLElement | null>(null)
@@ -461,6 +464,11 @@ const exportReport = async () => {
     console.error('导出失败:', error)
   }
 }
+
+// 打开机构详情弹框
+const openInstitutionDialog = () => {
+  institutionDialogRef.value?.open(currentReportId.value)
+}
 </script>
 
 <template>
@@ -479,6 +487,7 @@ const exportReport = async () => {
         { label: '截止时间', value: basicStats.deadlineTime ? formatDate(basicStats.deadlineTime) : '--' }
       ]"
       :actions="[
+        { key: 'institutions', text: '查看机构详情', type: 'default', icon: 'View', handler: openInstitutionDialog },
         { key: 'export', text: '导出报告', type: 'primary', icon: 'Download', handler: exportReport },
         { key: 'refresh', text: '刷新', icon: 'Refresh', handler: fetchData }
       ]"
@@ -688,6 +697,9 @@ const exportReport = async () => {
         </el-col>
       </el-row>
     </div>
+
+    <!-- 机构详情弹框 -->
+    <InstitutionReportDialog ref="institutionDialogRef" />
   </div>
 </template>
 

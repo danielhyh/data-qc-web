@@ -61,8 +61,8 @@ export const ReportZoneApi = {
     request.delete({ url: `/shortage/report-zone/delete?id=${id}` }),
   
   // 更新状态
-  updateStatus: (id: number, status: number) => 
-    request.put({ url: `/shortage/report-zone/update-status`, data: { id, status } }),
+  updateStatus: (id: number, status: number) =>
+    request.put({ url: `/shortage/report-zone/update-status/${id}?status=${status}` }),
   
   // 更新通知内容
   updateNotice: (id: number, noticeContent: string) => 
@@ -76,9 +76,13 @@ export const ReportZoneApi = {
     request.put({ url: `/shortage/report-zone/time-config/${id}`, data }),
   
   // 检查填报时间
-  checkReportTime: (zoneId: number): Promise<ReportTimeCheckRespVO> => 
+  checkReportTime: (zoneId: number): Promise<ReportTimeCheckRespVO> =>
     request.get({ url: `/shortage/report-zone/check-time/${zoneId}` }),
-  
+
+  // 获取可用专区选项
+  getOptions: () =>
+    request.get({ url: '/shortage/report-zone/options' }),
+
   // 导出Excel
   exportExcel: (params: ReportZonePageReqVO) =>
     request.download({ url: '/shortage/report-zone/export-excel', params })
@@ -203,20 +207,36 @@ export interface ReportStatisticsRespVO {
 
 export const ReportRecordApi = {
   // 获取专区填报药品列表
-  getReportListByZoneId: (zoneId: number) => 
-    request.get({ url: `/shortage/report-record/list?zoneId=${zoneId}` }),
-  
-  // 批量保存填报记录
-  batchSave: (data: ReportRecordVO[]) => 
+  getReportListByZoneId: (zoneId: number, taskId?: number) =>
+    request.get({ url: `/shortage/report-record/list`, params: { zoneId, taskId } }),
+
+  // 批量保存填报记录(提交)
+  batchSave: (data: ReportRecordVO[]) =>
     request.post({ url: '/shortage/report-record/batch-save', data }),
-  
+
+  // 保存草稿
+  saveDraft: (params: { taskId: number; reportWeek: string; data: ReportRecordVO[] }) =>
+    request.post({ url: '/shortage/report-record/save-draft', data: params }),
+
+  // 提交填报
+  submitReport: (params: { taskId: number; reportWeek: string; data: ReportRecordVO[] }) =>
+    request.post({ url: '/shortage/report-record/submit-report', data: params }),
+
   // 获取统计分析数据
-  getStatistics: (params: ReportStatisticsReqVO) => 
+  getStatistics: (params: ReportStatisticsReqVO) =>
     request.get({ url: '/shortage/report-record/statistics', params }),
-  
+
   // 导出统计报告
-  exportReport: (params: ReportStatisticsReqVO) => 
-    request.download({ url: '/shortage/report-record/export-excel', params })
+  exportReport: (params: ReportStatisticsReqVO) =>
+    request.download({ url: '/shortage/report-record/export-excel', params }),
+
+  // 获取填报周期列表
+  getReportWeeks: () =>
+    request.get({ url: '/shortage/report-record/report-weeks' }),
+
+  // 获取填报记录查询列表（按地区查询）
+  getReportRecordList: (params: any) =>
+    request.get({ url: '/shortage/report-record/list-by-region', params })
 }
 
 // ========== 供应状态枚举 ==========

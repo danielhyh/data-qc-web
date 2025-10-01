@@ -273,7 +273,7 @@ const multipleSelection = ref<DataManageImportTaskVO[]>([]) // 多选数据
 
 // 面板拖拽相关
 const selectorPanel = ref<HTMLElement>()
-const selectorWidth = ref(320) // 默认宽度
+const selectorWidth = ref(250) // 默认宽度
 const isResizing = ref(false)
 const queryParams = reactive({
   pageNo: 1,

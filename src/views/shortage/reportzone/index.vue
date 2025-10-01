@@ -88,7 +88,7 @@
         :formatter="dateFormatter"
         width="180px"
       />
-      <el-table-column label="操作" align="center" width="280px">
+      <el-table-column label="操作" align="center" width="200px">
         <template #default="scope">
           <el-button
             link
@@ -97,14 +97,6 @@
             v-hasPermi="['shortage:drug-config:query']"
           >
             药品配置
-          </el-button>
-          <el-button
-            link
-            type="primary"
-            @click="openTimeConfigForm(scope.row)"
-            v-hasPermi="['shortage:report-zone:update']"
-          >
-            时间配置
           </el-button>
           <el-button
             link
@@ -136,9 +128,6 @@
 
   <!-- 表单弹窗：添加/修改 -->
   <ReportZoneForm ref="formRef" @success="getList" />
-  
-  <!-- 时间配置弹窗 -->
-  <TimeConfigForm ref="timeConfigFormRef" @success="getList" />
 </template>
 
 <script setup lang="ts">
@@ -148,7 +137,6 @@ import { dateFormatter } from '@/utils/formatTime'
 import { CommonStatusEnum } from '@/utils/constants'
 import { ReportZoneApi, type ReportZoneVO } from '@/api/shortage'
 import ReportZoneForm from './ReportZoneForm.vue'
-import TimeConfigForm from './TimeConfigForm.vue'
 
 /** 短缺药品填报专区 列表 */
 defineOptions({ name: 'ShortageReportZone' })
@@ -213,12 +201,6 @@ const handleStatusChange = async (row: ReportZoneVO) => {
 const formRef = ref()
 const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
-}
-
-/** 时间配置操作 */
-const timeConfigFormRef = ref()
-const openTimeConfigForm = (row: ReportZoneVO) => {
-  timeConfigFormRef.value.open(row)
 }
 
 /** 药品配置操作 */
