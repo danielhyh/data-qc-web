@@ -53,22 +53,6 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="剂型单位" prop="dosageForm">
-        <el-select 
-          v-model="formData.dosageForm" 
-          placeholder="请先选择剂型分类"
-          :disabled="!formData.dosageCategory"
-          style="width: 100%"
-          filterable
-        >
-          <el-option 
-            v-for="unit in availableDosageUnits"
-            :key="unit"
-            :label="unit"
-            :value="unit"
-          />
-        </el-select>
-      </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-radio-group v-model="formData.status">
           <el-radio
@@ -123,7 +107,6 @@ const formData = ref({
   drugCategory: '', // 新增：药品分类
   drugName: '',
   dosageCategory: '',
-  dosageForm: '',
   status: 0,
   sortOrder: 0,
 })
@@ -132,13 +115,11 @@ const formData = ref({
 const drugCategories = ref<string[]>([])
 const availableDrugNames = ref<string[]>([])
 const dosageCategories = ref<string[]>([])
-const availableDosageUnits = ref<string[]>([])
 
 const formRules = reactive({
   drugCategory: [{ required: true, message: '请选择药品分类', trigger: 'change' }],
   drugName: [{ required: true, message: '请选择药品名称', trigger: 'change' }],
   dosageCategory: [{ required: true, message: '请选择剂型分类', trigger: 'change' }],
-  dosageForm: [{ required: true, message: '请选择剂型单位', trigger: 'change' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }],
 })
 
@@ -176,19 +157,7 @@ const handleDrugCategoryChange = async (category: string) => {
 
 // 处理剂型分类变化
 const handleDosageCategoryChange = async (category: string) => {
-  // 清空剂型单位选择
-  formData.value.dosageForm = ''
-  availableDosageUnits.value = []
-  
-  if (category) {
-    try {
-      // 根据剂型分类加载剂型单位列表
-      const dosageUnits = await DosageCategoryApi.getDosageUnitsByCategory(category)
-      availableDosageUnits.value = dosageUnits
-    } catch (error) {
-      console.error('加载剂型单位列表失败:', error)
-    }
-  }
+  // 剂型分类变化处理逻辑（如果需要的话）
 }
 
 // 自动生成排序号
@@ -237,10 +206,6 @@ const open = async (type: string, id?: number) => {
         await handleDrugCategoryChange(data.drugCategory)
       }
       
-      // 如果有剂型分类，加载对应的剂型单位列表
-      if (data.dosageCategory) {
-        await handleDosageCategoryChange(data.dosageCategory)
-      }
     } finally {
       formLoading.value = false
     }
@@ -288,15 +253,13 @@ const resetForm = () => {
     drugCategory: '',
     drugName: '',
     dosageCategory: '',
-    dosageForm: '',
     status: 0,
     sortOrder: 0,
   }
-  
+
   // 清空动态数据
   availableDrugNames.value = []
-  availableDosageUnits.value = []
-  
+
   formRef.value?.resetFields()
 }
 </script>

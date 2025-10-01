@@ -333,6 +333,184 @@ export const exportInstitutionReport = (params?: {
 // 获取机构详细信息
 export const getInstitutionDetail = (deptId: number) => {
   return request.get({
-    url: `/drug/statistics/institution/${deptId}/detail`
+    url: `/drug/statistics/institution-report/${deptId}/detail`
+  })
+}
+
+// ========== 新增机构上报统计相关 API ==========
+
+// 填报任务统计数据结构
+export interface ReportTaskStatsVO {
+  taskName?: string              // 任务名称
+  reportYear?: string            // 填报年份
+  totalMonitoringInstitutions: number // 应监测机构数
+  reportedInstitutions: number   // 已上报机构数
+  overallReportRate: number      // 总体上报率
+  uploadedDataCount: number      // 已给国家上传数据量
+  startTime?: string             // 开始时间
+  endTime?: string               // 结束时间
+  taskStatus?: number            // 上报任务状态
+  taskStatusDesc?: string        // 任务状态描述
+  levelReportStats: {            // 各级机构上报率统计
+    level3: {
+      levelDesc: string
+      totalInstitutions: number
+      reportedInstitutions: number
+      reportRate: number
+    }
+    level2: {
+      levelDesc: string
+      totalInstitutions: number
+      reportedInstitutions: number
+      reportRate: number
+    }
+    baseLevel: {
+      levelDesc: string
+      totalInstitutions: number
+      reportedInstitutions: number
+      reportRate: number
+    }
+  }
+}
+
+// 全省上报图表数据结构
+export interface ProvinceReportChartVO {
+  chartData: Array<{
+    regionId: number
+    cityCode: string
+    cityName: string
+    reportedCount: number
+    unreportedCount: number
+    totalCount: number
+    reportRate: number
+  }>
+  provinceSummary: {
+    totalInstitutions: number
+    totalReported: number
+    totalUnreported: number
+    overallReportRate: number
+  }
+}
+
+// 市区详细上报数据结构
+export interface CityDetailReportVO {
+  regionId: number
+  cityName: string
+  totalMonitoringInstitutions: number
+  reportedInstitutions: number
+  unreportedInstitutions: number
+  reportRate: number
+  level3ReportRate: number
+  level2ReportRate: number
+  baseLevelReportRate: number
+  uploadedDataCount: number
+  levelStats: {
+    level3: {
+      totalInstitutions: number
+      reportedInstitutions: number
+      unreportedInstitutions: number
+      reportRate: number
+      uploadedDataCount: number
+    }
+    level2: {
+      totalInstitutions: number
+      reportedInstitutions: number
+      unreportedInstitutions: number
+      reportRate: number
+      uploadedDataCount: number
+    }
+    baseLevel: {
+      totalInstitutions: number
+      reportedInstitutions: number
+      unreportedInstitutions: number
+      reportRate: number
+      uploadedDataCount: number
+    }
+  }
+}
+
+// 机构上报列表查询参数
+export interface InstitutionReportPageReqVO {
+  pageNo: number
+  pageSize: number
+  reportId: number               // 填报任务ID（必填）
+  regionCode?: string            // 地区代码
+  institutionType?: string       // 机构类型 monitoring/reported/unreported
+  hospitalLevel?: string         // 医院等级 3/2/base
+  reportStatus?: number          // 上报状态 0-5
+  deptName?: string             // 机构名称
+  contactPerson?: string        // 联系人
+  contactPhone?: string         // 联系人电话
+}
+
+// 机构上报列表项数据结构
+export interface InstitutionReportItemVO {
+  deptId: number                 // 机构ID
+  deptName: string              // 机构名称
+  cityName?: string             // 所属市
+  districtName?: string         // 所属区县
+  hospitalLevel?: string        // 医院等级
+  hospitalLevelDesc: string     // 医院等级描述
+  reportStatus: number          // 上报状态
+  contactPerson?: string        // 联系人
+  contactPhone?: string         // 联系人电话
+  isMonitoringRequired: boolean // 是否应监测机构
+  regionCode?: string           // 地区代码
+  regionPath?: string           // 地区路径
+}
+
+// 机构上报统计API类
+export const InstitutionReportApi = {
+  // 获取填报任务统计数据
+  getReportTaskStats: (reportId: number) => {
+    return request.get<ReportTaskStatsVO>({
+      url: `/drug/statistics/institution-report/task/${reportId}`
+    })
+  },
+
+  // 获取全省各市区上报情况图表数据
+  getProvinceReportChart: (reportId: number) => {
+    return request.get<ProvinceReportChartVO>({
+      url: `/drug/statistics/institution-report/chart/${reportId}`
+    })
+  },
+
+  // 获取指定市区的详细上报数据
+  getCityDetailReport: (reportId: number, regionId: number) => {
+    return request.get<CityDetailReportVO>({
+      url: `/drug/statistics/institution-report/city/${reportId}/${regionId}`
+    })
+  },
+
+  // 获取机构上报列表（分页）
+  getInstitutionReportPage: (params: InstitutionReportPageReqVO) => {
+    return request.get<{
+      list: InstitutionReportItemVO[]
+      total: number
+    }>({
+      url: '/drug/statistics/institution-report/institutions/page',
+      params
+    })
+  }
+}
+
+// 获取填报任务统计数据
+export const getFillInTaskStatisticsData = (reportId: number) => {
+  return request.get({
+    url: `/drug/statistics/institution-report/task/${reportId}`
+  })
+}
+
+// 获取全省各市区上报情况图表数据
+export const getCityChartsData = (reportId: number) => {
+  return request.get({
+    url: `/drug/statistics/institution-report/chart/${reportId}`
+  })
+}
+
+// 获取指定市区的详细上报数据
+export const getCityReportData = (reportId: number,  regionId: number) => {
+  return request.get({
+    url: `/drug/statistics/institution-report/city/${reportId}/${regionId}`
   })
 }

@@ -41,6 +41,90 @@
       </el-form-item>
     </el-form>
 
+    <!-- 时间配置卡片 -->
+    <el-card shadow="never" class="time-config-card">
+      <template #header>
+        <div class="card-header">
+          <span>填报时间配置</span>
+        </div>
+      </template>
+
+      <el-form ref="timeFormRef" :model="formData" :rules="timeFormRules" label-width="120px">
+        <el-form-item label="时间限制" prop="isTimeRestricted">
+          <el-switch
+            v-model="formData.isTimeRestricted"
+            active-text="启用时间限制"
+            inactive-text="不限制时间"
+            active-color="#13ce66"
+            inactive-color="#ff4949"
+          />
+          <div class="text-xs text-gray-500 mt-1">
+            启用后，只有在指定时间段内才能进行填报操作
+          </div>
+        </el-form-item>
+
+        <div v-if="formData.isTimeRestricted" class="time-config-section">
+          <el-form-item label="填报日期" prop="reportTimeConfig.dayOfWeek">
+            <el-select v-model="formData.reportTimeConfig.dayOfWeek" style="width: 100%" placeholder="请选择填报日期">
+              <el-option
+                v-for="day in dayOptions"
+                :key="day.value"
+                :label="day.label"
+                :value="day.value"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="填报时间段">
+            <el-row :gutter="12">
+              <el-col :span="11">
+                <el-form-item prop="reportTimeConfig.startTime">
+                  <el-time-picker
+                    v-model="startTimeValue"
+                    format="HH:mm"
+                    value-format="HH:mm"
+                    placeholder="开始时间"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="2" class="text-center">
+                <span class="text-gray-500">至</span>
+              </el-col>
+              <el-col :span="11">
+                <el-form-item prop="reportTimeConfig.endTime">
+                  <el-time-picker
+                    v-model="endTimeValue"
+                    format="HH:mm"
+                    value-format="HH:mm"
+                    placeholder="结束时间"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form-item>
+
+          <el-alert
+            :title="getTimeConfigDisplay()"
+            type="info"
+            :closable="false"
+            class="mb-4"
+            show-icon
+          />
+        </div>
+
+        <el-alert
+          v-else
+          title="不限制填报时间，用户可在任何时间进行数据填报"
+          type="warning"
+          :closable="false"
+          class="mb-4"
+          show-icon
+        />
+      </el-form>
+    </el-card>
+
     <!-- 可填报机构选择器 -->
     <el-card shadow="never" class="org-selector-card">
       <template #header>
@@ -244,7 +328,7 @@
 
 <script setup lang="ts">
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
-import { ReportZoneApi, type ReportZoneVO } from '@/api/shortage'
+import { ReportZoneApi, type ReportZoneVO, type ReportTimeConfigVO } from '@/api/shortage'
 import { Editor } from '@/components/Editor'
 import { Icon } from '@/components/Icon'
 import * as DeptApi from '@/api/system/dept'
@@ -268,7 +352,54 @@ const formData = ref({
   status: 0, // 默认开启（启用状态）
   remark: '',
   reportableOrgs: '',
+  // 时间配置相关字段
+  isTimeRestricted: true, // 是否启用时间限制
+  reportTimeConfig: {
+    dayOfWeek: 5, // 默认周五
+    startTime: '12:00',
+    endTime: '18:00'
+  }
 })
+
+// 日期选项常量
+const dayOptions = [
+  { value: 1, label: '周一' },
+  { value: 2, label: '周二' },
+  { value: 3, label: '周三' },
+  { value: 4, label: '周四' },
+  { value: 5, label: '周五' },
+  { value: 6, label: '周六' },
+  { value: 7, label: '周日' }
+]
+
+// 时间选择器的双向绑定
+const startTimeValue = computed({
+  get: () => formData.value.reportTimeConfig.startTime,
+  set: (val: string) => {
+    if (val) {
+      formData.value.reportTimeConfig.startTime = val
+    }
+  }
+})
+
+const endTimeValue = computed({
+  get: () => formData.value.reportTimeConfig.endTime,
+  set: (val: string) => {
+    if (val) {
+      formData.value.reportTimeConfig.endTime = val
+    }
+  }
+})
+
+// 获取时间配置显示文本
+const getTimeConfigDisplay = () => {
+  if (!formData.value.isTimeRestricted) return ''
+
+  const dayLabel = dayOptions.find(d => d.value === formData.value.reportTimeConfig.dayOfWeek)?.label || ''
+  const { startTime, endTime } = formData.value.reportTimeConfig
+
+  return `填报时间设置：每${dayLabel} ${startTime} - ${endTime}`
+}
 
 // 部门树相关
 const deptOptions = ref<any[]>([]) // 原始部门树形结构
@@ -347,7 +478,21 @@ const formRules = reactive({
   status: [{ required: true, message: '请选择状态', trigger: 'change' }],
 })
 
+// 时间配置验证规则
+const timeFormRules = reactive({
+  'reportTimeConfig.dayOfWeek': [
+    { required: true, message: '请选择填报日期', trigger: 'change' }
+  ],
+  'reportTimeConfig.startTime': [
+    { required: true, message: '请选择开始时间', trigger: 'change' }
+  ],
+  'reportTimeConfig.endTime': [
+    { required: true, message: '请选择结束时间', trigger: 'change' }
+  ]
+})
+
 const formRef = ref() // 表单 Ref
+const timeFormRef = ref() // 时间配置表单 Ref
 
 // 获取区域图标
 const getAreaIcon = (level: number) => {
@@ -652,6 +797,25 @@ const open = async (type: string, id?: number) => {
       const data = await ReportZoneApi.get(id)
       Object.assign(formData.value, data)
 
+      // 回显时间配置数据
+      if (data.reportTimeConfig) {
+        formData.value.reportTimeConfig = {
+          dayOfWeek: data.reportTimeConfig.dayOfWeek,
+          startTime: data.reportTimeConfig.startTime,
+          endTime: data.reportTimeConfig.endTime
+        }
+      } else {
+        // 使用默认配置
+        formData.value.reportTimeConfig = {
+          dayOfWeek: 5,
+          startTime: '12:00',
+          endTime: '18:00'
+        }
+      }
+
+      // 如果有时间限制字段则回显，否则使用默认值
+      formData.value.isTimeRestricted = data.isTimeRestricted ?? true
+
       // 如果有选择的机构，设置到selectedOrgIds中并加载详情
       if (data.reportableOrgs) {
         const deptIds = data.reportableOrgs.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
@@ -674,11 +838,26 @@ defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 const emit = defineEmits(['success']) // 定义 success 事件，用于操作成功后的回调
 
 const submitForm = async () => {
-  // 校验表单
+  // 校验主表单
   if (!formRef.value) return
   const valid = await formRef.value.validate().catch(() => {})
   if (!valid) return
-  
+
+  // 如果启用时间限制，需要验证时间配置
+  if (formData.value.isTimeRestricted) {
+    if (!timeFormRef.value) return
+    const timeValid = await timeFormRef.value.validate().catch(() => {})
+    if (!timeValid) return
+
+    // 验证时间范围
+    const start = formData.value.reportTimeConfig.startTime
+    const end = formData.value.reportTimeConfig.endTime
+    if (start >= end) {
+      message.error('开始时间不能晚于或等于结束时间')
+      return
+    }
+  }
+
   // 提交请求
   formLoading.value = true
   try {
@@ -712,6 +891,13 @@ const resetForm = () => {
     status: 0, // 默认开启（启用状态）
     remark: '',
     reportableOrgs: '',
+    // 重置时间配置相关字段
+    isTimeRestricted: true, // 默认启用时间限制
+    reportTimeConfig: {
+      dayOfWeek: 5, // 默认周五
+      startTime: '12:00',
+      endTime: '18:00'
+    }
   }
 
   // 重置地区和机构相关状态
@@ -732,6 +918,7 @@ const resetForm = () => {
   treeRef.value?.setCheckedNodes([])
 
   formRef.value?.resetFields()
+  timeFormRef.value?.resetFields() // 重置时间配置表单验证状态
 }
 
 // 获取默认通知内容模板
@@ -768,6 +955,50 @@ const handleCheckedTreeExpand = () => {
 </script>
 
 <style scoped lang="scss">
+// 时间配置卡片样式
+.time-config-card {
+  margin-bottom: 20px;
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+  }
+
+  .time-config-section {
+    border-left: 3px solid #409eff;
+    padding-left: 16px;
+    margin-left: 8px;
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+
+  .text-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .text-xs {
+    font-size: 12px;
+  }
+
+  .text-gray-500 {
+    color: #909399;
+  }
+
+  .mt-1 {
+    margin-top: 4px;
+  }
+
+  .mb-4 {
+    margin-bottom: 16px;
+  }
+}
+
 // 机构选择器卡片样式
 .org-selector-card {
   margin-bottom: 20px;

@@ -13,6 +13,14 @@ export interface ReportZoneVO {
   reportCount?: number // 填报次数
 }
 
+// 填报专区选项 VO
+export interface ReportZoneOptionVO {
+  id: number // 专区ID
+  zoneName: string // 专区名称
+  zoneCode: string // 专区编码
+  deadlineTime?: string // 截止时间
+}
+
 // 短缺药品填报专区 API
 export const ReportZoneApi = {
   // 查询短缺药品填报专区
@@ -49,4 +57,9 @@ export const ReportZoneApi = {
   exportExcel: async (params) => {
     return await request.download({ url: `/shortage/report-zone/export-excel`, params })
   },
+
+  // 获取可用填报专区选项（status=0）
+  getOptions: async () => {
+    return await request.get({ url: `/shortage/report-zone/options` })
+  }
 }

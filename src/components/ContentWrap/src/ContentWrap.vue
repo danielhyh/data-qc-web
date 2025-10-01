@@ -83,7 +83,7 @@ defineProps({
 
 /* 标题区域样式 */
 .header-wrapper {
-  padding: 16px 20px;
+  padding: 10px 20px;
   transition: background-color 0.3s ease;
 }
 

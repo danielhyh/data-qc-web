@@ -110,7 +110,7 @@
   <!-- 机构选择器弹窗 -->
   <el-dialog
     v-model="orgSelectorVisible"
-    title="选择可填报机构"
+    title="选择可填报机构(不包含监测内无法上报机构)"
     width="1200px"
     :close-on-click-modal="false"
   >
@@ -374,8 +374,8 @@ const handleAreaNodeClick = async (data: any) => {
 // 加载机构数据
 const loadDeptData = async (areaCode: string) => {
   try {
-    // 根据地区代码查询该地区下的机构数据
-    const data = await DeptApi.getDeptPage({ areaCode, pageSize: 1000 })
+    // 根据地区代码查询该地区下的机构数据，排除监测内无法上报机构
+    const data = await DeptApi.getDeptPage({ areaCode, pageSize: 1000, excludeUnableReport: true })
     deptOptions.value = handleTree(data.list || data)
 
     // 应用机构等级筛选

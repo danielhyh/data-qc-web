@@ -235,10 +235,10 @@ export const ReportQCApi = {
 // 上报提交相关API
 export const ReportSubmitApi = {
   // 提交上报
-  submitReport: (taskId: number) => {
+  submitReport: (taskId: number, fileIds) => {
     return request.post({
-      url: '/drug/report/submit',
-      data: { taskId }
+      url: '/drug/report-data/submit',
+      data: { taskId, fileIds }
     })
   },
 

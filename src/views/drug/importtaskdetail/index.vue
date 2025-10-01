@@ -140,12 +140,12 @@
   <!-- 列表 -->
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="任务ID" align="center" prop="taskId" />
-      <el-table-column label="任务编号" align="center" prop="taskNo" />
-      <el-table-column label="部门名称" align="center" prop="deptName" />
-      <el-table-column label="所属市" align="center" prop="cityName" />
-      <el-table-column label="所属区县" align="center" prop="districtName" />
-      <el-table-column label="文件类型:HOSPITAL_INFO,DRUG_CATALOG,DRUG_INBOUND,DRUG_OUTBOUND,DRUG_USAGE" align="center" prop="fileType">
+      <el-table-column label="任务ID" align="center" prop="taskId" width="100" />
+      <el-table-column label="任务编号" align="center" prop="taskNo" width="180" />
+      <el-table-column label="部门名称" align="center" prop="deptName" width="200" :show-overflow-tooltip="true" />
+      <el-table-column label="所属市" align="center" prop="cityName" width="100" />
+      <el-table-column label="所属区县" align="center" prop="districtName" width="120" />
+      <el-table-column label="文件类型" align="center" prop="fileType" width="120">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.fileType" />
         </template>
@@ -160,7 +160,7 @@
         :formatter="dateFormatter"
         width="180px"
       />
-      <el-table-column label="操作" align="center" min-width="120px">
+      <el-table-column label="操作" align="center" min-width="320px">
         <template #default="scope">
           <el-button
             link
@@ -169,6 +169,14 @@
             v-hasPermi="['drug:import-task-detail:update']"
           >
             编辑
+          </el-button>
+          <el-button
+            link
+            type="success"
+            @click="handleDownload(scope.row.id)"
+            v-hasPermi="['drug:import-task-detail:export']"
+          >
+            下载
           </el-button>
           <el-button
             link
@@ -430,6 +438,19 @@ const handleExport = async () => {
   } catch {
   } finally {
     exportLoading.value = false
+  }
+}
+
+/** 下载数据按钮操作 */
+const handleDownload = async (id: number) => {
+  try {
+    // 下载的二次确认
+    await message.confirm('确认下载该数据档案对应的数据文件？')
+    // 发起下载
+    const data = await DataArchiveApi.downloadArchiveData(id)
+    download.excel(data, '数据文件.xlsx')
+    message.success('数据文件下载成功')
+  } catch {
   }
 }
 

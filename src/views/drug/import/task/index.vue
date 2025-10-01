@@ -98,7 +98,7 @@
         </el-form>
 
         <!-- 批量操作按钮 -->
-        <div class="mb-15px" v-if="multipleSelection.length > 0">
+        <div class="mb-10px mt-15px">
           <el-button
               type="warning"
               plain
@@ -262,6 +262,7 @@ import { ElMessageBox } from 'element-plus'
 defineOptions({ name: 'ImportTask' })
 
 const message = useMessage() // 消息弹窗
+const router = useRouter() // 路由对象
 const { t } = useI18n() // 国际化
 
 const loading = ref(true) // 列表的加载中
@@ -273,7 +274,7 @@ const multipleSelection = ref<DataManageImportTaskVO[]>([]) // 多选数据
 
 // 面板拖拽相关
 const selectorPanel = ref<HTMLElement>()
-const selectorWidth = ref(320) // 默认宽度
+const selectorWidth = ref(250) // 默认宽度
 const isResizing = ref(false)
 const queryParams = reactive({
   pageNo: 1,
@@ -406,8 +407,12 @@ const handleSelectionChange = (selection: DataManageImportTaskVO[]) => {
 
 /** 查看数据 */
 const handleViewData = (row: DataManageImportTaskVO) => {
-  // TODO: 跳转到数据查看页面或打开弹窗
-  message.info(`查看数据功能待实现 - 任务ID: ${row.id}`)
+  router.push({
+    name: 'DrugReportViewData',
+    query: {
+      taskId: row.id
+    }
+  })
 }
 
 /** 上报日志 */

@@ -393,6 +393,30 @@ const remainingRouter: AppRouteRecordRaw[] = [
         }
       },
       {
+        path: 'report-data',
+        name: 'DrugReportData',
+        component: () => import('@/views/drug/report/submission/ReportData.vue'),
+        meta: {
+          title: '上报数据',
+          icon: 'ep:view',
+          noCache: false,
+          canTo: true,
+          hidden: false
+        }
+      },
+      {
+        path: 'report-view-data',
+        name: 'DrugReportViewData',
+        component: () => import('@/views/drug/report/submission/DrugReportViewData.vue'),
+        meta: {
+          title: '查看数据',
+          icon: 'ep:view',
+          noCache: false,
+          canTo: true,
+          hidden: false
+        }
+      },
+      {
         path: 'monitor/:id',
         name: 'DrugImportMonitor',
         component: () => import('@/views/drug/import/monitor/index.vue'),
@@ -598,6 +622,42 @@ const remainingRouter: AppRouteRecordRaw[] = [
           canTo: true,
           hidden: true,
           activeMenu: '/shortage/report-zone'
+        }
+      },
+      {
+        path: 'report-view/:taskId',
+        name: 'ShortageReportView',
+        component: () => import('@/views/shortage/reportrecord/components/Report.vue'),
+        meta: {
+          title: '填报记录查看',
+          icon: 'ep:view',
+          noCache: true,
+          canTo: true,
+          hidden: true,
+          activeMenu: '/shortage/reportrecord'
+        }
+      }
+    ]
+  },
+  {
+    path: '/shortage-report',
+    component: Layout,
+    name: 'ShortageReport',
+    meta: {
+      hidden: true
+    },
+    children: [
+      {
+        path: 'report/:taskId',
+        name: 'ShortageReport',
+        component: () => import('@/views/shortage/report/components/Report.vue'),
+        meta: {
+          title: '药品短缺填报',
+          icon: 'ep:edit',
+          noCache: true,
+          canTo: true,
+          hidden: true,
+          activeMenu: '/shortage/report'
         }
       }
     ]

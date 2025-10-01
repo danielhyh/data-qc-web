@@ -60,4 +60,9 @@ export const DataArchiveApi = {
   exportDataArchive: async (params: DataArchivePageReqVO) => {
     return await request.download({ url: `/drug/data-archive/export-excel`, params })
   },
+
+  // 下载数据档案对应的数据文件
+  downloadArchiveData: async (id: number) => {
+    return await request.download({ url: `/drug/data-archive/download-data?id=${id}` })
+  },
 }

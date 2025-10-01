@@ -1,589 +1,329 @@
 <template>
-  <!-- 专区选择区域 -->
   <ContentWrap>
-    <el-form :inline="true">
-      <el-form-item label="填报专区">
+    <!-- 搜索工作栏 -->
+    <el-form
+      class="-mb-15px"
+      :model="queryParams"
+      ref="queryFormRef"
+      :inline="true"
+      label-width="68px"
+    >
+      <el-form-item label="年份" prop="year">
+        <el-select v-model="queryParams.year" placeholder="请选择年份" clearable class="!w-240px">
+          <el-option v-for="year in yearOptions" :key="year" :label="year" :value="year" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="填报专区" prop="zoneId">
         <el-select
-          v-model="selectedZoneId"
-          @change="loadDrugList"
-          placeholder="请选择专区"
-          style="width: 200px"
+          v-model="queryParams.zoneId"
+          placeholder="请选择填报专区"
+          clearable
+          class="!w-240px"
         >
           <el-option
-            v-for="zone in zoneList"
+            v-for="zone in zoneOptions"
             :key="zone.id"
             :label="zone.zoneName"
             :value="zone.id"
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="当前周期">
-        <el-tag type="info">{{ currentWeek }}</el-tag>
+      <el-form-item label="填报状态" prop="reportStatus">
+        <el-select
+          v-model="queryParams.reportStatus"
+          placeholder="请选择填报状态"
+          clearable
+          class="!w-240px"
+        >
+          <el-option
+            v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_REPORT_STATUS)"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button @click="handleQuery">
+          <Icon icon="ep:search" class="mr-5px" />
+          搜索
+        </el-button>
+        <el-button @click="resetQuery">
+          <Icon icon="ep:refresh" class="mr-5px" />
+          重置
+        </el-button>
+        <el-button
+          type="success"
+          plain
+          @click="handleExport"
+          :loading="exportLoading"
+          v-hasPermi="['shortage:report-task:export']"
+        >
+          <Icon icon="ep:download" class="mr-5px" />
+          导出
+        </el-button>
       </el-form-item>
     </el-form>
   </ContentWrap>
 
-  <!-- 时间提醒组件 -->
-  <TimeAlert
-    :is-time-restricted="isTimeRestricted"
-    :is-in-report-time="isInReportTime"
-    :remaining-time="remainingTime"
-    :time-config-display="timeConfigDisplay"
-    :closable="true"
-  />
-
-  <!-- 通知区域 -->
-  <ContentWrap
-    v-if="zoneNotice && selectedZoneId"
-    title="填报通知"
-    header-icon="ep:bell"
-    headerIconColor="orange"
-  >
-    <div v-html="zoneNotice" class="notice-content"></div>
-  </ContentWrap>
-
-  <!-- 填报表格 -->
-  <ContentWrap
-    v-if="selectedZoneId"
-    :title="tableTitle"
-    message="请检查填报数据，确保准确无误后提交"
-    header-icon="ep:edit"
-  >
-    <el-table
-      v-loading="loading"
-      :data="reportList"
-      border
-      class="report-table"
-      :row-class-name="getRowClassName"
-      :span-method="arraySpanMethod"
-    >
-      <el-table-column label="序号" type="index" width="60" fixed class-name="header-bold" />
-      <el-table-column
-        label="药品分类"
-        prop="drugCategory"
-        width="150"
-        class-name="header-bold"
-        show-overflow-tooltip
-      />
-      <el-table-column label="药品名称" prop="drugName" width="200" class-name="header-bold" />
-      <el-table-column label="剂型" prop="dosageCategory" width="120" class-name="header-bold" />
-      <el-table-column label="最小剂量单位" prop="dosageUnit" width="200" class-name="header-bold">
+  <!-- 列表 -->
+  <ContentWrap>
+    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+      <el-table-column label="年份" align="center" prop="year" />
+      <el-table-column label="填报周期" align="center" prop="reportWeek" />
+      <el-table-column label="填报专区" align="center" prop="zoneName" />
+      <el-table-column label="填报状态" align="center" prop="reportStatus">
         <template #default="scope">
-          <el-select
-            v-model="scope.row.dosageUnit"
-            :disabled="!isInReportTime"
-            style="width: 100%"
-            placeholder="请选择"
+          <dict-tag :type="DICT_TYPE.DRUG_REPORT_STATUS" :value="scope.row.reportStatus" />
+        </template>
+      </el-table-column>
+      <el-table-column label="填报完成度" align="center" prop="completionRate" width="200">
+        <template #default="scope">
+          <div class="flex items-center gap-2">
+            <el-progress
+              :percentage="scope.row.completionRate || 0"
+              :color="getProgressColor(scope.row.completionRate)"
+              :stroke-width="8"
+              style="flex: 1"
+            />
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="剩余时间" align="center">
+        <template #default="scope">
+          <span :class="getRemainingTimeClass(scope.row.deadlineTime)">
+            {{ calculateRemainingTime(scope.row.deadlineTime) }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" align="center" min-width="120px">
+        <template #default="scope">
+          <el-button
+            v-if="scope.row.reportStatus === 0 || scope.row.reportStatus === 1"
+            link
+            type="primary"
+            @click="handleReport(scope.row.id)"
           >
-            <el-option
-              v-for="unit in scope.row.dosageUnitOptions || []"
-              :key="unit.value"
-              :label="unit.label"
-              :value="unit.value"
-            />
-          </el-select>
-        </template>
-      </el-table-column>
-
-      <el-table-column
-        label="本周累计使用量（最小剂量单位）"
-        width="240"
-        align="center"
-        class-name="header-bold"
-      >
-        <template #default="scope">
-          <div class="usage-input">
-            <el-input-number
-              v-model="scope.row.weekUsageAmount"
-              :min="0"
-              :precision="2"
-              :disabled="!isInReportTime"
-              style="width: 100%"
-              placeholder="按包装单位"
-              @change="handleUsageChange(scope.row)"
-            />
-          </div>
-        </template>
-      </el-table-column>
-
-      <el-table-column
-        label="当日实时库存量（最小剂量单位）"
-        width="240"
-        align="center"
-        class-name="header-bold"
-      >
-        <template #default="scope">
-          <div class="stock-input">
-            <el-input-number
-              v-model="scope.row.currentStockAmount"
-              :min="0"
-              :precision="2"
-              :disabled="!isInReportTime"
-              style="width: 100%"
-              placeholder="按包装单位"
-              @change="handleStockChange(scope.row)"
-            />
-          </div>
-        </template>
-      </el-table-column>
-
-      <el-table-column label="供应情况" width="150" align="center" class-name="header-bold">
-        <template #header>
-          <div class="custom-header">
-            <span>供应情况</span>
-          </div>
-        </template>
-        <template #default="scope">
-          <div class="supply-input-wrapper">
-            <el-select
-              v-model="scope.row.supplyStatus"
-              :disabled="!isInReportTime"
-              style="width: 100%"
-              placeholder="请选择"
-              :class="{ 'required-field': isSupplyStatusRequired(scope.row) }"
-              :key="`supply-${scope.$index}-${scope.row.weekUsageAmount}-${scope.row.currentStockAmount}`"
-            >
-              <el-option
-                v-for="status in getIntDictOptions(DICT_TYPE.SUPPLY_STATUS)"
-                :key="status.value"
-                :label="status.label"
-                :value="status.value"
-              />
-            </el-select>
-            <span 
-              v-if="isSupplyStatusRequired(scope.row)" 
-              class="required-indicator"
-              :key="`required-${scope.$index}-${scope.row.weekUsageAmount}-${scope.row.currentStockAmount}`"
-            >*</span>
-          </div>
+            填报
+          </el-button>
+          <el-button
+            v-if="scope.row.reportStatus === 2"
+            link
+            type="info"
+            @click="handleView(scope.row.id)"
+          >
+            查看
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
-
-    <!-- 提交区域 -->
-    <div class="submit-area" v-if="selectedZoneId && reportList.length > 0">
-      <div class="flex items-center justify-between">
-        <div class="submit-buttons">
-          <el-button @click="handlePreview" :disabled="!isInReportTime"> 预览数据</el-button>
-          <el-button
-            type="primary"
-            @click="handleSubmit"
-            :loading="submitting"
-            :disabled="!isInReportTime || !isDataValid"
-          >
-            <Icon icon="ep:upload" class="mr-1" />
-            提交填报
-          </el-button>
-        </div>
-      </div>
-    </div>
+    <!-- 分页 -->
+    <Pagination
+      :total="total"
+      v-model:page="queryParams.pageNo"
+      v-model:limit="queryParams.pageSize"
+      @pagination="getList"
+    />
   </ContentWrap>
 
-  <!-- 空状态 -->
-  <el-empty v-if="!selectedZoneId" description="请选择填报专区开始填报" :image-size="100" />
-
-  <!-- 预览对话框 -->
-  <PreviewDialog ref="previewDialogRef" />
+  <!-- 表单弹窗：添加/修改 -->
+  <!-- <ReportTaskForm ref="formRef" @success="getList" /> -->
 </template>
 
 <script setup lang="ts">
-import {
-  ReportZoneApi,
-  ReportRecordApi,
-  type ReportZoneVO,
-  type ReportRecordVO,
-  getSupplyStatusLabel,
-  SupplyStatusEnum
-} from '@/api/shortage'
-import { formatDate } from '@/utils/formatTime'
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
-import PreviewDialog from './components/PreviewDialog.vue'
-import TimeAlert from './components/TimeAlert.vue'
+import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
+import download from '@/utils/download'
+import { ReportTaskApi, ReportTaskVO } from '@/api/shortage/reporttask'
+import { ReportZoneApi, ReportZoneOptionVO } from '@/api/shortage/reportzone'
+import { useRouter, useRoute } from 'vue-router'
+// import ReportTaskForm from './ReportTaskForm.vue'
 
-/** 短缺药品数据填报页面 */
-defineOptions({ name: 'ShortageReport' })
+/** 机构填报任务 列表 */
+defineOptions({ name: 'ReportTask' })
 
-const message = useMessage()
-const loading = ref(false)
-const submitting = ref(false)
-const selectedZoneId = ref<number>()
-const zoneList = ref<ReportZoneVO[]>([])
-const reportList = ref<ReportRecordVO[]>([])
-const zoneNotice = ref('')
+const message = useMessage() // 消息弹窗
+const { t } = useI18n() // 国际化
+const router = useRouter() // 路由
+const route = useRoute() // 路由实例
 
-// 表格合并单元格方法
-const arraySpanMethod = ({ row, column, rowIndex, columnIndex }) => {
-  // 只对药品分类列进行合并（第2列，因为第1列是序号）
-  if (columnIndex === 1) {
-    const currentCategory = row.drugCategory
-    const dataList = reportList.value
-
-    // 找到当前分类的第一行
-    let startIndex = -1
-    for (let i = 0; i < dataList.length; i++) {
-      if (dataList[i].drugCategory === currentCategory) {
-        startIndex = i
-        break
-      }
-    }
-
-    // 计算当前分类的总行数
-    const categoryCount = dataList.filter((item) => item.drugCategory === currentCategory).length
-
-    if (rowIndex === startIndex) {
-      // 第一行显示合并的单元格
-      return {
-        rowspan: categoryCount,
-        colspan: 1
-      }
-    } else if (dataList[rowIndex].drugCategory === currentCategory) {
-      // 同一分类的其他行不显示
-      return {
-        rowspan: 0,
-        colspan: 0
-      }
-    }
-  }
-
-  return {
-    rowspan: 1,
-    colspan: 1
-  }
-}
-
-// 当前周期
-const currentWeek = computed(() => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const week = getWeekNumber(now)
-  return `${year}-${week.toString().padStart(2, '0')}周`
+const loading = ref(true) // 列表的加载中
+const list = ref<ReportTaskVO[]>([]) // 列表的数据
+const total = ref(0) // 列表的总页数
+const queryParams = reactive({
+  pageNo: 1,
+  pageSize: 10,
+  year: undefined,
+  zoneId: undefined,
+  reportStatus: undefined
 })
+const queryFormRef = ref() // 搜索的表单
+const exportLoading = ref(false) // 导出的加载中
 
-// 表格标题
-const tableTitle = computed(() => {
-  const baseTitle = '药品填报数据'
-  return reportList.value.length > 0
-    ? `${baseTitle} (共 ${reportList.value.length} 个药品)`
-    : baseTitle
-})
+// 下拉选项数据
+const yearOptions = ref<number[]>([])
+const zoneOptions = ref<ReportZoneOptionVO[]>([])
 
-// 填报时间控制
-const isTimeRestricted = ref(false) // 是否有时间限制
-const isInReportTime = ref(false)
-const remainingTime = ref('')
-const timeConfigDisplay = ref('加载中...')
-
-// 判断供应情况是否必填 - 使用计算属性确保响应式更新
-const getIsSupplyStatusRequired = (row: ReportRecordVO): boolean => {
-  // 显式检查数值，确保响应式更新
-  const weekUsage = row.weekUsageAmount
-  const stockAmount = row.currentStockAmount
-  
-  return (
-    (weekUsage !== undefined && weekUsage !== null && weekUsage > 0) ||
-    (stockAmount !== undefined && stockAmount !== null && stockAmount > 0)
-  )
-}
-
-// 为了在模板中使用，创建一个方法
-const isSupplyStatusRequired = (row: ReportRecordVO): boolean => {
-  return getIsSupplyStatusRequired(row)
-}
-
-// 处理用量变化
-const handleUsageChange = (row: ReportRecordVO) => {
-  checkAndClearSupplyStatus(row)
-}
-
-// 处理库存变化
-const handleStockChange = (row: ReportRecordVO) => {
-  checkAndClearSupplyStatus(row)
-}
-
-// 检查并清空供应情况
-const checkAndClearSupplyStatus = (row: ReportRecordVO) => {
-  // 如果两个值都为0或未填写，清空供应情况
-  const weekUsage = row.weekUsageAmount || 0
-  const stockAmount = row.currentStockAmount || 0
-  
-  if (weekUsage === 0 && stockAmount === 0) {
-    row.supplyStatus = null
-  }
-}
-
-// 数据有效性检查
-const isDataValid = computed(() => {
-  if (!reportList.value.length) return false
-
-  return reportList.value.every((item) => {
-    // 使用相同的逻辑检查是否需要必填
-    const isRequired = getIsSupplyStatusRequired(item)
-
-    // 如果需要必填，供应情况必须填写
-    if (isRequired) {
-      return item.supplyStatus !== undefined && item.supplyStatus !== null
-    }
-
-    // 如果不需要必填，则通过验证
-    return true
-  })
-})
-const checkReportTime = async () => {
-  if (!selectedZoneId.value) {
-    timeConfigDisplay.value = '请先选择填报专区'
-    isTimeRestricted.value = false
-    return
-  }
-
-  try {
-    const result = await ReportZoneApi.checkReportTime(selectedZoneId.value)
-    isInReportTime.value = result.isInTime
-    timeConfigDisplay.value = result.message
-    isTimeRestricted.value = result.hasTimeRestriction !== false // 如果有时间限制则显示组件
-
-    if (result.isInTime && result.remainingMinutes) {
-      const hours = Math.floor(result.remainingMinutes / 60)
-      const minutes = result.remainingMinutes % 60
-      remainingTime.value = `${hours}小时${minutes}分钟`
-    }
-  } catch (error) {
-    console.error('检查填报时间失败:', error)
-    // 降级到固定时间检查
-    checkReportTimeFixed()
-  }
-}
-
-// 保留原有固定时间检查作为降级方案
-const checkReportTimeFixed = () => {
-  const now = new Date()
-  const day = now.getDay()
-  const hour = now.getHours()
-
-  isInReportTime.value = day === 5 && hour >= 12 && hour < 18
-  isTimeRestricted.value = true // 降级方案默认有时间限制
-
-  if (isInReportTime.value) {
-    const endTime = new Date()
-    endTime.setHours(18, 0, 0, 0)
-    const remaining = endTime.getTime() - now.getTime()
-    const hours = Math.floor(remaining / (1000 * 60 * 60))
-    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
-    remainingTime.value = `${hours}小时${minutes}分钟`
-  }
-
-  timeConfigDisplay.value = '填报时间：每周五 12:00-18:00'
-}
-
-// 获取周数
-const getWeekNumber = (date: Date): number => {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayNum = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
-
-// 加载专区列表
-const loadZoneList = async () => {
-  try {
-    const data = await ReportZoneApi.getList({
-      pageNo: 1,
-      pageSize: -1,
-      status: 0
-    })
-    console.log(data)
-    zoneList.value = data
-  } catch (error) {
-    console.error('加载专区列表失败:', error)
-  }
-}
-
-// 加载药品列表
-const loadDrugList = async () => {
-  if (!selectedZoneId.value) return
-
+/** 查询列表 */
+const getList = async () => {
   loading.value = true
   try {
-    const data = await ReportRecordApi.getReportListByZoneId(selectedZoneId.value)
-    reportList.value = data
-
-    // 获取通知内容
-    const zone = zoneList.value.find((z) => z.id === selectedZoneId.value)
-    zoneNotice.value = zone?.noticeContent || ''
-
-    // 检查填报时间
-    await checkReportTime()
-
-    // 切换专区时重置时间提醒的关闭状态
-    // if (timeAlertRef.value) {
-    //   timeAlertRef.value.reset()
-    // }
-  } catch (error) {
-    console.error('加载药品列表失败:', error)
-    message.error('加载药品列表失败')
+    const data = await ReportTaskApi.getReportTaskPage(queryParams)
+    list.value = data.list
+    total.value = data.total
   } finally {
     loading.value = false
   }
 }
 
-// 获取行样式类名
-const getRowClassName = ({ row }: { row: ReportRecordVO }): string => {
-  if (row.supplyStatus === 4) return 'severe-shortage-row'
-  if (row.supplyStatus === 3) return 'shortage-row'
-  return ''
+/** 搜索按钮操作 */
+const handleQuery = () => {
+  queryParams.pageNo = 1
+  getList()
 }
 
-// 预览数据
-const previewDialogRef = ref()
-const handlePreview = () => {
-  previewDialogRef.value?.open(reportList.value)
+/** 重置按钮操作 */
+const resetQuery = () => {
+  queryFormRef.value.resetFields()
+  handleQuery()
 }
 
-// 提交填报
-const handleSubmit = async () => {
-  if (!isInReportTime.value) {
-    message.warning('当前不在填报时间内')
-    return
-  }
-
-  if (!isDataValid.value) {
-    message.warning('请完整填写所有必填字段')
-    return
-  }
-
+/** 导出按钮操作 */
+const handleExport = async () => {
   try {
-    await message.confirm('确认提交本次填报数据吗？提交后将无法修改。')
-
-    submitting.value = true
-
-    // 过滤出需要提交的数据（有供应情况的记录）
-    const submitData = reportList.value
-      .filter((item) => item.supplyStatus !== undefined && item.supplyStatus !== null)
-      .map((item) => ({
-        ...item,
-        dosageUnit: item.dosageUnit // 确保包含 dosageUnit 字段
-      }))
-
-    await ReportRecordApi.batchSave(submitData)
-    message.success('填报成功')
-
-    // 重新加载数据
-    await loadDrugList()
-  } catch (error) {
-    console.error('提交失败:', error)
+    // 导出的二次确认
+    await message.exportConfirm()
+    // 发起导出
+    exportLoading.value = true
+    const data = await ReportTaskApi.exportReportTask(queryParams)
+    download.excel(data, '机构填报任务.xls')
+  } catch {
   } finally {
-    submitting.value = false
+    exportLoading.value = false
   }
 }
 
-// 初始化
+/** 初始化 **/
 onMounted(() => {
-  loadZoneList()
-
-  // 初始化时间显示
-  timeConfigDisplay.value = '请选择填报专区'
-  isTimeRestricted.value = false
-
-  // 每分钟检查一次时间（如果已选择专区）
-  setInterval(() => {
-    if (selectedZoneId.value) {
-      checkReportTime()
-    }
-  }, 60000)
+  getList()
+  loadYearOptions()
+  loadZoneOptions()
 })
+
+// 监听路由参数变化，用于从填报页面返回时刷新
+watch(
+  () => route.params.refresh,
+  (newVal) => {
+    if (newVal === 'true') {
+      getList()
+      // 清除刷新标记
+      router.replace({ name: 'ShortageReportList', params: {} })
+    }
+  },
+  { immediate: true }
+)
+
+/** 加载年份选项 */
+const loadYearOptions = async () => {
+  try {
+    const data = await ReportTaskApi.getReportTaskYears()
+    yearOptions.value = data
+  } catch (error) {
+    console.error('加载年份选项失败:', error)
+  }
+}
+
+/** 加载专区选项 */
+const loadZoneOptions = async () => {
+  try {
+    const data = await ReportZoneApi.getOptions()
+    zoneOptions.value = data
+  } catch (error) {
+    console.error('加载专区选项失败:', error)
+  }
+}
+
+/** 计算剩余时间 */
+const calculateRemainingTime = (deadlineTime: string) => {
+  if (!deadlineTime) return '-'
+
+  const now = new Date()
+  const deadline = new Date(deadlineTime)
+  const diff = deadline.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    const overdue = Math.abs(diff)
+    const days = Math.floor(overdue / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((overdue % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    return days > 0 ? `逾期${days}天` : `逾期${hours}小时`
+  } else {
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    return days > 0 ? `剩余${days}天` : `剩余${hours}小时`
+  }
+}
+
+/** 获取剩余时间样式类名 */
+const getRemainingTimeClass = (deadlineTime: string) => {
+  if (!deadlineTime) return ''
+
+  const now = new Date()
+  const deadline = new Date(deadlineTime)
+  const diff = deadline.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    return 'text-red-500' // 逾期显示红色
+  } else if (diff <= 24 * 60 * 60 * 1000) {
+    return 'text-orange-500' // 24小时内显示橙色
+  } else {
+    return 'text-green-500' // 正常显示绿色
+  }
+}
+
+/** 获取进度条颜色 */
+const getProgressColor = (percentage: number) => {
+  if (percentage >= 100) {
+    return '#67C23A' // 绿色 - 完成
+  } else if (percentage >= 60) {
+    return '#409EFF' // 蓝色 - 良好
+  } else if (percentage >= 30) {
+    return '#E6A23C' // 橙色 - 一般
+  } else {
+    return '#F56C6C' // 红色 - 较低
+  }
+}
+
+/** 填报按钮操作 */
+const handleReport = (id: number) => {
+  // 从列表中找到对应的任务
+  const task = list.value.find((t) => t.id === id)
+  if (!task) return
+  // 跳转到填报页面,传递专区ID、周期和填报状态
+  router.push({
+    name: 'ShortageReport',
+    params: { taskId: id.toString() },
+    query: {
+      zoneId: task.zoneId?.toString(),
+      reportWeek: task.reportWeek,
+      reportStatus: task.reportStatus?.toString()
+    }
+  })
+}
+
+/** 查看按钮操作 */
+const handleView = (id: number) => {
+  // 从列表中找到对应的任务
+  const task = list.value.find((t) => t.id === id)
+  if (!task) return
+
+  // 跳转到查看页面,传递专区ID、周期和填报状态
+  router.push({
+    name: 'ShortageReport',
+    params: { taskId: id.toString() },
+    query: {
+      zoneId: task.zoneId?.toString(),
+      reportWeek: task.reportWeek,
+      reportStatus: task.reportStatus?.toString()
+    }
+  })
+}
 </script>
-
-<style scoped>
-.notice-content {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #606266;
-  padding: 12px 0;
-}
-
-.notice-content :deep(h3) {
-  color: #303133;
-  margin-top: 0;
-  margin-bottom: 12px;
-}
-
-.notice-content :deep(ol) {
-  padding-left: 20px;
-}
-
-.notice-content :deep(li) {
-  margin-bottom: 8px;
-}
-
-.report-table {
-  margin-bottom: 20px;
-}
-
-.report-table :deep(.shortage-row) {
-  background-color: #fef2f2;
-}
-
-.report-table :deep(.severe-shortage-row) {
-  background-color: #fef2f2;
-}
-
-.submit-area {
-  border-top: 1px solid #ebeef5;
-  padding-top: 20px;
-}
-
-.info-text {
-  display: flex;
-  align-items: center;
-  color: #909399;
-  font-size: 14px;
-}
-
-.submit-buttons {
-  display: flex;
-  gap: 12px;
-}
-
-.report-table :deep(.header-bold .cell) {
-  font-weight: bold;
-}
-
-.usage-input,
-.stock-input {
-  display: flex;
-  align-items: center;
-}
-
-.usage-input .el-input-number,
-.stock-input .el-input-number {
-  width: 100%;
-}
-
-.supply-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.required-indicator {
-  position: absolute;
-  right: -12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #f56c6c;
-  font-weight: bold;
-  font-size: 14px;
-  line-height: 1;
-}
-
-.required-field {
-  border-color: #f56c6c !important;
-}
-
-.custom-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-</style>
