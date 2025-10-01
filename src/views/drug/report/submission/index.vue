@@ -156,19 +156,21 @@ const getRemainingTime = ({ row }) => {
 
 /** 上报 */
 const handleReport = ({ row }) => {
-  console.log(row)
   router.push({
     name: 'DrugReportData',
-    query: {}
+    query: {
+      taskId: row.taskId
+    }
   })
 }
 
 /** 重新上报 */
 const handleResubmit = ({ row }) => {
-  console.log(row)
   router.push({
     name: 'DrugReportData',
-    query: {}
+    query: {
+      taskId: row.taskId
+    }
   })
 }
 

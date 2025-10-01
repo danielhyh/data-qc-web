@@ -30,7 +30,7 @@
 
     <!-- 上报进度步骤条 -->
     <ContentWrap class="progress-card">
-      <el-steps :active="currentStep" align-center :process-status="getProcessStatus()" >
+      <el-steps :active="currentStep" align-center :process-status="getProcessStatus()">
         <el-step title="准备" @click="changeSteps(0)">
           <template #icon>
             <el-tooltip content="准备上报文件" placement="top">
@@ -102,7 +102,7 @@
                     <div class="file-card-stats">
                       <span class="field-count">{{ table.fieldCount }} 个字段</span>
                       <span class="required-fields"
-                      >{{ table.requiredFieldsCount || 0 }} 个必填</span
+                        >{{ table.requiredFieldsCount || 0 }} 个必填</span
                       >
                       <span class="download-count">{{ table.downloadCount || 0 }} 次下载</span>
                     </div>
@@ -190,7 +190,7 @@
               <el-table-column prop="status" label="状态" width="120">
                 <template #default="{ row }">
                   <div class="file-status">
-                    <el-icon v-if="row.status === 1"/>
+                    <el-icon v-if="row.status === 1" />
                     <el-icon v-if="row.status === 2" class="status-icon success">
                       <CircleCheck />
                     </el-icon>
@@ -227,24 +227,24 @@
                   </el-button>
                   <div class="upload-button">
                     <el-upload
-                    v-if="[0, 2, 3].includes(row.status)"
-                    action="#"
-                    :auto-upload="false"
-                    :on-change="handleFileChange"
-                    accept=".xlsx"
-                    :show-file-list="false"
-                  >
-                    <el-button
-                        link
-                        type="warning"
-                        size="small"
-                      >
-                      重新上传
-                    </el-button>
-                  </el-upload>
+                      v-if="[0, 2, 3].includes(row.status)"
+                      action="#"
+                      :auto-upload="false"
+                      :on-change="handleFileChange"
+                      accept=".xlsx"
+                      :show-file-list="false"
+                    >
+                      <el-button link type="warning" size="small"> 重新上传 </el-button>
+                    </el-upload>
                   </div>
-                  
-                  <el-button v-if="[2,3].includes(row.status)" link type="danger" size="small" @click="removeFile(row)">
+
+                  <el-button
+                    v-if="[2, 3].includes(row.status)"
+                    link
+                    type="danger"
+                    size="small"
+                    @click="removeFile(row)"
+                  >
                     删除
                   </el-button>
                 </template>
@@ -266,9 +266,6 @@
         <div class="qc-section">
           <div class="qc-header">
             <h4>前置质控结果</h4>
-            <el-tag :type="preQCResult.passed ? 'success' : 'danger'">
-              {{ preQCResult.passed ? '质控通过' : '质控未通过' }}
-            </el-tag>
           </div>
 
           <!-- 质控详情表格 -->
@@ -277,12 +274,13 @@
               type="selection"
               width="55"
               prop="selected"
-              :selectable="checkboxDisabled"/>
+              :selectable="checkboxDisabled"
+            />
             <el-table-column prop="name" label="标准文件名称" width="200" />
             <el-table-column prop="status" label="上传状态" width="120">
               <template #default="{ row }">
                 <div class="file-status">
-                  <el-icon v-if="row.status === 1"/>
+                  <el-icon v-if="row.status === 1" />
                   <el-icon v-if="row.status === 2" class="status-icon success">
                     <CircleCheck />
                   </el-icon>
@@ -306,7 +304,7 @@
                     size="small"
                     @click="viewQCErrors(row)"
                   >
-                   <span>{{ getFileQcStatusText(row.qcStatus) }}</span>
+                    <span>{{ getFileQcStatusText(row.qcStatus) }}</span>
                   </el-button>
                 </div>
               </template>
@@ -316,7 +314,7 @@
                 {{ formatFileSize(row.size) }}
               </template>
             </el-table-column>
-            <el-table-column prop="fileFormat" label="上报文件格式" width="150"/>
+            <el-table-column prop="fileFormat" label="上报文件格式" width="150" />
             <el-table-column prop="errorCount" label="错误数" width="100">
               <template #default="{ row }">
                 <span :class="{ 'error-count': row.errorCount > 0 }">
@@ -326,12 +324,7 @@
             </el-table-column>
             <el-table-column label="操作" width="150" fixed="right">
               <template #default="{ row }">
-                <el-button
-                  link
-                  type="primary"
-                  size="small"
-                  @click="viewFileData(row)"
-                >
+                <el-button link type="primary" size="small" @click="viewFileData(row)">
                   查看详情
                 </el-button>
                 <el-button
@@ -347,30 +340,10 @@
             </el-table-column>
           </el-table>
 
-          <!-- 错误详情对话框 -->
-          <div  v-if="errorDialog.visible" class="quality-details">
-            <h4>质检初审不通过</h4>
-            <div class="quality-details-content">
-              <div class="detail-item">
-                <span class="detail-label">文件名称:</span>
-                <span>{{ errorDialog.fileName }}</span>
-              </div>
-              <div class="detail-item">
-                  <span class="detail-label">未通过原因：</span>
-                  <span id="failureReason">{{ errorDialog.errors}}</span>
-              </div>
-            </div>
-          </div>
           <div class="qc-actions">
             <el-button @click="backToUpload">返回上传</el-button>
-            <el-button @click="downloadQCReport('pre')">
-              <el-icon>
-                <Download />
-              </el-icon>
-              下载质控报告
-            </el-button>
-            <el-button type="primary" @click="submitReport">
-              提交上报
+            <el-button type="primary" :disabled="!preQCResult.passed" @click="startSubmitReport">
+              开始提交上报
             </el-button>
           </div>
         </div>
@@ -379,44 +352,101 @@
       <!-- 步骤3: 提交上报 -->
       <div v-if="currentStep === 3" class="step-content">
         <div class="submit-section">
-          <el-result icon="success" title="数据上报完成" sub-title="您的数据已成功提交并通过前置质控检查">
-            <template #extra>
-              <div class="submit-info">
-                <el-descriptions :column="2" border>
-                  <el-descriptions-item label="提交时间">
-                    {{ formatDateTime(submitInfo.submitTime) }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="提交人">
-                    {{ submitInfo.submitter }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="数据条数">
-                    {{ submitInfo.totalRecords }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="上报状态">
-                    <el-tag type="success">已完成</el-tag>
-                  </el-descriptions-item>
-                </el-descriptions>
-              </div>
-              <div class="submit-actions">
-                <el-button type="primary" @click="downloadQCReport('pre')">
-                  <el-icon>
-                    <Download />
+          <div class="submit-info">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="任务名称" width="120">
+                {{ submitInfo.taskName }}
+              </el-descriptions-item>
+              <el-descriptions-item label="开始日期" width="120">
+                {{ formatDateTime(submitInfo.startDate) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="结束日期" width="120">
+                {{ formatDateTime(submitInfo.endDate) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="上报时间" width="120">
+                {{ formatDateTime(submitInfo.reportTime) }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+          <!-- 质控详情表格 -->
+          <el-table :data="preQCResult.details" stripe>
+            <el-table-column prop="name" label="标准文件名称" width="200" />
+            <el-table-column prop="status" label="上传状态" width="120">
+              <template #default="{ row }">
+                <div class="file-status">
+                  <el-icon v-if="row.status === 1" />
+                  <el-icon v-if="row.status === 2" class="status-icon success">
+                    <CircleCheck />
                   </el-icon>
-                  下载质控报告
-                </el-button>
-                <el-button @click="downloadOriginalFiles">
-                  <el-icon>
-                    <Download />
+                  <el-icon v-else-if="row.status === 3" class="status-icon error">
+                    <CircleClose />
                   </el-icon>
-                  下载原始文件
+                  <el-icon v-else class="status-icon waiting">
+                    <Clock />
+                  </el-icon>
+                  <span>{{ getFileStatusText(row.status) }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="qcStatus" label="质检状态" width="120">
+              <template #default="{ row }">
+                <div class="file-status">
+                  <el-button
+                    link
+                    :class="['status-badge', row.qcStatus === 4 ? 'qc-fail' : 'qc-passed']"
+                    type="primary"
+                    size="small"
+                    @click="viewQCErrors(row)"
+                  >
+                    <span>{{ getFileQcStatusText(row.qcStatus) }}</span>
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="size" label="上报文件大小" width="120">
+              <template #default="{ row }">
+                {{ formatFileSize(row.size) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileFormat" label="上报文件格式" width="150" />
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" size="small" @click="viewFileData(row)">
+                  查看详情
                 </el-button>
-                <el-button @click="viewReportHistory"> 查看历史记录 </el-button>
-              </div>
-            </template>
-          </el-result>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="qc-actions">
+            <el-button @click="() => currentTask.currentStep = 2">返回前置质控</el-button>
+            <el-button type="primary" :disabled="!preQCResult.passed" @click="submitReport">
+              提交上报
+            </el-button>
+          </div>
         </div>
       </div>
     </ContentWrap>
+
+    <!-- 错误详情对话框 -->
+    <el-dialog v-model="errorDialog.visible" title="质检提示" width="30%" top="5vh">
+      <!-- 错误详情对话框 -->
+      <div class="quality-details">
+        <h4>质检初审不通过</h4>
+        <div class="quality-details-content">
+          <div class="detail-item">
+            <span class="detail-label">文件名称:</span>
+            <span>{{ errorDialog.fileName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">未通过原因：</span>
+            <span id="failureReason">{{ errorDialog.errors }}</span>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="errorDialog.visible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 数据查看对话框 -->
     <el-dialog
@@ -424,17 +454,17 @@
       :title="`查看数据 - ${dataViewDialog.fileName}`"
       width="80%"
       top="5vh"
-    >  
+    >
       <component :is="excelDetailTarget" :dataViewDialog="dataViewDialog" ref="excelDetail" />
       <div class="dialog-page">
-          <!-- 分页 -->
-          <Pagination
-            :total="excelDetailTotal"
-            v-model:page="queryParams.pageNo"
-            v-model:limit="queryParams.pageSize"
-            @pagination="getExcelDetailData"
-          />
-        </div>
+        <!-- 分页 -->
+        <Pagination
+          :total="excelDetailTotal"
+          v-model:page="queryParams.pageNo"
+          v-model:limit="queryParams.pageSize"
+          @pagination="getExcelDetailData"
+        />
+      </div>
     </el-dialog>
 
     <!-- Excel预览弹窗 -->
@@ -444,8 +474,8 @@
 
 <script setup lang="ts">
 import request from '@/config/axios'
-import {ref, reactive, computed, onMounted, onUnmounted} from 'vue'
-import {useMessage} from '@/hooks/web/useMessage'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useMessage } from '@/hooks/web/useMessage'
 import {
   Download,
   Upload,
@@ -464,7 +494,7 @@ import {
   Files
 } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader/index.vue'
-import {ContentWrap} from '@/components/ContentWrap'
+import { ContentWrap } from '@/components/ContentWrap'
 import DictTag from '@/components/DictTag/src/DictTag.vue'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
 import {
@@ -474,10 +504,10 @@ import {
   type FileUploadVO,
   type QCResultVO
 } from '@/api/drug/reportdata'
-import {ImportTemplateApi} from '@/api/drug/task/template'
-import {TemplateFieldApi} from '@/api/drug/task/template'
+import { ImportTemplateApi } from '@/api/drug/task/template'
+import { TemplateFieldApi } from '@/api/drug/task/template'
 import download from '@/utils/download'
-import {getDictLabel, DICT_TYPE, getDictOptions} from '@/utils/dict'
+import { getDictLabel, DICT_TYPE, getDictOptions } from '@/utils/dict'
 import hospitalDetails from './excel-detail/hospital.vue'
 import inboundDetails from './excel-detail/inbound.vue'
 import outboundDetails from './excel-detail/outbound.vue'
@@ -485,7 +515,7 @@ import usageDetails from './excel-detail/usage.vue'
 import catalogDetails from './excel-detail/catalog.vue'
 
 // 定义组件名称
-defineOptions({name: 'DrugReportData'})
+defineOptions({ name: 'DrugReportData' })
 
 // 消息弹窗
 const message = useMessage()
@@ -505,6 +535,11 @@ const currentStep = computed(() => {
 })
 const loading = ref(false)
 
+const route = useRoute()
+const router = useRouter() // 路由对象
+
+const queryData = route.query
+
 // 当前任务信息
 const currentTask = ref<any>({
   id: null,
@@ -515,16 +550,16 @@ const currentTask = ref<any>({
   hospitalId: null,
   hospitalName: '',
   description: '',
-  taskId: null,
+  taskId: null
 })
 
 // 文件列表
 const fileList = ref([
-  {id: 1, name: '医疗机构基本情况.xlsx', type: 'hospital', status: 0, size: 0, recordCount: 0},
-  {id: 2, name: '医疗机构药品目录.xlsx', type: 'catalog', status: 0, size: 0, recordCount: 0},
-  {id: 3, name: '医疗机构入库情况.xlsx', type: 'inbound', status: 0, size: 0, recordCount: 0},
-  {id: 4, name: '医疗机构出库情况.xlsx', type: 'outbound', status: 0, size: 0, recordCount: 0},
-  {id: 5, name: '医疗机构使用情况.xlsx', type: 'usage', status: 0, size: 0, recordCount: 0}
+  { id: 1, name: '医疗机构基本情况.xlsx', type: 'hospital', status: 0, size: 0, recordCount: 0 },
+  { id: 2, name: '医疗机构药品目录.xlsx', type: 'catalog', status: 0, size: 0, recordCount: 0 },
+  { id: 3, name: '医疗机构入库情况.xlsx', type: 'inbound', status: 0, size: 0, recordCount: 0 },
+  { id: 4, name: '医疗机构出库情况.xlsx', type: 'outbound', status: 0, size: 0, recordCount: 0 },
+  { id: 5, name: '医疗机构使用情况.xlsx', type: 'usage', status: 0, size: 0, recordCount: 0 }
 ])
 
 const selectedFileIds = ref([])
@@ -537,15 +572,16 @@ const preQCResult = ref({
 
 // 提交信息
 const submitInfo = ref({
-  submitTime: new Date(),
-  submitter: '张三',
-  totalRecords: 12580
+  taskName: '',
+  startDate: '',
+  endDate: '',
+  reportTime: '',
 })
 
 const excelDetailTotal = ref(0)
 const queryParams = ref({
   pageNo: 1,
-  pageSize: 100,
+  pageSize: 100
 })
 
 // 数据查看对话框
@@ -557,7 +593,6 @@ const dataViewDialog = ref({
 })
 const activeFile = ref()
 
-
 // 错误详情对话框
 const errorDialog = ref({
   visible: false,
@@ -567,8 +602,8 @@ const errorDialog = ref({
 })
 
 // ==================== 计算属性 ====================
-const excelDetailTarget  = computed(() => {
-    if (activeFile.value.type === 'hospital') {
+const excelDetailTarget = computed(() => {
+  if (activeFile.value.type === 'hospital') {
     return hospitalDetails
   } else if (activeFile.value.type === 'catalog') {
     return catalogDetails
@@ -583,7 +618,6 @@ const excelDetailTarget  = computed(() => {
   }
 })
 
-
 // 计算剩余天数
 const remainingDays = computed(() => {
   const end = new Date(currentTask.value.endDate)
@@ -594,21 +628,22 @@ const remainingDays = computed(() => {
 
 // 所有文件是否已上传
 const allFilesUploaded = computed(() => {
-  return fileList.value.every(file => file.status === 2)
+  return fileList.value.every((file) => file.status === 2)
 })
 
 // ==================== 方法定义 ====================
 
-function checkboxDisabled (row) {
-  return [2,3].includes(row.qcStatus)
+function checkboxDisabled(row) {
+  return [2, 3].includes(row.qcStatus)
 }
 
-function handleSelectionChange (val) {
-  selectedFileIds.value = val.map(item => item.id)
+function handleSelectionChange(val) {
+  selectedFileIds.value = val.map((item) => item.id)
 }
 
-function changeSteps (step: number) {
-  if (step <= currentTask.value.maxCurrentStep) { // 超出当前步骤范围，不执行任何操作
+function changeSteps(step: number) {
+  if (step <= currentTask.value.maxCurrentStep) {
+    // 超出当前步骤范围，不执行任何操作
     currentTask.value.currentStep = step
   }
 }
@@ -626,12 +661,14 @@ const formatDate = (date: string) => {
 
 // 格式化日期时间
 const formatDateTime = (date: Date | string) => {
+  if (!date) return '' 
   return new Date(date).toLocaleString('zh-CN')
 }
 
 // 格式化文件大小
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'
+  if (!bytes) return '-'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
@@ -662,7 +699,7 @@ const getFileStatusText = (status: string) => {
 }
 
 // 获取质检状态
-const getFileQcStatusText =  (status: string) => {
+const getFileQcStatusText = (status: string) => {
   const map: Record<string, string> = {
     0: '未前置',
     1: '前置中',
@@ -744,7 +781,6 @@ const loadTemplateDefinitions = async () => {
     templateData.forEach((template) => {
       definitions[template.id] = template
     })
-
     tableDefinitions.value = definitions
   } catch (error) {
     console.error('加载模板定义失败:', error)
@@ -772,37 +808,23 @@ const loadTemplateDefinitions = async () => {
 /** 获取模板颜色 */
 const getTemplateColor = (tableType: string): string => {
   const colorMap: Record<string, string> = {
-    'hospital': '#409eff',
-    'catalog': '#67c23a',
-    'inbound': '#e6a23c',
-    'outbound': '#f56c6c',
-    'usage': '#909399'
+    hospital: '#409eff',
+    catalog: '#67c23a',
+    inbound: '#e6a23c',
+    outbound: '#f56c6c',
+    usage: '#909399'
   }
   return colorMap[tableType] || '#409eff'
 }
 
 // 开始上传
 const startUpload = async () => {
-  if (currentTask.value.taskId) { // 如果有任务id说明当前上报流程已经存在，不再重复创建任务
-    return
-  }
   try {
     loading.value = true
-    
-    message.notify('正在创建上报任务...')
-    const res = await ReportDataApi.createReportTask({ reportTaskId: currentTask.value.id, currentStep: 1  })
-    
-
+    await updateReportProgress(1)
     // 切换到上传文件步骤
     currentTask.value.currentStep = 1
     currentTask.value.maxCurrentStep = 1
-    currentTask.value.taskId = res.data
-
-    message.notifySuccess('上报任务创建成功，现在可以上传文件')
-
-  } catch (error) {
-    console.error('创建上报任务失败:', error)
-    message.notifyError('创建上报任务失败，请重试')
   } finally {
     loading.value = false
   }
@@ -839,8 +861,6 @@ const handleFileChange = async (uploadFile: any) => {
 
     // 立即加载文件列表
     await loadFileList(currentTask.value.taskId)
-
-
   } catch (error) {
     console.error('文件上传失败:', error)
     message.notifyError('文件上传失败，请重试')
@@ -865,8 +885,13 @@ const getExcelDetailData = async () => {
   dataViewDialog.value.fileName = file.name
   dataViewDialog.value.visible = true
   try {
-    const result = await ReportDataApi.getFileData(file.type, file.taskId, file.id, queryParams.value.pageNo, queryParams.value.pageSize)
-    console.log('加载数据成功:', result)
+    const result = await ReportDataApi.getFileData(
+      file.type,
+      file.taskId,
+      file.id,
+      queryParams.value.pageNo,
+      queryParams.value.pageSize
+    )
 
     // 动态生成列
     if (result?.total) {
@@ -886,7 +911,6 @@ const getExcelDetailData = async () => {
     dataViewDialog.value.loading = false
   }
 }
-
 
 // 重新上传文件
 const reuploadFile = (file: any) => {
@@ -919,7 +943,6 @@ const updateReportProgress = async (progress: number) => {
 
   try {
     await ReportDataApi.updateReportProgress(currentTask.value.taskId, progress)
-    console.log('上报进度更新成功:', progress)
   } catch (error) {
     console.error('更新上报进度失败:', error)
   }
@@ -928,7 +951,8 @@ const updateReportProgress = async (progress: number) => {
 // 开始前置质控
 const startPreQC = async () => {
   message.notify('正在进行前置质控...')
-  if (currentTask.value.maxCurrentStep === 1) { // 更新任务进度到2
+  if (currentTask.value.maxCurrentStep === 1) {
+    // 更新任务进度到2
     loading.value = true
     try {
       await updateReportProgress(2) // 更新上报进度为2-前置质控阶段
@@ -942,7 +966,8 @@ const startPreQC = async () => {
     } finally {
       loading.value = false
     }
-  } else { // 说明是 节点 3或者4 跳到节点1 或者 2，不需要改状态
+  } else {
+    // 说明是 节点 3或者4 跳到节点1 或者 2，不需要改状态
     loading.value = true
     try {
       await operateQCResults(currentTask.value.taskId) // 执行前置质控操作
@@ -963,15 +988,12 @@ const viewQCErrors = async (row: any) => {
     return
   }
   try {
-    console.log('查看质控错误:', row)
-    // const errors = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.type)
-    const errors = `洒洒水，网络流行词，源于粤语发音“湿湿碎”的空耳，原指琐碎的小事，后引申为表示事情
-    很轻松或不足挂齿的含义。该词本义侧重描述事物的微小性，在传播过程中逐渐演变为表达“小意思”的轻松态度。其词源可追溯至粤语短语“湿湿碎”（sap1 sap1 seoi3）的音译变形，原指细碎琐事，后经网络传播形成现有语义。 [1]
-`
-    errorDialog.value.errors = errors
+    const data = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.type)
+    errorDialog.value.errors = data.errors
+      ?.map((item) => `第${item.excelRowNum}行: ${item.errorMessage}`)
+      ?.join('')
     errorDialog.value.fileName = row.name
     errorDialog.value.visible = true
-    console.log('查看质控错误成功:', errorDialog)
   } catch (error) {
     console.error('获取错误详情失败:', error)
     message.notifyError('获取错误详情失败')
@@ -993,42 +1015,30 @@ const backToUpload = async () => {
   // await updateReportProgress(1)
 }
 
-// 下载质控报告
-const downloadQCReport = async (type: 'pre' | 'post') => {
-  if (!currentTask.value.id) return
-
-  try {
-    await ReportDataApi.downloadQCReport(currentTask.value.id, type)
-    message.notifySuccess(`${type === 'pre' ? '前置' : '后置'}质控报告下载成功`)
-  } catch (error) {
-    console.error('下载质控报告失败:', error)
-    message.notifyError('下载质控报告失败')
-  }
+// 开始提交上报
+const startSubmitReport = async () => {
+  currentTask.value.currentStep = 3
+  currentTask.value.maxCurrentStep = 3
+  await updateReportProgress(3) // 更新上报进度为3-前置质控阶段
 }
 
 // 提交上报
 const submitReport = async () => {
   let fileIds = selectedFileIds.value
   if (preQCResult.value.passed) {
-    fileIds = preQCResult.value.details.map(item => item.id)
+    fileIds = preQCResult.value.details.map((item) => item.id)
   }
-  return
-
   if (!fileIds.length) {
     message.warning('请选择需要提交的文件')
     return
   }
   try {
-    await message.confirm(
-      '确认提交上报？提交后将完成上报流程'
-    )
+    await message.confirm('据上报提交后将无法修改，请确认所有信息无误后再提交。提交后系统将自动进行最终审核！')
     loading.value = true
     await ReportDataApi.submitReport(currentTask.value.taskId, fileIds)
-    await updateReportProgress(3) // 更新上报进度为3-前置质控阶段
-    currentTask.value.currentStep = 3
-    currentTask.value.maxCurrentStep = 3
     await loadQCResults(currentTask.value.taskId)
     message.notifySuccess('数据已成功提交上报')
+    loadCurrentTask()
   } catch (error: any) {
     if (error !== 'cancel') {
       console.error('提交上报失败:', error)
@@ -1036,37 +1046,6 @@ const submitReport = async () => {
     }
   } finally {
     loading.value = false
-  }
-}
-
-// 下载原始文件
-const downloadOriginalFiles = async () => {
-  if (!currentTask.value.id) return
-
-  try {
-    await ReportDataApi.downloadOriginalFiles(currentTask.value.id)
-    message.notifySuccess('原始文件下载成功')
-  } catch (error) {
-    console.error('下载原始文件失败:', error)
-    message.notifyError('下载原始文件失败')
-  }
-}
-
-// 查看历史记录
-const viewReportHistory = () => {
-  message.notify('查看历史记录功能开发中')
-}
-
-// 导出错误清单
-const exportErrors = async () => {
-  if (!currentTask.value.id || !errorDialog.value.tableName) return
-
-  try {
-    await ReportDataApi.exportErrors(currentTask.value.id, errorDialog.value.tableName)
-    message.notifySuccess('错误清单导出成功')
-  } catch (error) {
-    console.error('导出错误清单失败:', error)
-    message.notifyError('导出错误清单失败')
   }
 }
 
@@ -1091,13 +1070,11 @@ const loadCurrentTask = async () => {
   try {
     loading.value = true
     // 使用 ReportDataController 的接口获取当前激活任务
-    const task = await ReportDataApi.getCurrentActiveTask(457)
+    const task = await ReportDataApi.getCurrentActiveTask(queryData.taskId)
 
     if (task) {
       task.maxCurrentStep = task.currentStep // 保存原始步骤，用于后续判断是否可以向后点击下一步)
-
       currentTask.value = task
-      console.log('加载的任务数据:', task) // 调试日志
 
       // currentStep 现在是计算属性，会自动从 task.currentStep 获取
 
@@ -1115,10 +1092,12 @@ const loadCurrentTask = async () => {
 
         // 加载提交信息
         if (currentStep.value >= 3) {
+          console.log(task)
           submitInfo.value = {
-            submitTime: task.submitTime || new Date(),
-            submitter: '当前用户',
-            totalRecords: 0 // 从文件统计
+            taskName: task.taskName,
+            startDate: task.startDate,
+            endDate: task.endDate,
+            reportTime: task.reportTime,
           }
         }
       }
@@ -1140,7 +1119,7 @@ const loadFileList = async (taskId: number) => {
     // 使用旧API
     const files = await ReportDataApi.getFileList(taskId)
     // 更新本地文件列表状态
-    fileList.value = fileList.value.map(localFile => {
+    fileList.value = fileList.value.map((localFile) => {
       const serverFile = files.find((f: any) => f.fileType === localFile.type)
       if (serverFile) {
         return {
@@ -1160,10 +1139,9 @@ const loadFileList = async (taskId: number) => {
 }
 
 // 执行前置质控
-async function operateQCResults (taskId: number) {
+async function operateQCResults(taskId: number) {
   try {
     // 执行前置质控
-    console.log('执行前置质控...', taskId)
     const preQC = await ReportDataApi.executePreQC(taskId)
   } catch (error) {
     console.error('执行前置质控失败:', error)
@@ -1176,9 +1154,9 @@ const loadQCResults = async (taskId: number) => {
     // 加载前置质控结果
     if (currentStep.value >= 2) {
       const files = await ReportDataApi.getFileList(taskId)
-      preQCResult.value.passed = !files.find(item => [0, 1, 4, null].includes(item.qcStatus))
+      preQCResult.value.passed = !files.find((item) => [0, 1, 4, null].includes(item.qcStatus))
       // 更新本地文件列表状态
-      preQCResult.value.details = fileList.value.map(localFile => {
+      preQCResult.value.details = fileList.value.map((localFile) => {
         const serverFile = files.find((f: any) => f.fileType === localFile.type)
         if (serverFile) {
           return {
@@ -1461,7 +1439,7 @@ const loadQCResults = async (taskId: number) => {
 
 /* 质控区域样式 */
 .qc-section {
-  max-width: 1200px;
+  max-width: 1050px;
   margin: 0 auto;
 }
 
@@ -1497,7 +1475,7 @@ const loadQCResults = async (taskId: number) => {
 
 /* 提交区域样式 */
 .submit-section {
-  max-width: 800px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 20px 0;
 }
@@ -1541,7 +1519,6 @@ const loadQCResults = async (taskId: number) => {
   border: 1px solid #bee5eb;
 }
 
-
 /* 质检不通过样式 */
 .quality-details {
   display: block;
@@ -1549,7 +1526,6 @@ const loadQCResults = async (taskId: number) => {
   border: 1px solid #fed7d7;
   border-radius: 6px;
   padding: 15px;
-  margin: 20px;
   h4 {
     color: #c53030;
     font-size: 14px;
