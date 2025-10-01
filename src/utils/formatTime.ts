@@ -213,6 +213,26 @@ export function dateFormatter2(_row: any, _column: TableColumnCtx<any>, cellValu
 }
 
 /**
+ * 时间戳格式化函数，用于将时间戳转换为 YYYY-MM-DD HH:mm:ss 格式
+ *
+ * @param timestamp 时间戳（毫秒）
+ * @returns 格式化后的日期时间字符串
+ */
+export function timestampFormatter(timestamp: number): string {
+  return timestamp ? formatDate(new Date(timestamp)) : ''
+}
+
+/**
+ * 时间戳格式化函数，用于将时间戳转换为 YYYY-MM-DD 格式
+ *
+ * @param timestamp 时间戳（毫秒）
+ * @returns 格式化后的日期字符串
+ */
+export function timestampFormatter2(timestamp: number): string {
+  return timestamp ? formatDate(new Date(timestamp), 'YYYY-MM-DD') : ''
+}
+
+/**
  * 设置起始日期，时间为00:00:00
  * @param param 传入日期
  * @returns 带时间00:00:00的日期
