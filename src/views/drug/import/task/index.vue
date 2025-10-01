@@ -262,6 +262,7 @@ import { ElMessageBox } from 'element-plus'
 defineOptions({ name: 'ImportTask' })
 
 const message = useMessage() // 消息弹窗
+const router = useRouter() // 路由对象
 const { t } = useI18n() // 国际化
 
 const loading = ref(true) // 列表的加载中
@@ -406,8 +407,12 @@ const handleSelectionChange = (selection: DataManageImportTaskVO[]) => {
 
 /** 查看数据 */
 const handleViewData = (row: DataManageImportTaskVO) => {
-  // TODO: 跳转到数据查看页面或打开弹窗
-  message.info(`查看数据功能待实现 - 任务ID: ${row.id}`)
+  router.push({
+    name: 'DrugReportViewData',
+    query: {
+      taskId: row.id
+    }
+  })
 }
 
 /** 上报日志 */

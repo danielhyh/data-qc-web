@@ -485,7 +485,7 @@ import usageDetails from './excel-detail/usage.vue'
 import catalogDetails from './excel-detail/catalog.vue'
 
 // 定义组件名称
-defineOptions({name: 'DrugReportSubmission'})
+defineOptions({name: 'DrugReportData'})
 
 // 消息弹窗
 const message = useMessage()

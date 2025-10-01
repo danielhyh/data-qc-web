@@ -265,9 +265,10 @@ const resetQuery = () => {
 }
 
 /** 打开弹窗 */
-const open = (id: number) => {
+const open = (id: number, type: string) => {
   reportId.value = id
   queryParams.reportId = id
+  queryParams.institutionType = type
   dialogVisible.value = true
 
   // 重置状态

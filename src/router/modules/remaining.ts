@@ -393,6 +393,30 @@ const remainingRouter: AppRouteRecordRaw[] = [
         }
       },
       {
+        path: 'report-data',
+        name: 'DrugReportData',
+        component: () => import('@/views/drug/report/submission/ReportData.vue'),
+        meta: {
+          title: '上报数据',
+          icon: 'ep:view',
+          noCache: false,
+          canTo: true,
+          hidden: false
+        }
+      },
+      {
+        path: 'report-view-data',
+        name: 'DrugReportViewData',
+        component: () => import('@/views/drug/report/submission/DrugReportViewData.vue'),
+        meta: {
+          title: '查看数据',
+          icon: 'ep:view',
+          noCache: false,
+          canTo: true,
+          hidden: false
+        }
+      },
+      {
         path: 'monitor/:id',
         name: 'DrugImportMonitor',
         component: () => import('@/views/drug/import/monitor/index.vue'),

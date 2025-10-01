@@ -493,3 +493,24 @@ export const InstitutionReportApi = {
     })
   }
 }
+
+// 获取填报任务统计数据
+export const getFillInTaskStatisticsData = (reportId: number) => {
+  return request.get({
+    url: `/drug/statistics/institution-report/task/${reportId}`
+  })
+}
+
+// 获取全省各市区上报情况图表数据
+export const getCityChartsData = (reportId: number) => {
+  return request.get({
+    url: `/drug/statistics/institution-report/chart/${reportId}`
+  })
+}
+
+// 获取指定市区的详细上报数据
+export const getCityReportData = (reportId: number,  regionId: number) => {
+  return request.get({
+    url: `/drug/statistics/institution-report/city/${reportId}/${regionId}`
+  })
+}

@@ -114,9 +114,15 @@ export interface FileValidationResult {
 export interface HistoricalFilingTaskListVO {
   pageNo: number
   pageSize: number
-  reportYear?: Date
+  reportYear?: string
   reportStatus?: string
   taskName?: string
+}
+
+export interface ViewDataTypesListVO {
+  pageNo: number
+  pageSize: number
+  taskId: number | undefined
 }
 
 // 药品数据上报 API - 整合所有相关接口
@@ -345,8 +351,45 @@ export const ReportDataApi = {
     })
   },
 
+  // ==================== 药品监测 - 数据上报 ====================
+
+  // 获取去重后的年份列表
+  getDeduplicationYearList: (): Promise<any> => {
+    return request.get({ url: '/drug/report-data/report-years' })
+  },
+
   // 获取历史填报任务列表
   getHistoricalFilingTaskList: (params: HistoricalFilingTaskListVO): Promise<any> => {
     return request.get({ url: '/drug/report-data/history', params })
-  }
+  },
+
+  // 提交国家平台
+  submitToTheNationalPlatform: (taskId: Number): Promise<any> => {
+    return request.post({ url: '/drug/report-data/submit-national-platform', data: { taskId } })
+  },
+
+  // 医疗机构数据
+  getHospitalList: (params: ViewDataTypesListVO): Promise<any> => {
+    return request.get({ url: '/drug/report-data/file/data/hospital', params })
+  },
+
+  // 查看药品目录数据
+  getCatalogList: (params: ViewDataTypesListVO): Promise<any> => {
+    return request.get({ url: '/drug/report-data/file/data/catalog', params })
+  },
+
+  // 查看入库数据
+  getInboundList: (params: ViewDataTypesListVO): Promise<any> => {
+    return request.get({ url: '/drug/report-data/file/data/inbound', params })
+  },
+
+  // 查看出库数据
+  getOutboundList: (params: ViewDataTypesListVO): Promise<any> => {
+    return request.get({ url: '/drug/report-data/file/data/outbound', params })
+  },
+
+  // 查看使用数据
+  getUsageList: (params: ViewDataTypesListVO): Promise<any> => {
+    return request.get({ url: '/drug/report-data/file/data/usage', params })
+  },
 }
