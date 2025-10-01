@@ -1,7 +1,14 @@
 <template>
+  <PageHeader title="数据查看">
+    <template #extra>
+      <el-button type="primary" :icon="Back" @click="() => router.back()" class="default-back-button">
+        返回上一级
+      </el-button>
+    </template>
+  </PageHeader>
   <!-- 列表 -->
   <ContentWrap>
-    <el-tabs type="border-card" v-model="activeTabName">
+    <el-tabs v-model="activeTabName">
       <el-tab-pane label="医疗机构基本情况" name="basicInfo">
         <BasicInformation :taskId="taskId" />
       </el-tab-pane>
@@ -22,6 +29,10 @@
 </template>
 
 <script setup lang="ts">
+import {
+  Back
+} from '@element-plus/icons-vue'
+const router = useRouter() // 路由对象
 import BasicInformation from './view-data/BasicInformation.vue'
 import DrugList from './view-data/DrugList.vue'
 import DrugOutboundSituation from './view-data/DrugOutboundSituation.vue'

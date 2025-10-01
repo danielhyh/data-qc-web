@@ -1,4 +1,45 @@
 <template>
+  <ContentWrap>
+      <el-form
+        class="-mb-15px"
+        :model="queryParams"
+        ref="queryFormRef"
+        :inline="true"
+        label-width="68px"
+      >
+        <el-form-item label="药品编码" prop="ypid">
+          <el-input
+            v-model="queryParams.ypid"
+            placeholder="请输入YPID编码"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
+        <el-form-item label="产品名称" prop="productName">
+          <el-input
+            v-model="queryParams.productName"
+            placeholder="请输入产品名称"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
+        <el-form-item label="机构名称" prop="organizationName">
+          <el-input
+            v-model="queryParams.organizationName"
+            placeholder="请输入机构名称"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
+          <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+        </el-form-item>
+      </el-form>
+    </ContentWrap>
   <!-- 列表 -->
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
@@ -45,12 +86,16 @@ const props = defineProps({
   taskId: Number
 })
 
+const queryFormRef = ref()
 const loading = ref(true) // 列表的加载中
 const list = ref([]) // 列表的数据
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
-  taskId: props.taskId
+  taskId: props.taskId,
+  ypid: undefined,
+  productName: undefined,
+  organizationName: undefined
 })
 const total = ref(0) // 列表的总页数
 /** 查询列表 */
@@ -63,6 +108,18 @@ const getList = async () => {
   } finally {
     loading.value = false
   }
+}
+
+/** 搜索按钮操作 */
+const handleQuery = () => {
+  queryParams.pageNo = 1
+  getList()
+}
+
+/** 重置按钮操作 */
+const resetQuery = () => {
+  queryFormRef.value.resetFields()
+  handleQuery()
 }
 
 /** 格式化数字 */

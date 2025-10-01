@@ -26,8 +26,18 @@
         }
       ]"
       :show-back-button="false"
-    />
-
+    >
+      <template #extra>
+        <el-button
+          type="primary"
+          :icon="Back"
+          @click="() => router.back()"
+          class="default-back-button"
+        >
+          返回上一级
+        </el-button>
+      </template>
+    </PageHeader>
     <!-- 上报进度步骤条 -->
     <ContentWrap class="progress-card">
       <el-steps :active="currentStep" align-center :process-status="getProcessStatus()">
@@ -133,13 +143,20 @@
             </div>
 
             <div class="prepare-actions">
-              <el-button @click="downloadTemplate">
+              <el-button
+                :disabled="currentStep < currentTask.maxCurrentStep"
+                @click="downloadTemplate"
+              >
                 <el-icon>
                   <Download />
                 </el-icon>
                 下载标准模板压缩包
               </el-button>
-              <el-button type="primary" @click="startUpload">
+              <el-button
+                type="primary"
+                :disabled="currentStep < currentTask.maxCurrentStep"
+                @click="startUpload"
+              >
                 <el-icon>
                   <Upload />
                 </el-icon>
@@ -163,17 +180,13 @@
               :auto-upload="false"
               :on-change="handleFileChange"
               accept=".zip,.xlsx"
+              :disabled="currentStep < currentTask.maxCurrentStep"
               :show-file-list="false"
             >
               <el-icon class="el-icon--upload">
                 <UploadFilled />
               </el-icon>
-              <div class="el-upload__text"> 拖拽ZIP压缩包到此处，或<em>点击上传</em> </div>
-              <template #tip>
-                <div class="el-upload__tip">
-                  支持上传包含所有Excel文件的ZIP压缩包，或分别上传单个Excel文件
-                </div>
-              </template>
+              <div class="el-upload__text"> 拖拽ZIP压缩包到此处，或<em>点击上传</em> <br />支持上传包含所有Excel文件的ZIP压缩包，或分别上传单个Excel文件</div>
             </el-upload>
           </div>
 
@@ -221,6 +234,7 @@
                     link
                     type="primary"
                     size="small"
+                    :disabled="currentStep < currentTask.maxCurrentStep"
                     @click="viewFileData(row)"
                   >
                     查看详情
@@ -232,6 +246,7 @@
                       :auto-upload="false"
                       :on-change="handleFileChange"
                       accept=".xlsx"
+                      :disabled="currentStep < currentTask.maxCurrentStep"
                       :show-file-list="false"
                     >
                       <el-button link type="warning" size="small"> 重新上传 </el-button>
@@ -243,6 +258,7 @@
                     link
                     type="danger"
                     size="small"
+                    :disabled="currentStep < currentTask.maxCurrentStep"
                     @click="removeFile(row)"
                   >
                     删除
@@ -252,8 +268,12 @@
             </el-table>
 
             <div class="upload-actions">
-              <el-button @click="currentTask.currentStep = 0">返回准备</el-button>
-              <el-button type="primary" @click="startPreQC" :disabled="!allFilesUploaded">
+              <el-button @click="currentTask.currentStep = 0" :disabled="currentStep < currentTask.maxCurrentStep">返回准备</el-button>
+              <el-button
+                type="primary"
+                @click="startPreQC"
+                :disabled="!allFilesUploaded || currentStep < currentTask.maxCurrentStep"
+              >
                 开始前置质控
               </el-button>
             </div>
@@ -324,7 +344,13 @@
             </el-table-column>
             <el-table-column label="操作" width="150" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="viewFileData(row)">
+                <el-button
+                  link
+                  type="primary"
+                  size="small"
+                  :disabled="currentStep < currentTask.maxCurrentStep"
+                  @click="viewFileData(row)"
+                >
                   查看详情
                 </el-button>
                 <el-button
@@ -332,6 +358,7 @@
                   link
                   type="warning"
                   size="small"
+                  :disabled="currentStep < currentTask.maxCurrentStep"
                   @click="fixAndReupload(row)"
                 >
                   修复重传
@@ -341,8 +368,15 @@
           </el-table>
 
           <div class="qc-actions">
-            <el-button @click="backToUpload">返回上传</el-button>
-            <el-button type="primary" :disabled="!preQCResult.passed" @click="startSubmitReport">
+            <el-button @click="backToUpload" :disabled="currentStep < currentTask.maxCurrentStep">返回上传</el-button>
+            <el-button
+              type="primary"
+              :disabled="
+                !preQCResult.passed ||
+                currentStep < currentTask.maxCurrentStep
+              "
+              @click="startSubmitReport"
+            >
               开始提交上报
             </el-button>
           </div>
@@ -418,7 +452,7 @@
             </el-table-column>
           </el-table>
           <div class="qc-actions">
-            <el-button @click="() => currentTask.currentStep = 2">返回前置质控</el-button>
+            <el-button @click="() => (currentTask.currentStep = 2)">返回前置质控</el-button>
             <el-button type="primary" :disabled="!preQCResult.passed" @click="submitReport">
               提交上报
             </el-button>
@@ -428,7 +462,7 @@
     </ContentWrap>
 
     <!-- 错误详情对话框 -->
-    <el-dialog v-model="errorDialog.visible" title="质检提示" width="30%" top="5vh">
+    <Dialog v-model="errorDialog.visible" title="质检提示" width="30%" top="5vh">
       <!-- 错误详情对话框 -->
       <div class="quality-details">
         <h4>质检初审不通过</h4>
@@ -446,10 +480,10 @@
       <template #footer>
         <el-button @click="errorDialog.visible = false">关闭</el-button>
       </template>
-    </el-dialog>
+    </Dialog>
 
     <!-- 数据查看对话框 -->
-    <el-dialog
+    <Dialog
       v-model="dataViewDialog.visible"
       :title="`查看数据 - ${dataViewDialog.fileName}`"
       width="80%"
@@ -465,7 +499,7 @@
           @pagination="getExcelDetailData"
         />
       </div>
-    </el-dialog>
+    </Dialog>
 
     <!-- Excel预览弹窗 -->
     <ExcelPreviewDialog ref="excelPreviewRef" />
@@ -484,6 +518,7 @@ import {
   CircleClose,
   Clock,
   Refresh,
+  Back,
   Warning,
   InfoFilled,
   Document,
@@ -575,7 +610,7 @@ const submitInfo = ref({
   taskName: '',
   startDate: '',
   endDate: '',
-  reportTime: '',
+  reportTime: ''
 })
 
 const excelDetailTotal = ref(0)
@@ -642,6 +677,7 @@ function handleSelectionChange(val) {
 }
 
 function changeSteps(step: number) {
+  console.log(step, currentTask.value.maxCurrentStep)
   if (step <= currentTask.value.maxCurrentStep) {
     // 超出当前步骤范围，不执行任何操作
     currentTask.value.currentStep = step
@@ -661,7 +697,7 @@ const formatDate = (date: string) => {
 
 // 格式化日期时间
 const formatDateTime = (date: Date | string) => {
-  if (!date) return '' 
+  if (!date) return ''
   return new Date(date).toLocaleString('zh-CN')
 }
 
@@ -729,6 +765,7 @@ const downloadTemplate = async () => {
 
 /** 预览模板 */
 const previewTemplate = (templateId: number) => {
+  if (currentTask.value.currentStep < currentTask.value.maxCurrentStep) return
   excelPreviewRef.value?.open(templateId)
 }
 
@@ -984,7 +1021,7 @@ const startPreQC = async () => {
 
 // 查看质控错误
 const viewQCErrors = async (row: any) => {
-  if (row.qcStatus !== 4) {
+  if (row.qcStatus !== 4 || currentTask.value.currentStep < currentTask.value.maxCurrentStep) {
     return
   }
   try {
@@ -1033,7 +1070,9 @@ const submitReport = async () => {
     return
   }
   try {
-    await message.confirm('据上报提交后将无法修改，请确认所有信息无误后再提交。提交后系统将自动进行最终审核！')
+    await message.confirm(
+      '据上报提交后将无法修改，请确认所有信息无误后再提交。提交后系统将自动进行最终审核！'
+    )
     loading.value = true
     await ReportDataApi.submitReport(currentTask.value.taskId, fileIds)
     await loadQCResults(currentTask.value.taskId)
@@ -1051,12 +1090,11 @@ const submitReport = async () => {
 
 // ==================== 生命周期 ====================
 
-onMounted(async () => {
+onMounted(() => {
   // 加载模板定义数据
-  await loadTemplateDefinitions()
-
+  loadTemplateDefinitions()
   // 加载当前任务信息
-  await loadCurrentTask()
+  loadCurrentTask()
 })
 
 onUnmounted(() => {
@@ -1070,7 +1108,7 @@ const loadCurrentTask = async () => {
   try {
     loading.value = true
     // 使用 ReportDataController 的接口获取当前激活任务
-    const task = await ReportDataApi.getCurrentActiveTask(queryData.taskId)
+    const task = await ReportDataApi.getCurrentActiveTask(Number(queryData.taskId))
 
     if (task) {
       task.maxCurrentStep = task.currentStep // 保存原始步骤，用于后续判断是否可以向后点击下一步)
@@ -1097,7 +1135,7 @@ const loadCurrentTask = async () => {
             taskName: task.taskName,
             startDate: task.startDate,
             endDate: task.endDate,
-            reportTime: task.reportTime,
+            reportTime: task.reportTime
           }
         }
       }
