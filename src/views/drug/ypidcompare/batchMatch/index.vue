@@ -32,7 +32,7 @@
             </div>
             <div class="header-right">
               <el-button
-                v-if="statistics.pending > 0"
+                v-if="statistics.whole > 0"
                 type="primary"
                 :loading="loading"
                 @click="startBatchMatch"
@@ -102,7 +102,7 @@
             min-width="180"
             show-overflow-tooltip
           />
-          <el-table-column label="匹配结果" width="200">
+          <el-table-column label="比对结果" width="200">
             <template #default="{ row }">
               <div v-if="row.matchedYpid" class="match-result">
                 <el-tag type="success" size="small">
@@ -123,7 +123,7 @@
               <div v-if="row.matchStatus === 2" class="confirm-info">
                 <div class="confirm-user">
                   <el-icon><User /></el-icon>
-                  {{ row.confirmUser || '未知' }}
+                  {{ getConfirmUserText(row.confirmUser) }}
                 </div>
                 <div class="confirm-time">
                   {{ dateFormatter(row.confirmTime) }}
@@ -354,7 +354,7 @@ const matchHistory = ref<any[]>([])
 
 // 统计数据
 const statistics = reactive({
-  pending: 0,
+  whole: 0,
   needConfirm: 0,
   confirmed: 0,
   failed: 0
@@ -399,7 +399,7 @@ const statusTagType = computed(() => {
 
 // 头部元数据
 const metaInfo = computed(() => [
-  { label: '待匹配', value: statistics.pending },
+  { label: '全部', value: statistics.whole },
   { label: '待确认', value: statistics.needConfirm },
   { label: '已确认', value: statistics.confirmed },
   { label: '无法匹配', value: statistics.failed }
@@ -407,7 +407,7 @@ const metaInfo = computed(() => [
 
 // 标签页配置
 const tabList = computed(() => [
-  { key: 'pending', label: '待匹配', badge: statistics.pending },
+  { key: 'pending', label: '全部', badge: statistics.whole },
   { key: 'needConfirm', label: '待确认', badge: statistics.needConfirm },
   { key: 'confirmed', label: '已确认', badge: statistics.confirmed },
   { key: 'failed', label: '无法匹配', badge: statistics.failed }
@@ -492,7 +492,7 @@ const generateMockData = () => {
       matchStatus: 2,
       matchMethod: 'AUTO',
       confirmTime: new Date().toISOString(),
-      confirmUser: '管理员'
+      confirmUser: 3
     },
     {
       id: 5,
@@ -506,7 +506,7 @@ const generateMockData = () => {
       matchStatus: 2,
       matchMethod: 'MANUAL',
       confirmTime: new Date(Date.now() - 3600000).toISOString(),
-      confirmUser: '质控员'
+      confirmUser: 2
     },
     {
       id: 6,
@@ -520,7 +520,7 @@ const generateMockData = () => {
       matchStatus: 2,
       matchMethod: 'AUTO',
       confirmTime: new Date(Date.now() - 7200000).toISOString(),
-      confirmUser: '系统自动'
+      confirmUser: 1
     },
     // 无法匹配数据 (status: 3)
     {
@@ -572,51 +572,68 @@ const initPage = async () => {
     return
   }
 
-  queryParams.taskId = taskId.value
+  queryParams.matchTaskId = taskId.value
   await loadTaskInfo()
   await getDataList()
+  await getMatchStatistics() // 获取批量匹配进度
 }
 
 // 加载任务信息
 const loadTaskInfo = async () => {
   try {
     // 使用示例数据进行测试
-    Object.assign(taskInfo, {
-      taskNo: 'BATCH-20241207-001',
-      taskName: '2024年12月药品批量匹配任务',
-      status: 1
-    })
+    // Object.assign(taskInfo, {
+    //   taskNo: 'BATCH-20241207-001',
+    //   taskName: '2024年12月药品批量匹配任务',
+    //   status: 1
+    // })
 
     // 更新统计数据
-    Object.assign(statistics, {
-      pending: 1,
-      needConfirm: 2,
-      confirmed: 0,
-      failed: 1
-    })
+    // Object.assign(statistics, {
+    //   whole: 1,
+    //   needConfirm: 2,
+    //   confirmed: 0,
+    //   failed: 1
+    // })
 
     // 生产环境使用真实API
-    // const task = await YpidMatchTaskApi.getYpidMatchTask(taskId.value!)
-    // Object.assign(taskInfo, {
-    //   taskNo: task.taskNo,
-    //   taskName: task.taskName,
-    //   status: task.status
-    // })
-    // Object.assign(statistics, {
-    //   pending: task.totalCount - task.matchedCount - task.failedCount,
-    //   needConfirm: task.matchedCount - task.confirmedCount,
-    //   confirmed: task.confirmedCount,
-    //   failed: task.failedCount
-    // })
+    const task = await YpidMatchTaskApi.getYpidMatchTask(taskId.value!)
+    Object.assign(taskInfo, {
+      taskNo: task.taskNo,
+      taskName: task.taskName,
+      status: task.status
+    })
+    Object.assign(statistics, {
+      whole: task.totalCount - task.matchedCount - task.failedCount,
+      needConfirm: task.matchedCount - task.confirmedCount,
+      confirmed: task.confirmedCount,
+      failed: task.failedCount
+    })
   } catch (error) {
     ElMessage.error('加载任务信息失败')
+  }
+}
+
+// 获取批量匹配进度 
+const getMatchStatistics = async () => {
+  try {
+    const progress = await YpidApi.getMatchStatistics(taskId.value!)
+    console.log(progress, "获取批量匹配进度");
+    Object.assign(statistics, {
+      whole: progress.length && progress[0] || 0,
+      needConfirm: progress.length && progress[1] || 0,
+      confirmed: progress.length && progress[2] || 0,
+      failed: progress.length && progress[3] || 0,
+    })
+  } catch (error) {
+    ElMessage.error('获取批量匹配进度失败')
   }
 }
 
 // 获取数据列表方法更新
 const getDataList = async () => {
   const statusMap = {
-    pending: 0,
+    whole: 0,
     needConfirm: 1,
     confirmed: 2,
     failed: 3
@@ -626,15 +643,15 @@ const getDataList = async () => {
   loading.value = true
   try {
     // 使用示例数据进行测试
-    const mockData = generateMockData()
-    const filteredData = mockData.filter((item) => item.matchStatus === statusMap[activeTab.value])
-    dataList.value = filteredData
-    total.value = filteredData.length
+    // const mockData = generateMockData()
+    // const filteredData = mockData.filter((item) => item.matchStatus === statusMap[activeTab.value])
+    // dataList.value = filteredData
+    // total.value = filteredData.length
 
     // 生产环境使用真实API
-    // const { list, total: totalCount } = await YpidApi.getBatchMatchList(queryParams)
-    // dataList.value = list || []
-    // total.value = totalCount || 0
+    const { list, total: totalCount } = await YpidApi.getBatchMatchList(queryParams)
+    dataList.value = list || []
+    total.value = totalCount || 0
   } catch (error) {
     ElMessage.error('加载数据失败')
   } finally {
@@ -650,7 +667,7 @@ const startBatchMatch = async () => {
   Object.assign(matchProgress, {
     percentage: 0,
     status: '',
-    total: statistics.pending,
+    total: statistics.whole,
     processed: 0,
     success: 0,
     needConfirm: 0,
@@ -817,7 +834,7 @@ const viewHistory = async (row: any) => {
           afterYpid: row.matchedYpid,
           matchScore: row.matchScore,
           matchMethod: row.matchMethod,
-          operator: row.confirmUser || '系统',
+          operator: getConfirmUserText(row.confirmUser),
           operateTime: row.confirmTime || new Date().toISOString(),
           remark: row.matchMethod === 'AUTO' ? '自动匹配确认' : '手动匹配确认'
         },
@@ -866,6 +883,22 @@ const getScoreColor = (score: number) => {
   if (score >= 90) return '#67c23a'
   if (score >= 70) return '#e6a23c'
   return '#f56c6c'
+}
+
+// 获取确认用户文本
+const getConfirmUserText = (confirmUser: number | string) => {
+  // 如果是字符串，直接返回（兼容旧数据）
+  if (typeof confirmUser === 'string') {
+    return confirmUser || '未知'
+  }
+
+  // 如果是数字，根据数据字典映射
+  const userMap = {
+    1: '系统自动',
+    2: '质控员',
+    3: '管理员'
+  }
+  return userMap[confirmUser] || '未知'
 }
 </script>
 

@@ -82,14 +82,14 @@
           <el-form-item label="状态筛选" prop="status">
             <el-select
               v-model="queryParams.status"
-              placeholder="请选择状态"
+              placeholder="请选择任务状态"
               clearable
               class="!w-200px"
             >
-              <el-option label="未知" :value="0" />
-              <el-option label="未比对" :value="1" />
-              <el-option label="比对中" :value="2" />
-              <el-option label="已完成" :value="3" />
+              <el-option label="待处理" :value="0" />
+              <el-option label="处理中" :value="1" />
+              <el-option label="已完成" :value="2" />
+              <el-option label="已取消" :value="3" />
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -334,7 +334,7 @@ const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
   keyword: undefined as string | undefined,
-  status: '' as string | number | undefined
+  status: undefined as number | undefined
 })
 
 // 统计数据
@@ -423,12 +423,14 @@ const calculateIndex = (index: number) => {
 // 获取状态文本
 const getStatusText = (status: number) => {
   switch (status) {
+    case 0:
+      return '待处理'
     case 1:
-      return '未比对'
+      return '处理中'
     case 2:
-      return '比对中'
-    case 3:
       return '已完成'
+    case 3:
+      return '已取消'
     default:
       return '未知'
   }
@@ -437,12 +439,14 @@ const getStatusText = (status: number) => {
 // 获取状态标签类型
 const getStatusType = (status: number) => {
   switch (status) {
+    case 0:
+      return 'info' // 待处理 - 灰色
     case 1:
-      return 'info'
+      return 'warning' // 处理中 - 橙色
     case 2:
-      return 'warning'
+      return 'success' // 已完成 - 绿色
     case 3:
-      return 'success'
+      return 'info' // 已取消 - 灰色
     default:
       return ''
   }
@@ -495,7 +499,7 @@ const handleQuery = () => {
 // 重置按钮操作
 const resetQuery = () => {
   queryParams.keyword = undefined
-  queryParams.status = ''
+  queryParams.status = undefined
   handleQuery()
 }
 
