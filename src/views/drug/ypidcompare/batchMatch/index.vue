@@ -141,6 +141,31 @@
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
               <div class="action-buttons">
+                <!-- 全部状态：确认和手动匹配 -->
+                <template v-if="row.matchStatus === ''">
+                  <!-- 如果比对结果 row.matchedYpid 有值，并且确认状态是未确认，则操作区域显示确认和手动匹配按钮 -->
+                  <template v-if="row.matchedYpid && (row.matchStatus === 0 || row.matchStatus === 1)">
+                    <el-button size="small" type="success" @click="confirmSingle(row)">
+                      <el-icon><Check /></el-icon>
+                      确认
+                    </el-button>
+                    <el-button size="small" type="primary" @click="openManualMatch(row)">
+                      <el-icon><Edit /></el-icon>
+                      手动匹配
+                    </el-button>
+                  </template>
+                  <!-- 如果比对结果 row.matchedYpid 没有值，则操作区域显示手动匹配按钮 -->
+                  <template v-else-if="!row.matchedYpid">
+                    <el-button size="small" type="primary" @click="openManualMatch(row)">
+                      <el-icon><Edit /></el-icon>
+                      手动匹配
+                    </el-button>
+                  </template>
+                  <!-- 如果比对结果 row.matchedYpid 有值，并且确认状态是自动，则操作区域不显示按钮，使用——表示 -->
+                  <template v-else-if="row.matchedYpid && row.matchStatus === 2">
+                    <span style="color: #c0c4cc; font-size: 14px;">——</span>
+                  </template>
+                </template>
                 <!-- 待确认状态：确认和手动匹配 -->
                 <template v-if="row.matchStatus === 1">
                   <el-button size="small" type="success" @click="confirmSingle(row)">
@@ -152,7 +177,7 @@
                     手动匹配
                   </el-button>
                 </template>
-                
+
                 <!-- 已确认状态：撤销匹配和查看历史 -->
                 <template v-else-if="row.matchStatus === 2">
                   <el-button size="small" type="warning" @click="revokeMatch(row)">
@@ -164,7 +189,7 @@
                     查看历史
                   </el-button>
                 </template>
-                
+
                 <!-- 其他状态：手动匹配 -->
                 <template v-else>
                   <el-button size="small" type="primary" @click="openManualMatch(row)">
@@ -216,6 +241,7 @@
         v-if="manualMatchVisible && currentMatchRow"
         :pending-data="currentMatchRow"
         :task-id="taskId"
+        :recommended-candidates="recommendedCandidates"
         @confirm="handleManualConfirm"
         @cancel="manualMatchVisible = false"
       />
@@ -338,6 +364,7 @@ const taskInfo = reactive({
 // 手动匹配相关
 const manualMatchVisible = ref(false)
 const currentMatchRow = ref<any>(null)
+const recommendedCandidates = ref<any[]>([])
 
 // 撤销匹配相关
 const revokeVisible = ref(false)
@@ -745,7 +772,7 @@ const confirmAll = async () => {
 // 单个确认
 const confirmSingle = async (row: any) => {
   try {
-    await YpidApi.confirmMatch(row.id)
+    await YpidApi.confirmMatch(row.id, row.matchHistoryId)
     ElMessage.success('确认成功')
     await getDataList()
   } catch (error) {
@@ -754,10 +781,18 @@ const confirmSingle = async (row: any) => {
 }
 
 // 打开手动匹配对话框
-const openManualMatch = (row: any) => {
+const openManualMatch = async (row: any) => {
   currentMatchRow.value = row
   manualMatchVisible.value = true
+  try {
+    const progress = await YpidApi.getMatchProgressList(row.id)
+    recommendedCandidates.value = progress || []
+  } catch (error) {
+    console.error('获取推荐匹配项列表查询失败:', error)
+    recommendedCandidates.value = []
+  }
 }
+
 
 // 处理手动匹配确认
 const handleManualConfirm = async () => {

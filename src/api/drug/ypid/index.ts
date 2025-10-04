@@ -284,12 +284,18 @@ export const YpidApi = {
   /**
    * 单个确认
    */
-  async confirmMatch(pendingId: number): Promise<boolean> {
+  async confirmMatch(id: number, matchHistoryId: number): Promise<boolean> {
     return request.post({
       url: '/drug/ypid-pending-batch/confirm-single',
-      data: { pendingId }
+      data: { id, matchHistoryId }
     })
   },
+  // async confirmMatch(pendingId: number): Promise<boolean> {
+  //   return request.post({
+  //     url: '/drug/ypid-pending-batch/confirm-single',
+  //     data: { pendingId }
+  //   })
+  // },
 
   /**
    * 导出匹配结果
@@ -301,6 +307,17 @@ export const YpidApi = {
   },
 
   // ========================= 手动匹配 =========================
+
+   /**
+   * 获取推荐匹配项列表查询
+   */
+  async getMatchProgressList(pendingId: number) {
+    return request.get({
+      url: `/drug/ypid-match-history/list/${pendingId}`,
+      params: { pendingId }
+    })
+  },
+   
 
   /**
    * 获取待手动匹配列表

@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Coin, Search } from '@element-plus/icons-vue'
 import { YpidApi } from '@/api/drug/ypid'
@@ -143,6 +143,7 @@ defineOptions({ name: 'ManualMatchPanel' })
 interface Props {
   pendingData: any
   taskId: number
+  recommendedCandidates?: any[]
 }
 
 const props = defineProps<Props>()
@@ -173,19 +174,39 @@ onMounted(() => {
   loadCandidates()
 })
 
+// 监听推荐数据的变化
+watch(
+  () => props.recommendedCandidates,
+  (newCandidates) => {
+    if (newCandidates && newCandidates.length > 0) {
+      candidates.value = newCandidates
+      candidatesLoading.value = false
+    }
+  },
+  { immediate: true, deep: true }
+)
+
 // 加载推荐候选项
 const loadCandidates = async () => {
   candidatesLoading.value = true
   // 重置选择状态
   selectedCandidate.value = null
   selectedCandidateId.value = ''
+
   try {
-    // 先尝试从 match_detail 字段中获取候选项
+    // 优先使用后端传递的推荐匹配项数据
+    if (props.recommendedCandidates && props.recommendedCandidates.length > 0) {
+      candidates.value = props.recommendedCandidates
+      candidatesLoading.value = false
+      return
+    }
+
+    // 其次尝试从 match_detail 字段中获取候选项
     if (props.pendingData.matchDetail) {
-      const matchDetail = typeof props.pendingData.matchDetail === 'string' 
-        ? JSON.parse(props.pendingData.matchDetail) 
+      const matchDetail = typeof props.pendingData.matchDetail === 'string'
+        ? JSON.parse(props.pendingData.matchDetail)
         : props.pendingData.matchDetail
-      
+
       if (matchDetail.candidates && matchDetail.candidates.length > 0) {
         // 为候选项添加详细信息（示例数据）
         candidates.value = matchDetail.candidates.map((candidate, index) => ({
@@ -202,50 +223,11 @@ const loadCandidates = async () => {
       }
     }
 
-    // 如果 match_detail 中没有数据，使用示例数据
-    candidates.value = [
-      {
-        ypid: '12345678901234',
-        matchScore: 95.5,
-        drugName: '阿司匹林肠溶片(拜耳)',
-        manufacturer: '拜耳医药保健有限公司',
-        spec: '100mg×30片',
-        dosageForm: '片剂',
-        approvalNo: 'H20160647'
-      },
-      {
-        ypid: '12345678901235',
-        matchScore: 88.2,
-        drugName: '阿司匹林肠溶片(安徽)',
-        manufacturer: '安徽某某制药有限公司',
-        spec: '100mg×30片',
-        dosageForm: '片剂',
-        approvalNo: 'H20160648'
-      },
-      {
-        ypid: '12345678901236',
-        matchScore: 82.1,
-        drugName: '阿司匹林肠溶片(江苏)',
-        manufacturer: '江苏某某药业有限公司',
-        spec: '100mg×30片',
-        dosageForm: '片剂',
-        approvalNo: 'H20160649'
-      }
-    ]
+    // 如果都没有数据，使用空数组
+    candidates.value = []
   } catch (error) {
     ElMessage.error('加载候选项失败')
-    // 使用示例数据作为fallback
-    candidates.value = [
-      {
-        ypid: '12345678901234',
-        matchScore: 95.5,
-        drugName: '阿司匹林肠溶片',
-        manufacturer: '示例制药有限公司',
-        spec: '100mg×30片',
-        dosageForm: '片剂',
-        approvalNo: 'H20160647'
-      }
-    ]
+    candidates.value = []
   } finally {
     candidatesLoading.value = false
   }
