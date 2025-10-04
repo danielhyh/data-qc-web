@@ -54,7 +54,7 @@
         <el-form :model="searchForm" inline>
           <el-form-item label="药品名称">
             <el-input
-              v-model="searchForm.drugName"
+              v-model="searchForm.productName"
               placeholder="请输入药品名称"
               clearable
               style="width: 200px"
@@ -62,7 +62,7 @@
           </el-form-item>
           <el-form-item label="生产企业">
             <el-input
-              v-model="searchForm.manufacturer"
+              v-model="searchForm.manufacturerName"
               placeholder="请输入生产企业"
               clearable
               style="width: 200px"
@@ -90,14 +90,14 @@
       >
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="ypid" label="YPID" width="140" />
-        <el-table-column prop="drugName" label="药品名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="productName" label="药品名称" min-width="180" show-overflow-tooltip />
         <el-table-column
-          prop="manufacturer"
+          prop="manufacturerName"
           label="生产企业"
           min-width="150"
           show-overflow-tooltip
         />
-        <el-table-column prop="spec" label="规格" width="100" />
+        <el-table-column prop="specification" label="规格" width="100" />
         <el-table-column label="匹配度" width="100">
           <template #default="{ row }">
             <el-progress
@@ -165,8 +165,8 @@ const candidates = ref<any[]>([])
 
 // 搜索表单
 const searchForm = reactive({
-  drugName: '',
-  manufacturer: ''
+  productName: '',
+  manufacturerName: ''
 })
 
 // 生命周期
@@ -212,9 +212,9 @@ const loadCandidates = async () => {
         candidates.value = matchDetail.candidates.map((candidate, index) => ({
           ypid: candidate.ypid,
           matchScore: candidate.score,
-          drugName: `阿司匹林肠溶片 ${index + 1}`,
-          manufacturer: `某某制药有限公司 ${index + 1}`,
-          spec: '100mg×30片',
+          productName: `阿司匹林肠溶片 ${index + 1}`,
+          manufacturerName: `某某制药有限公司 ${index + 1}`,
+          specification: '100mg×30片',
           dosageForm: '片剂',
           approvalNo: `国药准字H${candidate.ypid.slice(-8)}`
         }))
@@ -238,8 +238,8 @@ const searchInStandard = () => {
   showSearchForm.value = !showSearchForm.value
   if (showSearchForm.value) {
     // 预填充搜索条件
-    searchForm.drugName = props.pendingData.productName
-    searchForm.manufacturer = props.pendingData.manufacturer
+    searchForm.productName = props.pendingData.productName
+    searchForm.manufacturerName = props.pendingData.manufacturerName
   }
 }
 
@@ -248,8 +248,8 @@ const performSearch = async () => {
   searchLoading.value = true
   try {
     const result = await YpidApi.searchStandard({
-      drugName: searchForm.drugName,
-      manufacturer: searchForm.manufacturer,
+      productName: searchForm.productName,
+      manufacturerName: searchForm.manufacturerName,
       pageNo: 1,
       pageSize: 20
     })
@@ -263,8 +263,8 @@ const performSearch = async () => {
 
 // 重置搜索
 const resetSearch = () => {
-  searchForm.drugName = ''
-  searchForm.manufacturer = ''
+  searchForm.productName = ''
+  searchForm.manufacturerName = ''
   // 重置选择状态
   selectedCandidate.value = null
   selectedCandidateId.value = ''
@@ -300,11 +300,26 @@ const confirmMatch = async () => {
   }
 
   try {
-    await YpidApi.confirmManualMatch({
-      pendingId: props.pendingData.id,
-      ypid: selectedCandidate.value.ypid,
-      taskId: props.taskId
+    await YpidApi.getManualMatchConfirm({
+      id: selectedCandidate.value.id,
+      ypid:selectedCandidate.value.ypid,
+      pendingId: selectedCandidate.value.pendingId,
+      taskId: selectedCandidate.value.taskId,
+      beforeYpid: selectedCandidate.value.beforeYpid,
+      matchScore: selectedCandidate.value.matchScore,
+      productName: selectedCandidate.value.productName,
+      manufacturerName: selectedCandidate.value.manufacturerName,
+      approvalNumber: selectedCandidate.value.approvalNumber,
+      genericNameCn: selectedCandidate.value.genericNameCn,
+      dosageForm: selectedCandidate.value.dosageForm,
+      specification: selectedCandidate.value.specification,
+      conversionFactor: selectedCandidate.value.conversionFactor,
+      packagingMaterial: selectedCandidate.value.packagingMaterial,
+      versionId: selectedCandidate.value.versionId,
+      relationId: selectedCandidate.value.relationId,
+      beforeRelationId: selectedCandidate.value.beforeRelationId
     })
+    ElMessage.success('确认匹配成功')
     emit('confirm')
   } catch (error) {
     ElMessage.error('确认匹配失败')

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx eslint:*)",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "WebFetch(domain:typora-picgo-save-image.oss-cn-beijing.aliyuncs.com)"
     ],
     "deny": []
   }

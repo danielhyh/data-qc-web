@@ -726,6 +726,7 @@ const startBatchMatch = async () => {
     // 刷新数据
     await loadTaskInfo()
     await getDataList()
+    await getMatchStatistics() // 获取批量匹配进度
   } catch (error) {
     matchProgress.status = 'exception'
     ElMessage.error('批量匹配失败')
@@ -745,12 +746,10 @@ const batchConfirm = async () => {
   }
 
   try {
-    await YpidApi.batchConfirm({
-      taskId: taskId.value!,
-      pendingIds: selectedRows.value.map((row) => row.id)
-    })
+    await YpidApi.batchConfirm(selectedRows.value.map((row) => row.id))
     ElMessage.success('批量确认成功')
     await getDataList()
+    await getMatchStatistics() // 获取批量匹配进度
   } catch (error) {
     ElMessage.error('批量确认失败')
   }
@@ -759,11 +758,20 @@ const batchConfirm = async () => {
 // 确认所有
 const confirmAll = async () => {
   try {
-    await YpidApi.batchConfirm({
-      taskId: taskId.value!
-    })
+    // 获取所有待确认项的ID
+    const allNeedConfirmIds = dataList.value
+      .filter(row => row.matchStatus === 1) // 待确认状态
+      .map(row => row.id)
+
+    if (allNeedConfirmIds.length === 0) {
+      ElMessage.warning('没有待确认的项目')
+      return
+    }
+
+    await YpidApi.batchConfirm(allNeedConfirmIds)
     ElMessage.success('确认所有待确认项成功')
     await getDataList()
+    await getMatchStatistics() // 获取批量匹配进度
   } catch (error) {
     ElMessage.error('确认失败')
   }
@@ -772,9 +780,10 @@ const confirmAll = async () => {
 // 单个确认
 const confirmSingle = async (row: any) => {
   try {
-    await YpidApi.confirmMatch(row.id, row.matchHistoryId)
+    await YpidApi.confirmMatch(row.id)
     ElMessage.success('确认成功')
     await getDataList()
+    await getMatchStatistics() // 获取批量匹配进度
   } catch (error) {
     ElMessage.error('确认失败')
   }
@@ -801,6 +810,7 @@ const handleManualConfirm = async () => {
   ElMessage.success('手动匹配成功')
   await getDataList()
   await loadTaskInfo()
+  await getMatchStatistics() // 获取批量匹配进度
 }
 
 // 返回按钮点击
@@ -838,12 +848,13 @@ const confirmRevoke = async () => {
 
   revokeLoading.value = true
   try {
-    await YpidApi.revokeMatch(currentRevokeRow.value.id, revokeForm.reason)
+    await YpidApi.revokeMatch(currentRevokeRow.value.matchTaskId, currentRevokeRow.value.id, currentRevokeRow.value.matchedYpid, currentRevokeRow.value.id, revokeForm.reason)
     ElMessage.success('撤销成功')
     revokeVisible.value = false
     currentRevokeRow.value = null
     await getDataList()
     await loadTaskInfo()
+    await getMatchStatistics() // 获取批量匹配进度
   } catch (error) {
     ElMessage.error('撤销失败')
   } finally {

@@ -272,22 +272,38 @@ export const YpidApi = {
   },
 
   /**
-   * 批量确认
+   * 批量确认选中项
    */
-  async batchConfirm(params: { taskId: number; pendingIds?: number[] }): Promise<boolean> {
+  async batchConfirm(params: { pendingIds?: number[] }): Promise<boolean> {
     return request.post({
-      url: '/drug/ypid-pending-batch/confirm',
-      data: params
+      url: '/drug/ypid-pending-batch/batch/confirm',
+      data: params 
+    })
+  },
+  // async batchConfirm(params: { taskId: number; pendingIds?: number[] }): Promise<boolean> {
+  //   return request.post({
+  //     url: '/drug/ypid-pending-batch/confirm',
+  //     data: params
+  //   })
+  // },
+
+  /**
+   * 确认所有待确认项
+   */
+  async confirmWaitMatch(taskId: number): Promise<boolean> {
+    return request.get({
+      url: '/drug/ypid-pending-batch/all/confirm',
+      params: { taskId }
     })
   },
 
   /**
    * 单个确认
    */
-  async confirmMatch(id: number, matchHistoryId: number): Promise<boolean> {
-    return request.post({
+  async confirmMatch(id: number): Promise<boolean> {
+    return request.get({
       url: '/drug/ypid-pending-batch/confirm-single',
-      data: { id, matchHistoryId }
+      params: { pendingId: id }
     })
   },
   // async confirmMatch(pendingId: number): Promise<boolean> {
@@ -313,11 +329,39 @@ export const YpidApi = {
    */
   async getMatchProgressList(pendingId: number) {
     return request.get({
-      url: `/drug/ypid-match-history/list/${pendingId}`,
+      // url: `/drug/ypid-match-history/list/${pendingId}`,
+      url: `/drug/ypid-pending-batch/match-list`,
       params: { pendingId }
     })
   },
-   
+
+  /**
+   * 手动匹配确认匹配按钮
+   */
+  async getManualMatchConfirm(params: {
+    id: number,
+    ypid: string,
+    pendingId: number,
+    taskId: number,
+    beforeYpid: string,
+    matchScore: number,
+    productName: string,
+    manufacturerName: string,
+    approvalNumber: string,
+    genericNameCn: string,
+    dosageForm: string,
+    specification: string,
+    conversionFactor: string,
+    packagingMaterial: string,
+    versionId: number,
+    relationId: number,
+    beforeRelationId: number,
+  }) {
+    return request.post({
+      url: '/drug/ypid-match-history/confirm',
+      data: params
+    })
+  },
 
   /**
    * 获取待手动匹配列表
@@ -449,10 +493,10 @@ export const YpidApi = {
   /**
    * 撤销匹配
    */
-  async revokeMatch(pendingId: number, reason: string): Promise<boolean> {
+  async revokeMatch(matchTaskId: number, id: number, matchedYpid: string, pendingId: number, reason: string): Promise<boolean> {
     return request.post({
       url: '/drug/ypid-pending-batch/revoke',
-      params: { pendingId, reason }
+      data: { matchTaskId, id, matchedYpid, pendingId, reason }
     })
   }
 }
