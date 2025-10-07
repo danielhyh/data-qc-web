@@ -80,15 +80,13 @@
       <!-- 候选项列表 -->
       <el-table
         ref="tableRef"
-        :key="tableKey"
         :data="candidates"
-        v-loading="showSearchForm ? searchLoading : candidatesLoading"
+        v-loading="candidatesLoading"
         highlight-current-row
         @current-change="handleCandidateSelect"
-        :current-row-key="selectedCandidateId || null"
+        :current-row-key="selectedCandidateId"
         row-key="ypid"
-        :max-height="showSearchForm ? 'calc(100vh - 580px)' : '400px'"
-        style="width: 100%"
+        max-height="400"
       >
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="ypid" label="YPID" width="140" />
@@ -127,19 +125,6 @@
           </template>
         </el-table-column>
       </el-table>
-
-      <!-- 分页组件 - 仅在搜索模式下显示 -->
-      <div v-if="showSearchForm && pagination.total > 0" class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="pagination.pageNo"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
-      </div>
     </el-card>
 
     <!-- 操作按钮 -->
@@ -176,26 +161,17 @@ const emit = defineEmits<{
 const candidatesLoading = ref(false)
 const searchLoading = ref(false)
 const showSearchForm = ref(false)
-const tableKey = ref(0) // 用于强制重新渲染表格
 const selectedCandidate = ref<any>(null)
 const selectedCandidateId = ref<string>('')
 const tableRef = ref()
 
 // 候选项数据
 const candidates = ref<any[]>([])
-const originalCandidates = ref<any[]>([]) // 保存原始推荐匹配项数据
 
 // 搜索表单
 const searchForm = reactive({
   productName: '',
   manufacturerName: ''
-})
-
-// 分页数据
-const pagination = reactive({
-  pageNo: 1,
-  pageSize: 10,
-  total: 0
 })
 
 // 生命周期
@@ -207,9 +183,8 @@ onMounted(() => {
 watch(
   () => props.recommendedCandidates,
   (newCandidates) => {
-    if (newCandidates && newCandidates.length > 0 && !showSearchForm.value) {
+    if (newCandidates && newCandidates.length > 0) {
       candidates.value = newCandidates
-      originalCandidates.value = [...newCandidates]
       candidatesLoading.value = false
     }
   },
@@ -227,7 +202,6 @@ const loadCandidates = async () => {
     // 优先使用后端传递的推荐匹配项数据
     if (props.recommendedCandidates && props.recommendedCandidates.length > 0) {
       candidates.value = props.recommendedCandidates
-      originalCandidates.value = [...props.recommendedCandidates]
       candidatesLoading.value = false
       return
     }
@@ -241,7 +215,7 @@ const loadCandidates = async () => {
 
       if (matchDetail.candidates && matchDetail.candidates.length > 0) {
         // 为候选项添加详细信息（示例数据）
-        const candidatesData = matchDetail.candidates.map((candidate, index) => ({
+        candidates.value = matchDetail.candidates.map((candidate, index) => ({
           ypid: candidate.ypid,
           matchScore: candidate.score,
           productName: `阿司匹林肠溶片 ${index + 1}`,
@@ -250,8 +224,6 @@ const loadCandidates = async () => {
           dosageForm: '片剂',
           approvalNo: `国药准字H${candidate.ypid.slice(-8)}`
         }))
-        candidates.value = candidatesData
-        originalCandidates.value = [...candidatesData]
         candidatesLoading.value = false
         return
       }
@@ -259,11 +231,9 @@ const loadCandidates = async () => {
 
     // 如果都没有数据，使用空数组
     candidates.value = []
-    originalCandidates.value = []
   } catch (error) {
     ElMessage.error('加载候选项失败')
     candidates.value = []
-    originalCandidates.value = []
   } finally {
     candidatesLoading.value = false
   }
@@ -272,75 +242,26 @@ const loadCandidates = async () => {
 // 在标准库中搜索
 const searchInStandard = () => {
   showSearchForm.value = !showSearchForm.value
-
   if (showSearchForm.value) {
-    // 进入搜索模式：先强制重新渲染表格
-    tableKey.value++
-
-    // 立即清除选中状态
-    selectedCandidate.value = null
-    selectedCandidateId.value = ''
-
-    // 清空表格数据和设置搜索条件
-    candidates.value = []
-    pagination.pageNo = 1
-    pagination.total = 0
-    searchForm.productName = props.pendingData.productName || ''
-    searchForm.manufacturerName = props.pendingData.manufacturer || ''
-  } else {
-    // 退出搜索模式：先强制重新渲染表格
-    tableKey.value++
-
-    // 立即清除选中状态
-    selectedCandidate.value = null
-    selectedCandidateId.value = ''
-
-    // 恢复推荐匹配项数据
-    candidates.value = [...originalCandidates.value]
-    // 清空搜索表单
-    searchForm.productName = ''
-    searchForm.manufacturerName = ''
-    // 重置分页
-    pagination.pageNo = 1
-    pagination.total = 0
+    // 预填充搜索条件
+    searchForm.productName = props.pendingData.productName
+    searchForm.manufacturerName = props.pendingData.manufacturerName
   }
 }
 
 // 执行搜索
 const performSearch = async () => {
-  // 校验搜索条件
-  if (!searchForm.productName.trim() && !searchForm.manufacturerName.trim()) {
-    ElMessage.warning('药品名称和生产企业至少填写一个查询条件')
-    return
-  }
-
   searchLoading.value = true
   try {
-    const queryParams = {
-      drugName: searchForm.productName,
-      productName: props.pendingData.productName,
-      manufacturer: searchForm.manufacturerName,
-      pendingId: props.pendingData.id,
-      spec: props.pendingData.spec,
-      approvalNo: props.pendingData.approvalNo,
-      dosageForm: props.pendingData.dosageForm,
-      conversionFactor: props.pendingData.conversionFactor || '',
-      taskId: props.taskId,
-      pageNo: pagination.pageNo,
-      pageSize: pagination.pageSize,
-    }
-
-    const { list, total } = await YpidApi.searchStandardLibrary(queryParams)
-    candidates.value = list || []
-    pagination.total = total || 0
-
-    // 重置选择状态
-    selectedCandidate.value = null
-    selectedCandidateId.value = ''
+    const result = await YpidApi.searchStandard({
+      productName: searchForm.productName,
+      manufacturerName: searchForm.manufacturerName,
+      pageNo: 1,
+      pageSize: 20
+    })
+    candidates.value = result.list || []
   } catch (error) {
     ElMessage.error('搜索失败')
-    candidates.value = []
-    pagination.total = 0
   } finally {
     searchLoading.value = false
   }
@@ -348,17 +269,12 @@ const performSearch = async () => {
 
 // 重置搜索
 const resetSearch = () => {
-  // 清空搜索条件
   searchForm.productName = ''
   searchForm.manufacturerName = ''
-  // 重置分页
-  pagination.pageNo = 1
-  pagination.total = 0
   // 重置选择状态
   selectedCandidate.value = null
   selectedCandidateId.value = ''
-  // 清空搜索结果
-  candidates.value = []
+  loadCandidates()
 }
 
 // 处理候选项选择（点击表格行）
@@ -367,10 +283,15 @@ const handleCandidateSelect = (row: any) => {
   selectedCandidateId.value = row.ypid
 }
 
+// 选择候选项（点击单选按钮）
+const selectCandidate = (candidate: any) => {
+  selectedCandidate.value = candidate
+  selectedCandidateId.value = candidate.ypid
+}
+
 // 处理单选按钮选择
 const handleRadioSelect = (row: any) => {
   selectedCandidate.value = row
-  selectedCandidateId.value = row.ypid
   // 使用表格的setCurrentRow方法来高亮显示选中行
   if (tableRef.value) {
     tableRef.value.setCurrentRow(row)
@@ -383,7 +304,7 @@ const confirmMatch = async () => {
     ElMessage.warning('请选择一个匹配项')
     return
   }
-  console.log(props.pendingData, "确认匹配==>>>");
+
   try {
     await YpidApi.getManualMatchConfirm({
       id: selectedCandidate.value.id,
@@ -409,18 +330,6 @@ const confirmMatch = async () => {
   } catch (error) {
     ElMessage.error('确认匹配失败')
   }
-}
-
-// 分页处理函数
-const handlePageChange = (page: number) => {
-  pagination.pageNo = page
-  performSearch()
-}
-
-const handleSizeChange = (size: number) => {
-  pagination.pageSize = size
-  pagination.pageNo = 1
-  performSearch()
 }
 
 // 获取分数颜色
@@ -477,14 +386,6 @@ const getScoreColor = (score: number) => {
   margin-left: 8px;
   font-size: 12px;
   color: #606266;
-}
-
-.pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e4e7ed;
 }
 
 .action-buttons {

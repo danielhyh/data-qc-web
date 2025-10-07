@@ -192,6 +192,16 @@ export const YpidApi = {
   },
 
   /**
+   * 标准库搜索（用于手动匹配面板）
+   */
+  async searchStandardLibrary(params: YpidSearchVO) {
+    return request.get({
+      url: '/drug/ypid/search/standardScore',
+      params
+    })
+  },
+
+  /**
    * 获取YPID详情
    */
   async getYpidDetail(ypid: string): Promise<YpidDrugVO> {
@@ -277,7 +287,7 @@ export const YpidApi = {
   async batchConfirm(params: { pendingIds?: number[] }): Promise<boolean> {
     return request.post({
       url: '/drug/ypid-pending-batch/batch/confirm',
-      data: params 
+      data: params
     })
   },
   // async batchConfirm(params: { taskId: number; pendingIds?: number[] }): Promise<boolean> {
@@ -324,7 +334,7 @@ export const YpidApi = {
 
   // ========================= 手动匹配 =========================
 
-   /**
+  /**
    * 获取推荐匹配项列表查询
    */
   async getMatchProgressList(pendingId: number) {
@@ -339,23 +349,23 @@ export const YpidApi = {
    * 手动匹配确认匹配按钮
    */
   async getManualMatchConfirm(params: {
-    id: number,
-    ypid: string,
-    pendingId: number,
-    taskId: number,
-    beforeYpid: string,
-    matchScore: number,
-    productName: string,
-    manufacturerName: string,
-    approvalNumber: string,
-    genericNameCn: string,
-    dosageForm: string,
-    specification: string,
-    conversionFactor: string,
-    packagingMaterial: string,
-    versionId: number,
-    relationId: number,
-    beforeRelationId: number,
+    id: number
+    ypid: string
+    pendingId: number
+    taskId: number
+    beforeYpid: string
+    matchScore: number
+    productName: string
+    manufacturerName: string
+    approvalNumber: string
+    genericNameCn: string
+    dosageForm: string
+    specification: string
+    conversionFactor: string
+    packagingMaterial: string
+    versionId: number
+    relationId: number
+    beforeRelationId: number
   }) {
     return request.post({
       url: '/drug/ypid-match-history/confirm',
@@ -493,7 +503,13 @@ export const YpidApi = {
   /**
    * 撤销匹配
    */
-  async revokeMatch(matchTaskId: number, id: number, matchedYpid: string, pendingId: number, reason: string): Promise<boolean> {
+  async revokeMatch(
+    matchTaskId: number,
+    id: number,
+    matchedYpid: string,
+    pendingId: number,
+    reason: string
+  ): Promise<boolean> {
     return request.post({
       url: '/drug/ypid-pending-batch/revoke',
       data: { matchTaskId, id, matchedYpid, pendingId, reason }
