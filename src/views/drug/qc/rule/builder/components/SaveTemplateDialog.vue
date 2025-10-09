@@ -529,14 +529,18 @@ const generateScenarioDescription = () => {
 }
 
 const generateCodeExample = () => {
+  // 使用字符串拼接而不是模板字符串中的变量，避免 Vite 解析动态导入路径
+  const categoryPath = '${templateForm.category}'
+  const templateName = '${templateForm.name}'
+
   return `
 // 1. 引入模板
-import template from 'qc-templates/${templateForm.category}/${templateForm.name}'
+import template from 'qc-templates/${categoryPath}/${templateName}'
 
 // 2. 创建规则实例
 const rule = new QcRule({
   template: template,
-  name: '${templateForm.name}规则',
+  name: '${templateName}规则',
   checkDimension: 'RECORD'
 })
 

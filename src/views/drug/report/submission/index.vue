@@ -27,7 +27,7 @@ v-for="dict in getIntDictOptions(DICT_TYPE.REPORT_STATUS)" :key="dict.value" :la
 
   <!-- 列表 -->
   <ContentWrap>
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+    <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
       <el-table-column label="序号" width="60" type="index" />
       <el-table-column label="任务名称" align="center" prop="taskName" />
       <el-table-column label="任务描述" align="center" prop="description" />

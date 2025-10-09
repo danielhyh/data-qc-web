@@ -87,7 +87,6 @@
     <el-table
       v-loading="loading"
       :data="list"
-      :stripe="true"
       :show-overflow-tooltip="true"
       :row-class-name="getRowClassName"
     >

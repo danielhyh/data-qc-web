@@ -143,36 +143,53 @@ export const useAppStore = defineStore('app', {
       layout: wsCache.get(CACHE_KEY.LAYOUT) || 'classic', // layout布局
       isDark: wsCache.get(CACHE_KEY.IS_DARK) || false, // 是否是暗黑模式
       currentSize: wsCache.get('default') || 'default', // 组件尺寸
-      theme: wsCache.get(CACHE_KEY.THEME) || {
-        // 主题色
-        elColorPrimary: '#409eff',
-        // 左侧菜单边框颜色
-        leftMenuBorderColor: 'inherit',
-        // 左侧菜单背景颜色
-        leftMenuBgColor: '#001529',
-        // 左侧菜单浅色背景颜色
-        leftMenuBgLightColor: '#0f2438',
-        // 左侧菜单选中背景颜色
-        leftMenuBgActiveColor: 'var(--el-color-primary)',
-        // 左侧菜单收起选中背景颜色
-        leftMenuCollapseBgActiveColor: 'var(--el-color-primary)',
-        // 左侧菜单字体颜色
-        leftMenuTextColor: '#bfcbd9',
-        // 左侧菜单选中字体颜色
-        leftMenuTextActiveColor: '#fff',
-        // logo字体颜色
-        logoTitleTextColor: '#fff',
-        // logo边框颜色
-        logoBorderColor: 'inherit',
-        // 头部背景颜色
-        topHeaderBgColor: '#fff',
-        // 头部字体颜色
-        topHeaderTextColor: 'inherit',
-        // 头部悬停颜色
-        topHeaderHoverColor: '#f6f6f6',
-        // 头部边框颜色
-        topToolBorderColor: '#eee'
-      }
+      theme: (() => {
+        // 从缓存加载主题时验证用户身份
+        const cachedThemeData = wsCache.get(CACHE_KEY.THEME)
+        const currentUserInfo = wsCache.get(CACHE_KEY.USER)
+
+        // 如果缓存中有主题数据且包含用户标识
+        if (cachedThemeData && typeof cachedThemeData === 'object' && 'userId' in cachedThemeData) {
+          // 验证用户身份是否匹配
+          if (currentUserInfo && cachedThemeData.userId === currentUserInfo.user?.id) {
+            // 用户匹配,返回缓存的主题配置
+            return cachedThemeData.theme
+          }
+          // 用户不匹配,返回默认主题
+        }
+
+        // 兼容旧版缓存格式或返回默认主题
+        return {
+          // 主题色
+          elColorPrimary: '#409eff',
+          // 左侧菜单边框颜色
+          leftMenuBorderColor: 'inherit',
+          // 左侧菜单背景颜色
+          leftMenuBgColor: '#001529',
+          // 左侧菜单浅色背景颜色
+          leftMenuBgLightColor: '#0f2438',
+          // 左侧菜单选中背景颜色
+          leftMenuBgActiveColor: 'var(--el-color-primary)',
+          // 左侧菜单收起选中背景颜色
+          leftMenuCollapseBgActiveColor: 'var(--el-color-primary)',
+          // 左侧菜单字体颜色
+          leftMenuTextColor: '#bfcbd9',
+          // 左侧菜单选中字体颜色
+          leftMenuTextActiveColor: '#fff',
+          // logo字体颜色
+          logoTitleTextColor: '#fff',
+          // logo边框颜色
+          logoBorderColor: 'inherit',
+          // 头部背景颜色
+          topHeaderBgColor: '#fff',
+          // 头部字体颜色
+          topHeaderTextColor: 'inherit',
+          // 头部悬停颜色
+          topHeaderHoverColor: '#f6f6f6',
+          // 头部边框颜色
+          topToolBorderColor: '#eee'
+        }
+      })()
     }
   },
   getters: {
@@ -345,7 +362,18 @@ export const useAppStore = defineStore('app', {
     },
     setTheme(theme: ThemeTypes) {
       this.theme = Object.assign(this.theme, theme)
-      wsCache.set(CACHE_KEY.THEME, this.theme)
+
+      // 保存主题到缓存时带上用户标识
+      const currentUserInfo = wsCache.get('userInfo')
+      if (currentUserInfo && currentUserInfo.user?.id) {
+        wsCache.set(CACHE_KEY.THEME, {
+          userId: currentUserInfo.user.id,
+          theme: this.theme
+        })
+      } else {
+        // 如果没有用户信息,仍然保存主题但不带用户标识
+        wsCache.set(CACHE_KEY.THEME, this.theme)
+      }
     },
     setCssVarTheme() {
       for (const key in this.theme) {
@@ -355,9 +383,50 @@ export const useAppStore = defineStore('app', {
     setFooter(footer: boolean) {
       this.footer = footer
     },
+    // 根据用户信息加载主题配置
+    loadUserTheme(userId: number, roles: string[]) {
+      console.log('=== loadUserTheme 开始 ===')
+      console.log('传入的 userId:', userId)
+      console.log('传入的 roles:', roles)
+
+      // 先从缓存加载用户的主题配置
+      const cachedThemeData = wsCache.get(CACHE_KEY.THEME)
+      console.log('缓存中的主题数据:', cachedThemeData)
+      console.log('缓存数据类型:', typeof cachedThemeData)
+
+      if (cachedThemeData && typeof cachedThemeData === 'object') {
+        console.log('缓存数据中是否有 userId:', 'userId' in cachedThemeData)
+        if ('userId' in cachedThemeData) {
+          console.log('缓存中的 userId:', cachedThemeData.userId)
+          console.log('userId 是否匹配:', cachedThemeData.userId === userId)
+        }
+      }
+
+      // 如果缓存中有该用户的主题配置,直接使用
+      if (
+        cachedThemeData &&
+        typeof cachedThemeData === 'object' &&
+        'userId' in cachedThemeData &&
+        cachedThemeData.userId === userId
+      ) {
+        console.log('✅ 使用缓存的主题配置')
+        this.theme = { ...cachedThemeData.theme }
+        this.setCssVarTheme()
+        return
+      }
+
+      console.log('❌ 缓存不匹配或不存在,根据角色加载主题')
+      // 如果缓存中没有或用户不匹配,根据角色加载主题
+      this.loadConfigByRoles(roles)
+    },
     // 根据用户角色加载配置
     loadConfigByRoles(roles: string[]) {
+      console.log('=== loadConfigByRoles 开始 ===')
+      console.log('传入的 roles:', roles)
+      console.log('是否包含 institution_admin:', roles.includes('institution_admin'))
+
       if (roles.includes('institution_admin')) {
+        console.log('✅ 应用机构用户配置')
         // 应用机构用户配置
         this.breadcrumb = institutionThemeConfig.breadcrumb
         this.breadcrumbIcon = institutionThemeConfig.breadcrumbIcon
@@ -379,9 +448,90 @@ export const useAppStore = defineStore('app', {
         this.setCurrentSize(institutionThemeConfig.currentSize)
         // 直接替换主题配置而不是合并，确保机构主题完全生效
         this.theme = { ...institutionThemeConfig.theme }
-        wsCache.set(CACHE_KEY.THEME, this.theme)
+
+        console.log('应用的机构主题 layout:', institutionThemeConfig.layout)
+        console.log('当前 store 中的 layout:', this.layout)
+        console.log('机构主题配置:', this.theme)
+
+        // 保存主题到缓存时带上用户标识
+        const currentUserInfo = wsCache.get(CACHE_KEY.USER)
+        console.log('当前用户信息:', currentUserInfo)
+
+        if (currentUserInfo && currentUserInfo.user?.id) {
+          const themeDataToCache = {
+            userId: currentUserInfo.user.id,
+            theme: this.theme
+          }
+          console.log('保存到缓存的数据:', themeDataToCache)
+          wsCache.set(CACHE_KEY.THEME, themeDataToCache)
+        } else {
+          console.log('⚠️ 没有用户信息,保存主题但不带用户标识')
+          wsCache.set(CACHE_KEY.THEME, this.theme)
+        }
+
+        this.setCssVarTheme()
+      } else {
+        console.log('✅ 应用默认主题(非机构管理员)')
+        // 非机构管理员,重置所有配置为默认值
+        this.breadcrumb = true
+        this.breadcrumbIcon = true
+        this.hamburger = true
+        this.screenfull = true
+        this.size = true
+        this.locale = true
+        this.message = true
+        this.tagsView = true
+        this.tagsViewImmerse = false
+        this.tagsViewIcon = true
+        this.logo = true
+        this.uniqueOpened = true
+        this.fixedHeader = true
+        this.footer = false
+        this.greyMode = false
+
+        // 重置布局为默认值
+        this.setLayout('classic')
+        this.setIsDark(false)
+        this.setCurrentSize('default')
+
+        // 使用默认主题
+        this.theme = {
+          elColorPrimary: '#409eff',
+          leftMenuBorderColor: 'inherit',
+          leftMenuBgColor: '#001529',
+          leftMenuBgLightColor: '#0f2438',
+          leftMenuBgActiveColor: 'var(--el-color-primary)',
+          leftMenuCollapseBgActiveColor: 'var(--el-color-primary)',
+          leftMenuTextColor: '#bfcbd9',
+          leftMenuTextActiveColor: '#fff',
+          logoTitleTextColor: '#fff',
+          logoBorderColor: 'inherit',
+          topHeaderBgColor: '#fff',
+          topHeaderTextColor: 'inherit',
+          topHeaderHoverColor: '#f6f6f6',
+          topToolBorderColor: '#eee'
+        }
+
+        console.log('默认主题配置:', this.theme)
+        console.log('当前 store 中的 layout:', this.layout)
+
+        // 保存默认主题到缓存
+        const currentUserInfo = wsCache.get(CACHE_KEY.USER)
+        console.log('当前用户信息:', currentUserInfo)
+
+        if (currentUserInfo && currentUserInfo.user?.id) {
+          const themeDataToCache = {
+            userId: currentUserInfo.user.id,
+            theme: this.theme
+          }
+          console.log('保存到缓存的数据:', themeDataToCache)
+          wsCache.set(CACHE_KEY.THEME, themeDataToCache)
+        }
+
         this.setCssVarTheme()
       }
+
+      console.log('=== loadConfigByRoles 结束 ===')
     }
   },
   persist: false

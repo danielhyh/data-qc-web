@@ -70,9 +70,9 @@ export const useUserStore = defineStore('admin-user', {
       wsCache.set(CACHE_KEY.USER, userInfo)
       wsCache.set(CACHE_KEY.ROLE_ROUTERS, userInfo.menus)
 
-      // 根据用户角色加载样式配置
+      // 根据用户信息加载主题配置
       const appStore = useAppStore()
-      appStore.loadConfigByRoles(userInfo.roles)
+      appStore.loadUserTheme(userInfo.user.id, userInfo.roles)
     },
     async setUserAvatarAction(avatar: string) {
       const userInfo = wsCache.get(CACHE_KEY.USER)
