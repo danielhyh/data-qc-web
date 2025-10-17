@@ -165,7 +165,7 @@
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="gotoBatchMatch(row)"> 批量匹配 </el-button>
-            <el-button link type="primary" @click="viewReport(row)"> 查看报告 </el-button>
+<!--            <el-button link type="primary" @click="viewReport(row)"> 查看报告 </el-button>-->
             <el-button link type="success" @click="exportResult(row)"> 导出结果 </el-button>
           </template>
         </el-table-column>

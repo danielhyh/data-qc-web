@@ -59,7 +59,6 @@
         </el-button>
         <el-button
           v-hasPermi="['system:role:create']"
-          plain
           type="primary"
           @click="openForm('create')"
         >
@@ -69,7 +68,6 @@
         <el-button
           v-hasPermi="['system:role:export']"
           :loading="exportLoading"
-          plain
           type="success"
           @click="handleExport"
         >
@@ -82,22 +80,27 @@
 
   <!-- 列表 -->
   <ContentWrap>
-    <el-table v-loading="loading" :data="list">
-      <el-table-column align="center" label="角色编号" prop="id" />
-      <el-table-column align="center" label="角色名称" prop="name" />
-      <el-table-column label="角色类型" align="center" prop="type">
+    <el-table
+      v-loading="loading"
+      :data="list"
+      border
+      :show-overflow-tooltip="true"
+    >
+      <el-table-column align="center" label="角色编号" prop="id" width="100" />
+      <el-table-column align="center" label="角色名称" prop="name" min-width="120" />
+      <el-table-column label="角色类型" align="center" prop="type" width="120">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.SYSTEM_ROLE_TYPE" :value="scope.row.type" />
         </template>
       </el-table-column>
-      <el-table-column align="center" label="角色标识" prop="code" />
-      <el-table-column align="center" label="显示顺序" prop="sort" />
-      <el-table-column align="center" label="备注" prop="remark" />
-      <el-table-column align="center" label="状态" prop="status">
+      <el-table-column align="center" label="角色标识" prop="code" min-width="120" />
+      <el-table-column align="center" label="显示顺序" prop="sort" width="100" />
+      <el-table-column align="center" label="状态" prop="status" width="100">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />
         </template>
       </el-table-column>
+      <el-table-column align="center" label="备注" prop="remark" min-width="150" show-overflow-tooltip />
       <el-table-column
         :formatter="dateFormatter"
         align="center"
@@ -105,44 +108,69 @@
         prop="createTime"
         width="180"
       />
-      <el-table-column :width="300" align="center" label="操作">
+      <el-table-column align="center" label="操作" width="280" fixed="right">
         <template #default="scope">
-          <el-button
-            v-hasPermi="['system:role:update']"
-            link
-            type="primary"
-            @click="openForm('update', scope.row.id)"
-          >
-            编辑
-          </el-button>
-          <el-button
-            v-hasPermi="['system:permission:assign-role-menu']"
-            link
-            preIcon="ep:basketball"
-            title="菜单权限"
-            type="primary"
-            @click="openAssignMenuForm(scope.row)"
-          >
-            菜单权限
-          </el-button>
-          <el-button
-            v-hasPermi="['system:permission:assign-role-data-scope']"
-            link
-            preIcon="ep:coin"
-            title="数据权限"
-            type="primary"
-            @click="openDataPermissionForm(scope.row)"
-          >
-            数据权限
-          </el-button>
-          <el-button
-            v-hasPermi="['system:role:delete']"
-            link
-            type="danger"
-            @click="handleDelete(scope.row.id)"
-          >
-            删除
-          </el-button>
+          <div class="action-links">
+            <!-- 编辑按钮 - 内置角色不显示 -->
+            <el-button
+              v-if="scope.row.type !== 1"
+              v-hasPermi="['system:role:update']"
+              link
+              type="primary"
+              size="small"
+              @click="openForm('update', scope.row.id)"
+            >
+              <Icon icon="ep:edit" class="mr-1" />
+              编辑
+            </el-button>
+
+            <!-- 菜单权限按钮 -->
+            <el-button
+              v-hasPermi="['system:permission:assign-role-menu']"
+              link
+              type="primary"
+              size="small"
+              @click="openAssignMenuForm(scope.row)"
+            >
+              <Icon icon="ep:menu" class="mr-1" />
+              菜单权限
+            </el-button>
+
+            <!-- 数据权限按钮 - 内置角色不显示 -->
+            <el-button
+              v-if="scope.row.type !== 1"
+              v-hasPermi="['system:permission:assign-role-data-scope']"
+              link
+              type="warning"
+              size="small"
+              @click="openDataPermissionForm(scope.row)"
+            >
+              <Icon icon="ep:coin" class="mr-1" />
+              数据权限
+            </el-button>
+
+            <!-- 删除按钮 - 内置角色不显示 -->
+            <el-button
+              v-if="scope.row.type !== 1"
+              v-hasPermi="['system:role:delete']"
+              link
+              type="danger"
+              size="small"
+              @click="handleDelete(scope.row.id)"
+            >
+              <Icon icon="ep:delete" class="mr-1" />
+              删除
+            </el-button>
+
+            <!-- 内置角色提示标签 -->
+            <el-tag
+              v-if="scope.row.type === 1"
+              type="info"
+              size="small"
+            >
+              系统内置
+            </el-tag>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -157,11 +185,12 @@
 
   <!-- 表单弹窗：添加/修改 -->
   <RoleForm ref="formRef" @success="getList" />
-  <!-- 表单弹窗：菜单权限 -->
+  <!-- 表单弹窗:菜单权限 -->
   <RoleAssignMenuForm ref="assignMenuFormRef" @success="getList" />
   <!-- 表单弹窗：数据权限 -->
   <RoleDataPermissionForm ref="dataPermissionFormRef" @success="getList" />
 </template>
+
 <script lang="ts" setup>
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
@@ -265,3 +294,34 @@ onMounted(() => {
   getList()
 })
 </script>
+
+<style scoped>
+/* 表头可读性美化 */
+:deep(.el-table__header) th {
+  background: #f4f6fa !important;
+  color: #2d3a4b !important;
+  font-weight: bold !important;
+  font-size: 15px;
+  border-bottom: 2px solid #e0e6ed !important;
+  letter-spacing: 0.5px;
+}
+
+/* 操作按钮区域 */
+.action-links {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+
+  :deep(.el-button) {
+    margin: 0;
+    padding: 4px 0;
+    font-weight: 500;
+
+    .mr-1 {
+      margin-right: 4px;
+    }
+  }
+}
+</style>

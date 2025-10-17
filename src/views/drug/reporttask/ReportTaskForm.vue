@@ -35,7 +35,12 @@
         </el-col>
       </el-row>
       <el-form-item label="任务描述" prop="description">
-        <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入任务描述" />
+        <el-input
+          v-model="formData.description"
+          type="textarea"
+          :rows="3"
+          placeholder="请输入任务描述"
+        />
       </el-form-item>
     </el-form>
 
@@ -69,18 +74,15 @@
               已选择 {{ selectedOrgCount }} 个机构
             </el-tag>
             <el-link type="primary" @click="openOrgSelector" class="view-detail">
-              重新配置 <Icon icon="ep:edit" />
+              重新配置
+              <Icon icon="ep:edit" />
             </el-link>
           </div>
 
           <!-- 简化的机构列表 -->
           <div class="org-list-container">
             <div class="org-grid">
-              <div
-                v-for="org in selectedOrgsDetail.slice(0, 12)"
-                :key="org.id"
-                class="org-card"
-              >
+              <div v-for="org in selectedOrgsDetail.slice(0, 12)" :key="org.id" class="org-card">
                 <div class="org-header">
                   <span class="org-name" :title="org.name">{{ org.name }}</span>
                   <dict-tag
@@ -102,7 +104,12 @@
       </div>
     </el-card>
     <template #footer>
-      <el-button @click="submitForm" type="primary" :disabled="formLoading">确 定</el-button>
+      <!-- 1. 校验: 未配置机构时禁止提交 -->
+      <el-button 
+        @click="() => { if (selectedOrgCount === 0) { message.warning('请先配置可填报机构！'); return } submitForm() }"
+        type="primary"
+        :disabled="formLoading"
+      >确 定</el-button>
       <el-button @click="dialogVisible = false">取 消</el-button>
     </template>
   </Dialog>
@@ -124,6 +131,15 @@
                 <span>选择地区</span>
               </div>
             </template>
+            <!-- 地区树搜索输入框：现代 UI，易用 -->
+            <el-input
+              v-model="areaFilterText"
+              placeholder="输入地区名称搜索"
+              clearable
+              size="small"
+              class="mb-2"
+              @input="onAreaFilterInput"
+            />
             <el-tree
               ref="areaTreeRef"
               :data="areaTreeData"
@@ -132,6 +148,7 @@
               highlight-current
               default-expand-all
               @node-click="handleAreaNodeClick"
+              :filter-node-method="filterAreaTreeNode"
             >
               <template #default="{ node, data }">
                 <span class="tree-node">
@@ -182,11 +199,22 @@
                 </div>
               </div>
             </template>
-
-            <!-- 机构等级多选框 -->
+            <!-- 机构树搜索输入框：现代 UI，易用 -->
+            <el-input
+              v-model="deptFilterText"
+              placeholder="输入机构名称搜索"
+              clearable
+              size="small"
+              class="mb-2"
+              @input="onDeptFilterInput"
+              :disabled="!selectedArea"
+            />
             <div v-if="selectedArea" class="institution-level-filter">
               <span class="filter-label">机构等级筛选：</span>
-              <el-checkbox-group v-model="selectedInstitutionLevels" @change="handleInstitutionLevelChange">
+              <el-checkbox-group
+                v-model="selectedInstitutionLevels"
+                @change="handleInstitutionLevelChange"
+              >
                 <el-checkbox
                   v-for="dict in getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL)"
                   :key="dict.value"
@@ -199,12 +227,10 @@
                 </el-checkbox>
               </el-checkbox-group>
             </div>
-
             <div v-if="!selectedArea" class="empty-state">
               <Icon icon="ep:pointer" class="empty-icon" />
               <p>请先选择左侧地区</p>
             </div>
-
             <el-tree
               v-else
               ref="treeRef"
@@ -215,6 +241,7 @@
               empty-text="该地区暂无机构"
               node-key="id"
               show-checkbox
+              :filter-node-method="filterDeptTreeNode"
             >
               <template #default="{ node, data }">
                 <div class="dept-node">
@@ -245,10 +272,11 @@ import { Icon } from '@/components/Icon'
 import * as DeptApi from '@/api/system/dept'
 import * as RegionsApi from '@/api/system/regions'
 import { defaultProps, handleTree } from '@/utils/tree'
+import { ref, watch } from 'vue'
 
 /** 填报任务设置 表单 */
 defineOptions({ name: 'ReportTaskForm' })
-
+const emit = defineEmits(['success'])
 const { t } = useI18n() // 国际化
 const message = useMessage() // 消息弹窗
 
@@ -262,12 +290,12 @@ const formData = ref({
   startDate: undefined,
   endDate: undefined,
   description: undefined,
-  reportableOrgs: undefined,
+  reportableOrgs: undefined
 })
 const formRules = reactive({
   taskName: [{ required: true, message: '任务名称不能为空', trigger: 'blur' }],
   startDate: [{ required: true, message: '上报开始时间不能为空', trigger: 'blur' }],
-  endDate: [{ required: true, message: '上报截止时间不能为空', trigger: 'blur' }],
+  endDate: [{ required: true, message: '上报截止时间不能为空', trigger: 'blur' }]
 })
 
 // 部门树相关
@@ -338,16 +366,49 @@ const selectedOrgsDetail = computed(() => {
   }
 
   // 如果没有在当前树中找到，使用缓存的机构信息（编辑状态下的回显）
-  return selectedOrgsCache.value.filter(org => selectedOrgIds.value.includes(org.id))
+  return selectedOrgsCache.value.filter((org) => selectedOrgIds.value.includes(org.id))
 })
 const formRef = ref() // 表单 Ref
+
+// —— 新增：树名称快速搜索相关变量（高内聚，易维护） —— //
+const areaFilterText = ref('') // 地区树搜索关键字
+const deptFilterText = ref('') // 机构树搜索关键字
+
+// 地区树节点过滤方法
+const filterAreaTreeNode = (value: string, data: any) => {
+  if (!value) return true
+  // 名称模糊包含（兼容 null/undefined）
+  return (data.name || '').toLowerCase().includes(value.toLowerCase())
+}
+// 机构树节点过滤方法
+const filterDeptTreeNode = (value: string, data: any) => {
+  if (!value) return true
+  // 名称模糊包含（兼容 null/undefined）
+  return (data.name || '').toLowerCase().includes(value.toLowerCase())
+}
+
+// 搜索时主动触发 el-tree 过滤方法
+const onAreaFilterInput = () => {
+  areaTreeRef.value && areaTreeRef.value.filter(areaFilterText.value)
+}
+const onDeptFilterInput = () => {
+  treeRef.value && treeRef.value.filter(deptFilterText.value)
+}
+
+// 弹窗关闭时清理搜索词（保持体验）
+watch(() => orgSelectorVisible.value, (val) => {
+  if (!val) {
+    areaFilterText.value = ''
+    deptFilterText.value = ''
+  }
+})
 
 // 获取区域图标
 const getAreaIcon = (level: number) => {
   const icons = {
-    1: 'ep:location',     // 省
+    1: 'ep:location', // 省
     2: 'ep:map-location', // 市
-    3: 'ep:place'         // 区
+    3: 'ep:place' // 区
   }
   return icons[level] || 'ep:location'
 }
@@ -390,6 +451,53 @@ const loadDeptData = async (areaCode: string) => {
 // 处理机构等级变化
 const handleInstitutionLevelChange = () => {
   applyInstitutionLevelFilter()
+
+  // 新增：筛选后自动选中筛选出来的机构
+  if (selectedInstitutionLevels.value.length > 0) {
+    nextTick(() => {
+      // 获取筛选后的所有机构 ID
+      const filteredOrgIds = getAllOrgIds(filteredDeptOptions.value)
+
+      // 将筛选出的机构 ID 与已选中的 ID 合并（去重）
+      const newSelectedIds = [...new Set([...selectedOrgIds.value, ...filteredOrgIds])]
+      selectedOrgIds.value = newSelectedIds
+
+      // 在树组件中设置选中状态
+      if (treeRef.value) {
+        treeRef.value.setCheckedKeys(newSelectedIds)
+      }
+
+      message.success(`已自动选中 ${filteredOrgIds.length} 个机构`)
+    })
+  } else {
+    // 如果取消所有等级筛选，保持当前选中状态不变
+    nextTick(() => {
+      if (selectedOrgIds.value.length > 0 && treeRef.value) {
+        treeRef.value.setCheckedKeys(selectedOrgIds.value)
+      }
+    })
+  }
+}
+
+// 新增：递归获取树中所有机构的 ID
+const getAllOrgIds = (nodes: any[]): number[] => {
+  const ids: number[] = []
+
+  const traverse = (nodeList: any[]) => {
+    nodeList.forEach(node => {
+      // 只收集叶子节点（实际机构）的 ID
+      if (node.id) {
+        ids.push(node.id)
+      }
+      // 递归处理子节点
+      if (node.children && node.children.length > 0) {
+        traverse(node.children)
+      }
+    })
+  }
+
+  traverse(nodes)
+  return ids
 }
 
 // 应用机构等级筛选
@@ -399,7 +507,10 @@ const applyInstitutionLevelFilter = () => {
     filteredDeptOptions.value = deptOptions.value
   } else {
     // 筛选指定等级的机构
-    filteredDeptOptions.value = filterTreeByLevel(deptOptions.value, selectedInstitutionLevels.value)
+    filteredDeptOptions.value = filterTreeByLevel(
+      deptOptions.value,
+      selectedInstitutionLevels.value
+    )
   }
 
   // 筛选后重新设置选中状态
@@ -412,35 +523,37 @@ const applyInstitutionLevelFilter = () => {
 
 // 递归筛选树节点
 const filterTreeByLevel = (nodes: any[], levels: number[]): any[] => {
-  const levelStrings = levels.map(l => l.toString()) // 转换为字符串数组进行比较
+  const levelStrings = levels.map((l) => l.toString()) // 转换为字符串数组进行比较
 
-  return nodes.filter(node => {
-    // 如果当前节点匹配等级条件，保留
-    const nodeLevel = node.hospitalLevel
-    if (nodeLevel !== undefined && nodeLevel !== null) {
-      // 支持数字和字符串类型的hospitalLevel比较
-      const nodeLevelStr = nodeLevel.toString()
-      if (levels.includes(nodeLevel) || levelStrings.includes(nodeLevelStr)) {
-        return true
+  return nodes
+    .filter((node) => {
+      // 如果当前节点匹配等级条件，保留
+      const nodeLevel = node.hospitalLevel
+      if (nodeLevel !== undefined && nodeLevel !== null) {
+        // 支持数字和字符串类型的hospitalLevel比较
+        const nodeLevelStr = nodeLevel.toString()
+        if (levels.includes(nodeLevel) || levelStrings.includes(nodeLevelStr)) {
+          return true
+        }
       }
-    }
 
-    // 如果有子节点，递归筛选子节点
-    if (node.children && node.children.length > 0) {
-      const filteredChildren = filterTreeByLevel(node.children, levels)
-      if (filteredChildren.length > 0) {
-        // 如果有符合条件的子节点，保留当前节点但更新子节点
-        return { ...node, children: filteredChildren }
+      // 如果有子节点，递归筛选子节点
+      if (node.children && node.children.length > 0) {
+        const filteredChildren = filterTreeByLevel(node.children, levels)
+        if (filteredChildren.length > 0) {
+          // 如果有符合条件的子节点，保留当前节点但更新子节点
+          return { ...node, children: filteredChildren }
+        }
       }
-    }
 
-    return false
-  }).map(node => {
-    if (node.children && node.children.length > 0) {
-      return { ...node, children: filterTreeByLevel(node.children, levels) }
-    }
-    return node
-  })
+      return false
+    })
+    .map((node) => {
+      if (node.children && node.children.length > 0) {
+        return { ...node, children: filterTreeByLevel(node.children, levels) }
+      }
+      return node
+    })
 }
 
 // 根据机构ID列表获取机构详情（用于编辑状态下的回显）
@@ -477,7 +590,7 @@ const loadOrgDetailsByIds = async (orgIds: number[]) => {
     })
 
     const orgDetails = await Promise.all(promises)
-    selectedOrgsCache.value = orgDetails.filter(org => org !== null)
+    selectedOrgsCache.value = orgDetails.filter((org) => org !== null)
   } catch (error) {
     console.error('批量获取机构详情失败:', error)
     selectedOrgsCache.value = []
@@ -607,7 +720,10 @@ const open = async (type: string, id?: number) => {
 
       // 如果有选择的机构，设置到selectedOrgIds中并加载详情
       if (data.reportableOrgs) {
-        const deptIds = data.reportableOrgs.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+        const deptIds = data.reportableOrgs
+          .split(',')
+          .map((id) => parseInt(id.trim()))
+          .filter((id) => !isNaN(id))
         selectedOrgIds.value = [...deptIds]
         // 加载选中机构的详细信息用于回显
         await loadOrgDetailsByIds(deptIds)
@@ -619,9 +735,21 @@ const open = async (type: string, id?: number) => {
 }
 defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 
-/** 提交表单 */
-const emit = defineEmits(['success']) // 定义 success 事件，用于操作成功后的回调
+/** 重写 submitForm，提交前进行二次确认 */
 const submitForm = async () => {
+  // 先保证有机构已配置（理论上button已拦截，这里兜底防御）
+  if (selectedOrgCount.value === 0) {
+    message.warning('请先配置可填报机构！')
+    return
+  }
+  // 二次确认对话
+  const confirmed = await message.confirm(
+    '确认后将会给配置的机构新增填报任务，且不可再修改。是否继续？',
+    '提示',
+    { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+  ).catch(() => false)
+  if (!confirmed) return
+
   // 校验表单
   if (!formRef.value) return
   const valid = await formRef.value.validate().catch(() => {})
@@ -658,7 +786,7 @@ const resetForm = () => {
     startDate: undefined,
     endDate: undefined,
     description: undefined,
-    reportableOrgs: undefined,
+    reportableOrgs: undefined
   }
 
   // 重置地区和机构相关状态

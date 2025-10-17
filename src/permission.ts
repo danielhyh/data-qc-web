@@ -8,6 +8,7 @@ import { usePageLoading } from '@/hooks/web/usePageLoading'
 import { useDictStoreWithOut } from '@/store/modules/dict'
 import { useUserStoreWithOut } from '@/store/modules/user'
 import { usePermissionStoreWithOut } from '@/store/modules/permission'
+import { SsoAuth } from '@/utils/sso'
 
 const { start, done } = useNProgress()
 
@@ -46,21 +47,36 @@ const parseURL = (
   return { basePath, paramsObject }
 }
 
-// 路由不重定向白名单
-const whiteList = [
-  '/login',
-  '/social-login',
-  '/auth-redirect',
-  '/bind',
-  '/register',
-  '/oauthLogin/gitee'
-]
-
 // 路由加载前
 router.beforeEach(async (to, from, next) => {
   start()
   loadStart()
-  if (getAccessToken()) {
+
+  // 优先处理SSO回调Token（在所有路由判断之前，且必须立即处理）
+  const urlParams = new URLSearchParams(window.location.search)
+  const hasAccessToken = urlParams.has('accessToken')
+  const hasRefreshToken = urlParams.has('refreshToken')
+
+  if (hasAccessToken && hasRefreshToken) {
+    console.log('[SSO] 检测到SSO token参数，开始保存')
+    const success = SsoAuth.handleSsoCallback()
+    console.log('[SSO] Token保存结果:', success, '当前token:', getAccessToken())
+
+    if (success) {
+      // Token已保存成功，重新进入路由守卫流程（此时 getAccessToken() 应该有值了）
+      console.log('[SSO] Token保存成功，继续路由守卫流程')
+      // 不要直接 next()，而是让代码继续向下执行到 getAccessToken() 的判断
+    } else {
+      console.error('[SSO] Token保存失败')
+      next('/login')
+      return
+    }
+  }
+
+  const currentToken = getAccessToken()
+  console.log('[路由守卫] 当前token状态:', currentToken ? '有token' : '无token', 'to.path:', to.path)
+
+  if (currentToken) {
     if (to.path === '/login') {
       next({ path: '/' })
     } else {
@@ -91,10 +107,28 @@ router.beforeEach(async (to, from, next) => {
       }
     }
   } else {
-    if (whiteList.indexOf(to.path) !== -1) {
+    // SSO白名单：这些路由允许在未登录状态下访问
+    const ssoWhiteList = [
+      '/social-login',
+      '/auth-redirect',
+      '/bind',
+      '/register',
+      '/oauthLogin/gitee'
+    ]
+
+    if (ssoWhiteList.indexOf(to.path) !== -1) {
       next()
     } else {
-      next(`/login?redirect=${to.fullPath}`) // 否则全部重定向到登录页
+      // 未登录且不在白名单，触发SSO登录
+      if (SsoAuth.needSsoLogin()) {
+        console.log('[路由守卫] 触发SSO重定向')
+        SsoAuth.redirectToSsoSync()
+        next(false) // 取消本次导航
+        return
+      } else {
+        // 如果SSO不可用（例如正在重定向），等待
+        next(false)
+      }
     }
   }
 })

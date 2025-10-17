@@ -18,27 +18,15 @@
         />
       </el-form-item>
       <el-form-item label="上报时间" class="date-range-container">
-        <div class="flex items-center space-x-2">
-          <el-date-picker
-            v-model="queryParams.startDate"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            type="daterange"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-            class="!w-180px"
-          />
-          <span class="text-gray-400 mx-2">至</span>
-          <el-date-picker
-            v-model="queryParams.endDate"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            type="daterange"
-            start-placeholder="截止开始"
-            end-placeholder="截止结束"
-            :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-            class="!w-180px"
-          />
-        </div>
+        <el-date-picker
+          v-model="queryParams.startDate"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          type="daterange"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
+          class="!w-180px"
+        />
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="请选择状态" clearable class="!w-150px">
@@ -83,32 +71,54 @@
   </ContentWrap>
 
   <!-- 列表 -->
-  <ContentWrap :title="listTitle">
+  <ContentWrap title="填报任务列表">
     <el-table
       v-loading="loading"
       :data="list"
+      border
       :show-overflow-tooltip="true"
       :row-class-name="getRowClassName"
     >
       <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px" />
       <el-table-column label="年份" align="center" prop="reportYear" width="80px" />
       <el-table-column
-        label="上报开始时间"
+        label="上报开始日期"
         align="center"
         prop="startDate"
-        :formatter="dateFormatter"
+        :formatter="dateFormatter2"
         width="160px"
       />
       <el-table-column
-        label="上报截止时间"
+        label="上报截止日期"
         align="center"
         prop="endDate"
-        :formatter="dateFormatter"
+        :formatter="dateFormatter2"
         width="160px"
       />
+      <!-- 新增 剩余时间 -->
+      <el-table-column label="剩余时间" align="center" width="120px">
+        <template #default="scope">
+          <span :class="getRemainingTimeClass(scope.row.endDate)">
+            {{ calculateRemainingTime(scope.row.endDate) }}
+          </span>
+        </template>
+      </el-table-column>
+      <!-- 新增 填报进度 -->
+      <el-table-column label="填报进度" align="center" prop="completionRate" width="200">
+        <template #default="scope">
+          <div class="flex items-center gap-2">
+            <el-progress
+              :percentage="calcCompletionRate(scope.row)"
+              :color="getProgressColor(calcCompletionRate(scope.row))"
+              :stroke-width="8"
+              style="flex: 1"
+            />
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" align="center" prop="status" width="100px">
         <template #default="scope">
-            <dict-tag :type="DICT_TYPE.REPORT_STATUS_TYPE" :value="scope.row.status" />
+          <dict-tag :type="DICT_TYPE.REPORT_STATUS_TYPE" :value="scope.row.status" />
         </template>
       </el-table-column>
       <el-table-column
@@ -125,45 +135,72 @@
         :formatter="dateFormatter"
         width="160px"
       />
-      <el-table-column label="操作" align="center" width="180px" fixed="right">
+      <el-table-column label="操作" align="center" width="220px" fixed="right">
         <template #default="scope">
-<!--          <el-button
-            link
-            type="primary"
-            @click="openForm('update', scope.row.id)"
-            v-hasPermi="['drug:report-task:update']"
-          >
-            编辑
-          </el-button>-->
+          <div class="action-links">
+            <!-- 查看按钮 - 始终显示 -->
+            <el-button
+              link
+              type="primary"
+              size="small"
+              @click="handleView(scope.row)"
+            >
+              <Icon icon="ep:view" class="mr-1" />
+              查看
+            </el-button>
 
-          <el-button
-            v-if="scope.row.status !== 2"
-            link
-            type="success"
-            @click="handleActivate(scope.row.id)"
-            v-hasPermi="['drug:report-task:update']"
-          >
-            激活
-          </el-button>
+            <!-- 状态为3（已结束）时只显示删除按钮 -->
+            <template v-if="scope.row.status === 3">
+              <el-button
+                link
+                type="danger"
+                size="small"
+                @click="handleDelete(scope.row.id)"
+                v-hasPermi="['drug:report-task:delete']"
+              >
+                <Icon icon="ep:delete" class="mr-1" />
+                删除
+              </el-button>
+            </template>
 
-          <el-button
-            v-if="scope.row.status === 2"
-            link
-            type="warning"
-            @click="handleDeactivate(scope.row.id)"
-            v-hasPermi="['drug:report-task:update']"
-          >
-            停用
-          </el-button>
+            <!-- 其他状态显示启用/停用和删除按钮 -->
+            <template v-else>
+              <el-button
+                v-if="scope.row.status !== 2"
+                link
+                type="success"
+                size="small"
+                @click="handleActivate(scope.row.id)"
+                v-hasPermi="['drug:report-task:update']"
+              >
+                <Icon icon="ep:check" class="mr-1" />
+                启用
+              </el-button>
 
-          <el-button
-            link
-            type="danger"
-            @click="handleDelete(scope.row.id)"
-            v-hasPermi="['drug:report-task:delete']"
-          >
-            删除
-          </el-button>
+              <el-button
+                v-if="scope.row.status === 2"
+                link
+                type="warning"
+                size="small"
+                @click="handleDeactivate(scope.row.id)"
+                v-hasPermi="['drug:report-task:update']"
+              >
+                <Icon icon="ep:close" class="mr-1" />
+                停用
+              </el-button>
+
+              <el-button
+                link
+                type="danger"
+                size="small"
+                @click="handleDelete(scope.row.id)"
+                v-hasPermi="['drug:report-task:delete']"
+              >
+                <Icon icon="ep:delete" class="mr-1" />
+                删除
+              </el-button>
+            </template>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -178,14 +215,49 @@
 
   <!-- 表单弹窗：添加/修改 -->
   <ReportTaskForm ref="formRef" @success="getList" />
+
+  <!-- 页面尾部加任务详情弹窗 -->
+  <el-dialog v-model="viewDialogVisible" title="任务详情" width="800px">
+    <el-descriptions border>
+      <el-descriptions-item label="任务名称">{{ viewDetail.taskName }}</el-descriptions-item>
+      <el-descriptions-item label="上报年份">{{ viewDetail.reportYear }}</el-descriptions-item>
+      <el-descriptions-item label="剩余时间">{{ calculateRemainingTime(viewDetail.endDate) }}</el-descriptions-item>
+      <el-descriptions-item label="状态"><dict-tag :type="DICT_TYPE.REPORT_STATUS_TYPE" :value="viewDetail.status" /></el-descriptions-item>
+      <el-descriptions-item label="任务描述">{{ viewDetail.description }}</el-descriptions-item>
+      <el-descriptions-item label="填报机构">{{ viewDetail.orgs ? viewDetail.orgs.length : 0 }}</el-descriptions-item>
+    </el-descriptions>
+    <div style="margin-top: 20px">
+      <el-table :data="viewDetail.orgs || []" border size="small">
+        <el-table-column label="所属市" prop="cityName" width="100" />
+        <el-table-column label="所属区县" prop="districtName" width="120" />
+        <el-table-column label="机构名称" prop="name" min-width="150" />
+        <el-table-column label="机构类别" prop="institutionCategory" width="120">
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.INSTITUTION_CATEGORY" :value="scope.row.institutionCategory" />
+          </template>
+        </el-table-column>
+        <el-table-column label="机构等级" prop="hospitalLevel" width="100">
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.INSTITUTION_LEVEL" :value="scope.row.hospitalLevel" />
+          </template>
+        </el-table-column>
+        <el-table-column label="联络员" prop="contactPerson" width="100" />
+        <el-table-column label="联络员手机" prop="contactPhone" width="120" />
+      </el-table>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
-import { dateFormatter } from '@/utils/formatTime'
-import download from '@/utils/download'
+import {dateFormatter, dateFormatter2} from '@/utils/formatTime'
 import { ReportTaskApi, ReportTaskVO } from '@/api/drug/reporttask'
 import ReportTaskForm from './ReportTaskForm.vue'
+import { getProgressColor, getProgressStatus } from '@/utils/progressColor'
+
+// 确保字典类型包含机构类别和医院等级
+DICT_TYPE.INSTITUTION_CATEGORY = 'institution_category'
+DICT_TYPE.INSTITUTION_LEVEL = 'institution_level'
 
 /** 填报任务设置 列表 */
 defineOptions({ name: 'ReportTask' })
@@ -196,10 +268,6 @@ const { t } = useI18n() // 国际化
 const loading = ref(true) // 列表的加载中
 const list = ref<ReportTaskVO[]>([]) // 列表的数据
 const total = ref(0) // 列表的总页数
-// 动态列表标题
-const listTitle = computed(() => {
-  return '填报任务列表'
-})
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
@@ -211,7 +279,6 @@ const queryParams = reactive({
   createTime: []
 })
 const queryFormRef = ref() // 搜索的表单
-const exportLoading = ref(false) // 导出的加载中
 
 /** 查询列表 */
 const getList = async () => {
@@ -256,12 +323,12 @@ const handleDelete = async (id: number) => {
   } catch {}
 }
 
-/** 激活任务 */
+/** 启用任务 */
 const handleActivate = async (id: number) => {
   try {
-    await message.confirm('激活后将自动停用其他激活任务，是否继续？', '激活确认')
+    await message.confirm('是否启用该任务？', '启用确认')
     await ReportTaskApi.activateTask(id)
-    message.success('激活成功')
+    message.success('启用成功')
     await getList()
   } catch {}
 }
@@ -281,6 +348,65 @@ const getRowClassName = ({ row }) => {
   return row.status === 2 ? 'active-row' : ''
 }
 
+/**
+ * 计算任务剩余时间或逾期时间
+ * @param endDate 截止时间字符串
+ * @returns 剩余/逾期时间描述
+ */
+function calculateRemainingTime(endDate?: string): string {
+  if (!endDate) return '-'
+  const now = new Date()
+  const deadline = new Date(endDate)
+  const diff = deadline.getTime() - now.getTime()
+  if (diff <= 0) {
+    const overdue = Math.abs(diff)
+    const days = Math.floor(overdue / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((overdue % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    return days > 0 ? `逾期${days}天` : `逾期${hours}小时`
+  } else {
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    return days > 0 ? `剩余${days}天` : `剩余${hours}小时`
+  }
+}
+
+/**
+ * 获取剩余时间样式
+ * @param endDate 截止时间
+ * @returns 颜色 class
+ */
+function getRemainingTimeClass(endDate?: string): string {
+  if (!endDate) return ''
+  const diff = new Date(endDate).getTime() - Date.now()
+  if (diff <= 0) return 'text-red-500' // 逾期
+  if (diff <= 24 * 60 * 60 * 1000) return 'text-orange-500' // 24小时内
+  return 'text-green-500'
+}
+
+/** 任务详情/机构-查看弹窗相关逻辑 */
+const viewDialogVisible = ref(false)
+const viewDetail = ref<any>({})
+
+async function handleView(row: any) {
+  // 假设 getReportTask 返回 orgs 字段，否则此处需适配
+  const res = await ReportTaskApi.getReportTask(row.id)
+  // 兼容：如果接口未返 orgs 但返 reportableOrgs，可自行查组织、或做TODO提醒
+  viewDetail.value = res
+  viewDialogVisible.value = true
+}
+/**
+ * 兼容填报进度百分比算法
+ * 优先使用后端 progressPercent 字段
+ */
+function calcCompletionRate(row: any) {
+  // 后端返回的字段是 progressPercent
+  if (typeof row.progressPercent === 'number') return row.progressPercent
+  // 兼容旧字段名 completionRate
+  if (typeof row.completionRate === 'number') return row.completionRate
+  // 如果都没有，返回0
+  return 0
+}
+
 /** 初始化 **/
 onMounted(() => {
   getList()
@@ -288,7 +414,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 激活任务行样式 */
+/* 启用任务行样式 */
 :deep(.active-row) {
   background-color: var(--el-color-success-light-9) !important;
 }
@@ -300,5 +426,33 @@ onMounted(() => {
 /* 时间选择器容器 */
 .date-range-container .flex {
   width: 100%;
+}
+
+/* —— 表头可读性美化 —— */
+:deep(.el-table__header) th {
+  background: #f4f6fa !important; /* 柔和明亮底色（可调整） */
+  color: #2d3a4b !important; /* 对比更高，醒目 */
+  font-weight: bold !important;
+  font-size: 15px;
+  border-bottom: 2px solid #e0e6ed !important;
+  letter-spacing: 0.5px;
+}
+/* 操作按钮区域 */
+.action-links {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+
+  :deep(.el-button) {
+    margin: 0;
+    padding: 4px 0;
+    font-weight: 500;
+
+    .mr-1 {
+      margin-right: 4px;
+    }
+  }
 }
 </style>

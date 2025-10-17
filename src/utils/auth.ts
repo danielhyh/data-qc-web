@@ -25,6 +25,11 @@ export const setToken = (token: TokenType) => {
   wsCache.set(AccessTokenKey, token.accessToken)
 }
 
+// 设置简单的访问令牌（用于SSO回调）
+export const setAccessToken = (accessToken: string) => {
+  wsCache.set(AccessTokenKey, accessToken)
+}
+
 // 删除token
 export const removeToken = () => {
   wsCache.delete(AccessTokenKey)

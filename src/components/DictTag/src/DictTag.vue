@@ -16,38 +16,99 @@ export default defineComponent({
       type: [String, Number, Boolean, Array],
       required: true
     },
-    // 字符串分隔符 只有当 props.value 传入值为字符串时有效
     separator: {
       type: String as PropType<string>,
       default: ','
     },
-    // 每个 tag 之间的间隔，默认为 5px，参考的 el-row 的 gutter
     gutter: {
       type: String as PropType<string>,
-      default: '5px'
+      default: '8px'
+    },
+    // 新增：标签风格
+    theme: {
+      type: String as PropType<'modern' | 'soft' | 'gradient' | 'glass'>,
+      default: 'modern'
     }
   },
   setup(props) {
     const valueArr: any = computed(() => {
-      // 1. 是 Number 类型和 Boolean 类型的情况
       if (isNumber(props.value) || isBoolean(props.value)) {
         return [String(props.value)]
-      }
-      // 2. 是字符串（进一步判断是否有包含分隔符号 -> props.sepSymbol ）
-      else if (isString(props.value)) {
+      } else if (isString(props.value)) {
         return props.value.split(props.separator)
-      }
-      // 3. 数组
-      else if (isArray(props.value)) {
+      } else if (isArray(props.value)) {
         return props.value.map(String)
       }
       return []
     })
+
+    // 现代化配色方案
+    const colorMap = {
+      success: { bg: '#f0fdf4', color: '#16a34a', border: '#86efac' },
+      warning: { bg: '#fffbeb', color: '#d97706', border: '#fcd34d' },
+      danger: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' },
+      info: { bg: '#f0f9ff', color: '#0284c7', border: '#7dd3fc' },
+      primary: { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd' },
+      default: { bg: '#f9fafb', color: '#6b7280', border: '#d1d5db' }
+    }
+
+    const getTagStyle = (dict: DictDataType) => {
+      const colorType = (dict.colorType || 'default') as keyof typeof colorMap
+      const colors = colorMap[colorType] || colorMap.default
+
+      const baseStyle = {
+        border: `1px solid ${colors.border}`,
+        borderRadius: '6px',
+        padding: '4px 12px',
+        fontSize: '13px',
+        fontWeight: '500',
+        transition: 'all 0.2s ease',
+        cursor: 'default',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px'
+      }
+
+      // 不同主题样式
+      switch (props.theme) {
+        case 'soft':
+          return {
+            ...baseStyle,
+            backgroundColor: colors.bg,
+            color: colors.color,
+            boxShadow: 'none'
+          }
+        case 'gradient':
+          return {
+            ...baseStyle,
+            background: `linear-gradient(135deg, ${colors.bg} 0%, ${colors.border}30 100%)`,
+            color: colors.color,
+            border: 'none',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }
+        case 'glass':
+          return {
+            ...baseStyle,
+            background: `${colors.bg}cc`,
+            color: colors.color,
+            backdropFilter: 'blur(8px)',
+            border: `1px solid ${colors.border}60`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+          }
+        default: // modern
+          return {
+            ...baseStyle,
+            backgroundColor: colors.bg,
+            color: colors.color,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+          }
+      }
+    }
+
     const renderDictTag = () => {
       if (!props.type) {
         return null
       }
-      // 解决自定义字典标签值为零时标签不渲染的问题
       if (props.value === undefined || props.value === null || props.value === '') {
         return null
       }
@@ -55,29 +116,37 @@ export default defineComponent({
 
       return (
         <div
-          class="dict-tag"
+          class="dict-tag-wrapper"
           style={{
             display: 'inline-flex',
             gap: props.gutter,
-            justifyContent: 'center',
+            flexWrap: 'wrap',
             alignItems: 'center'
           }}
         >
           {dictOptions.map((dict: DictDataType) => {
             if (valueArr.value.includes(dict.value)) {
-              if (dict.colorType + '' === 'primary' || dict.colorType + '' === 'default') {
-                dict.colorType = ''
+              // 如果有自定义颜色
+              if (dict?.cssClass && isHexColor(dict?.cssClass)) {
+                return (
+                  <span
+                    class="custom-dict-tag"
+                    style={{
+                      ...getTagStyle(dict),
+                      backgroundColor: `${dict.cssClass}15`,
+                      color: dict.cssClass,
+                      border: `1px solid ${dict.cssClass}40`
+                    }}
+                  >
+                    {dict?.label}
+                  </span>
+                )
               }
+
               return (
-                // 添加标签的文字颜色为白色，解决自定义背景颜色时标签文字看不清的问题
-                <ElTag
-                  style={dict?.cssClass ? 'color: #fff' : ''}
-                  type={dict?.colorType || null}
-                  color={dict?.cssClass && isHexColor(dict?.cssClass) ? dict?.cssClass : ''}
-                  disableTransitions={true}
-                >
+                <span class="custom-dict-tag" style={getTagStyle(dict)}>
                   {dict?.label}
-                </ElTag>
+                </span>
               )
             }
           })}
@@ -88,3 +157,16 @@ export default defineComponent({
   }
 })
 </script>
+
+<style scoped lang="scss">
+.custom-dict-tag {
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08) !important;
+  }
+}
+
+.dict-tag-wrapper {
+  line-height: 1;
+}
+</style>

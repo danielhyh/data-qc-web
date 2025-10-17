@@ -385,22 +385,8 @@ export const useAppStore = defineStore('app', {
     },
     // 根据用户信息加载主题配置
     loadUserTheme(userId: number, roles: string[]) {
-      console.log('=== loadUserTheme 开始 ===')
-      console.log('传入的 userId:', userId)
-      console.log('传入的 roles:', roles)
-
       // 先从缓存加载用户的主题配置
       const cachedThemeData = wsCache.get(CACHE_KEY.THEME)
-      console.log('缓存中的主题数据:', cachedThemeData)
-      console.log('缓存数据类型:', typeof cachedThemeData)
-
-      if (cachedThemeData && typeof cachedThemeData === 'object') {
-        console.log('缓存数据中是否有 userId:', 'userId' in cachedThemeData)
-        if ('userId' in cachedThemeData) {
-          console.log('缓存中的 userId:', cachedThemeData.userId)
-          console.log('userId 是否匹配:', cachedThemeData.userId === userId)
-        }
-      }
 
       // 如果缓存中有该用户的主题配置,直接使用
       if (
@@ -409,24 +395,17 @@ export const useAppStore = defineStore('app', {
         'userId' in cachedThemeData &&
         cachedThemeData.userId === userId
       ) {
-        console.log('✅ 使用缓存的主题配置')
         this.theme = { ...cachedThemeData.theme }
         this.setCssVarTheme()
         return
       }
 
-      console.log('❌ 缓存不匹配或不存在,根据角色加载主题')
       // 如果缓存中没有或用户不匹配,根据角色加载主题
       this.loadConfigByRoles(roles)
     },
     // 根据用户角色加载配置
     loadConfigByRoles(roles: string[]) {
-      console.log('=== loadConfigByRoles 开始 ===')
-      console.log('传入的 roles:', roles)
-      console.log('是否包含 institution_admin:', roles.includes('institution_admin'))
-
       if (roles.includes('institution_admin')) {
-        console.log('✅ 应用机构用户配置')
         // 应用机构用户配置
         this.breadcrumb = institutionThemeConfig.breadcrumb
         this.breadcrumbIcon = institutionThemeConfig.breadcrumbIcon
@@ -449,29 +428,21 @@ export const useAppStore = defineStore('app', {
         // 直接替换主题配置而不是合并，确保机构主题完全生效
         this.theme = { ...institutionThemeConfig.theme }
 
-        console.log('应用的机构主题 layout:', institutionThemeConfig.layout)
-        console.log('当前 store 中的 layout:', this.layout)
-        console.log('机构主题配置:', this.theme)
-
         // 保存主题到缓存时带上用户标识
         const currentUserInfo = wsCache.get(CACHE_KEY.USER)
-        console.log('当前用户信息:', currentUserInfo)
 
         if (currentUserInfo && currentUserInfo.user?.id) {
           const themeDataToCache = {
             userId: currentUserInfo.user.id,
             theme: this.theme
           }
-          console.log('保存到缓存的数据:', themeDataToCache)
           wsCache.set(CACHE_KEY.THEME, themeDataToCache)
         } else {
-          console.log('⚠️ 没有用户信息,保存主题但不带用户标识')
           wsCache.set(CACHE_KEY.THEME, this.theme)
         }
 
         this.setCssVarTheme()
       } else {
-        console.log('✅ 应用默认主题(非机构管理员)')
         // 非机构管理员,重置所有配置为默认值
         this.breadcrumb = true
         this.breadcrumbIcon = true
@@ -512,26 +483,19 @@ export const useAppStore = defineStore('app', {
           topToolBorderColor: '#eee'
         }
 
-        console.log('默认主题配置:', this.theme)
-        console.log('当前 store 中的 layout:', this.layout)
-
         // 保存默认主题到缓存
         const currentUserInfo = wsCache.get(CACHE_KEY.USER)
-        console.log('当前用户信息:', currentUserInfo)
 
         if (currentUserInfo && currentUserInfo.user?.id) {
           const themeDataToCache = {
             userId: currentUserInfo.user.id,
             theme: this.theme
           }
-          console.log('保存到缓存的数据:', themeDataToCache)
           wsCache.set(CACHE_KEY.THEME, themeDataToCache)
         }
 
         this.setCssVarTheme()
       }
-
-      console.log('=== loadConfigByRoles 结束 ===')
     }
   },
   persist: false
