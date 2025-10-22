@@ -228,4 +228,8 @@ export enum DICT_TYPE {
   UPLOAD_STATUS = 'upload_status', // 文件上传状态
   REPORT_OPERATION_STATUS = 'report_operation_status', // 上报操作状态
   QC_STATUS = 'qc_status', // 质控处理状态
+  // ========== 同步模块 ==========
+  SYNC_TYPE = 'sync_type', // 同步类型
+  PROCESS_STATUS = 'process_status', // 处理状态
+  OPERATION_TYPE = 'operation_type', // 操作类型
 }

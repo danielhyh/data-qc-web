@@ -1,7 +1,9 @@
 <template>
   <div class="role-dashboard">
     <!-- 页面标题 -->
+<!--
     <PageHeader :title="dashboardConfig.title" :content="dashboardConfig.description" />
+-->
 
     <!-- 统计概览 - 4个统计卡片 -->
     <div class="stats-section">

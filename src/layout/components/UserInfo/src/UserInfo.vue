@@ -43,7 +43,8 @@ const loginOut = async () => {
     })
     await userStore.loginOut()
     tagsViewStore.delAllViews()
-    replace('/login?redirect=/index')
+    // 退出后跳转到首页，路由守卫会自动触发SSO登录
+    window.location.href = '/'
   } catch {}
 }
 const toProfile = async () => {

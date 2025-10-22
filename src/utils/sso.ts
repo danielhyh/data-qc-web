@@ -36,6 +36,7 @@ export const SsoAuth = {
     // 设置重定向标记
     isRedirecting = true
 
+
     try {
       const response = await SsoApi.getSsoLoginUrl()
       const loginUrl = response?.data || response
@@ -94,11 +95,23 @@ export const SsoAuth = {
     if (accessToken && refreshToken) {
       console.log('[SSO] 开始保存Token到localStorage')
       try {
+        // 解析expiresTime为时间戳（毫秒）
+        let expiresTimeNum = 0
+        if (expiresTime) {
+          // 后端传来的是ISO 8601格式字符串，如 "2025-10-17T19:53:22.119884400"
+          const expiresDate = new Date(expiresTime)
+          expiresTimeNum = expiresDate.getTime()
+        }
+
         // 使用setToken保存完整的token对象（包含refreshToken）
         setToken({
+          id: 0, // SSO登录时不需要
           accessToken: accessToken,
           refreshToken: refreshToken,
-          expiresTime: expiresTime || ''
+          userId: 0, // SSO登录时不需要
+          userType: 0, // SSO登录时不需要
+          clientId: '', // SSO登录时不需要
+          expiresTime: expiresTimeNum
         })
         console.log('[SSO] Token保存完成，清理URL参数')
         this.clearUrlParams()

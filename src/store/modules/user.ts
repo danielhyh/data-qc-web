@@ -4,6 +4,7 @@ import { getAccessToken, removeToken } from '@/utils/auth'
 import { CACHE_KEY, useCache, deleteUserCache } from '@/hooks/web/useCache'
 import { getInfo, loginOut } from '@/api/login'
 import { useAppStore } from './app'
+import { SsoAuth } from '@/utils/sso'
 
 const { wsCache } = useCache()
 
@@ -89,9 +90,18 @@ export const useUserStore = defineStore('admin-user', {
       wsCache.set(CACHE_KEY.USER, userInfo)
     },
     async loginOut() {
-      await loginOut()
-      removeToken()
-      deleteUserCache() // 删除用户缓存
+      try {
+        // 先调用后端logout接口
+        await loginOut()
+      } catch (error) {
+        console.error('后端登出失败:', error)
+      }
+
+      // 调用SSO logout（会清理token并重定向）
+      await SsoAuth.logout()
+
+      // 清理本地状态
+      deleteUserCache()
       this.resetState()
     },
     resetState() {
