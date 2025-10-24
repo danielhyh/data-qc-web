@@ -1,17 +1,15 @@
 <script lang="tsx">
-import { defineComponent, computed } from 'vue'
+import { defineComponent, computed, ref } from 'vue'
 import { Message } from '@/layout/components//Message'
 import { Collapse } from '@/layout/components/Collapse'
 import { UserInfo } from '@/layout/components/UserInfo'
 import { Screenfull } from '@/layout/components/Screenfull'
 import { Breadcrumb } from '@/layout/components/Breadcrumb'
-import { SizeDropdown } from '@/layout/components/SizeDropdown'
-import { LocaleDropdown } from '@/layout/components/LocaleDropdown'
 import RouterSearch from '@/components/RouterSearch/index.vue'
-import TenantVisit from '@/layout/components/TenantVisit/index.vue'
+import Setting from '@/layout/components/Setting/src/Setting.vue'
+import { Icon } from '@/components/Icon'
 import { useAppStore } from '@/store/modules/app'
 import { useDesign } from '@/hooks/web/useDesign'
-import { checkPermi } from '@/utils/permission'
 
 const { getPrefixCls, variables } = useDesign()
 
@@ -31,26 +29,18 @@ const screenfull = computed(() => appStore.getScreenfull)
 // 搜索图片
 const search = computed(() => appStore.search)
 
-// 尺寸图标
-const size = computed(() => appStore.getSize)
-
 // 布局
 const layout = computed(() => appStore.getLayout)
-
-// 多语言图标
-const locale = computed(() => appStore.getLocale)
 
 // 消息图标
 const message = computed(() => appStore.getMessage)
 
-// 租户切换权限
-const hasTenantVisitPermission = computed(
-  () => import.meta.env.VITE_APP_TENANT_ENABLE === 'true' && checkPermi(['system:tenant:visit'])
-)
-
 export default defineComponent({
   name: 'ToolHeader',
   setup() {
+    // 设置抽屉显示状态
+    const showSetting = ref(false)
+
     return () => (
       <div
         id={`${variables.namespace}-tool-header`}
@@ -69,24 +59,21 @@ export default defineComponent({
           </div>
         ) : undefined}
         <div class="h-full flex items-center">
-          {hasTenantVisitPermission.value ? <TenantVisit /> : undefined}
+          {search.value ? <RouterSearch isModal={false} /> : undefined}
+          <div
+            class="custom-hover h-full flex items-center px-10px cursor-pointer"
+            onClick={() => (showSetting.value = true)}
+          >
+            <Icon icon="ep:setting" color="var(--top-header-text-color)" />
+          </div>
           {screenfull.value ? (
             <Screenfull class="custom-hover" color="var(--top-header-text-color)"></Screenfull>
-          ) : undefined}
-          {search.value ? <RouterSearch isModal={false} /> : undefined}
-          {size.value ? (
-            <SizeDropdown class="custom-hover" color="var(--top-header-text-color)"></SizeDropdown>
-          ) : undefined}
-          {locale.value ? (
-            <LocaleDropdown
-              class="custom-hover"
-              color="var(--top-header-text-color)"
-            ></LocaleDropdown>
           ) : undefined}
           {message.value ? (
             <Message class="custom-hover" color="var(--top-header-text-color)"></Message>
           ) : undefined}
           <UserInfo></UserInfo>
+          <Setting v-model={showSetting.value} />
         </div>
       </div>
     )
@@ -99,5 +86,46 @@ $prefix-cls: #{$namespace}-tool-header;
 
 .#{$prefix-cls} {
   transition: left var(--transition-time-02);
+  background: transparent;
+  border-bottom: 1px solid var(--tech-light-border);
+  box-shadow: 0 2px 8px rgba(91, 141, 239, 0.06);
+  position: relative;
+  z-index: 99;
+  
+  /* 顶部渐变装饰条 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--tech-gradient-primary);
+    opacity: 0.3;
+  }
+  
+  /* 工具项悬停效果 */
+  :deep(.custom-hover) {
+    transition: var(--tech-transition);
+    border-radius: 8px;
+    
+    &:hover {
+      background: var(--tech-hover-bg);
+      transform: translateY(-1px);
+    }
+  }
+  
+  /* 用户信息区域增强 */
+  :deep(.v-user-info) {
+    .el-dropdown {
+      transition: var(--tech-transition);
+      border-radius: 8px;
+      padding: 4px 12px;
+      
+      &:hover {
+        background: var(--tech-hover-bg);
+      }
+    }
+  }
 }
 </style>

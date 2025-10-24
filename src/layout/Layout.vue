@@ -1,16 +1,20 @@
 <script lang="tsx">
-import { computed, defineComponent, unref } from 'vue'
+import { computed, defineComponent, unref, watch } from 'vue'
 import { useAppStore } from '@/store/modules/app'
+import { useUserStore } from '@/store/modules/user'
 import { Backtop } from '@/components/Backtop'
 import { Setting } from '@/layout/components/Setting'
 import { useRenderLayout } from './components/useRenderLayout'
 import { useDesign } from '@/hooks/web/useDesign'
+import { useWatermark } from '@/hooks/web/useWatermark'
 
 const { getPrefixCls } = useDesign()
 
 const prefixCls = getPrefixCls('layout')
 
 const appStore = useAppStore()
+const userStore = useUserStore()
+const { setWatermark } = useWatermark()
 
 // 是否是移动端
 const mobile = computed(() => appStore.getMobile)
@@ -19,6 +23,29 @@ const mobile = computed(() => appStore.getMobile)
 const collapse = computed(() => appStore.getCollapse)
 
 const layout = computed(() => appStore.getLayout)
+
+// 监听用户信息变化，自动设置水印
+watch(
+  () => userStore.getUser,
+  (user) => {
+    if (user && user.id) {
+      // 构建水印文本：用户名 + 机构名称
+      const watermarkParts = []
+      if (user.nickname) {
+        watermarkParts.push(user.nickname)
+      }
+      if (user.deptName) {
+        watermarkParts.push(user.deptName)
+      }
+      
+      const watermarkText = watermarkParts.join(' - ')
+      if (watermarkText) {
+        setWatermark(watermarkText)
+      }
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 const handleClickOutside = () => {
   appStore.setCollapse(true)

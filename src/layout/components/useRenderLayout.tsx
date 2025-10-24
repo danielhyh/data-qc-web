@@ -48,14 +48,17 @@ export const useRenderLayout = () => {
           {logo.value ? (
             <Logo
               class={[
-                'bg-[var(--left-menu-bg-color)] relative',
+                'relative',
                 {
                   '!pl-0': mobile.value && collapse.value,
                   'w-[var(--left-menu-min-width)]': appStore.getCollapse,
                   'w-[var(--left-menu-max-width)]': !appStore.getCollapse
                 }
               ]}
-              style="transition: all var(--transition-time-02);"
+              style={{
+                backgroundColor: 'var(--left-menu-bg-color)',
+                transition: 'all var(--transition-time-02)'
+              }}
             ></Logo>
           ) : undefined}
           <Menu class={[{ '!h-[calc(100%-var(--logo-height))]': logo.value }]}></Menu>
@@ -97,14 +100,17 @@ export const useRenderLayout = () => {
               ]}
               style="transition: all var(--transition-time-02);"
             >
-              <ToolHeader
-                class={[
-                  'bg-[var(--top-header-bg-color)]',
-                  {
-                    'layout-border__bottom': !tagsView.value
-                  }
-                ]}
-              ></ToolHeader>
+            <ToolHeader
+              class={[
+                {
+                  'layout-border__bottom': !tagsView.value
+                }
+              ]}
+              style={{
+                backgroundColor: 'var(--top-header-bg-color)',
+                boxShadow: 'var(--top-header-shadow)'
+              }}
+            ></ToolHeader>
 
               {tagsView.value ? (
                 <TagsView class="layout-border__top layout-border__bottom"></TagsView>
@@ -121,7 +127,13 @@ export const useRenderLayout = () => {
   const renderTopLeft = () => {
     return (
       <>
-        <div class="relative flex items-center bg-[var(--top-header-bg-color)] layout-border__bottom dark:bg-[var(--el-bg-color)]">
+        <div 
+          class="relative flex items-center layout-border__bottom"
+          style={{
+            backgroundColor: 'var(--top-header-bg-color)',
+            boxShadow: 'var(--top-header-shadow)'
+          }}
+        >
           {logo.value ? <Logo class="custom-hover"></Logo> : undefined}
 
           <ToolHeader class="flex-1"></ToolHeader>
@@ -180,11 +192,16 @@ export const useRenderLayout = () => {
       <>
         <div
           class={[
-            'flex items-center justify-between bg-[var(--top-header-bg-color)] relative',
+            'flex items-center justify-between relative',
             {
               'layout-border__bottom': !tagsView.value
             }
           ]}
+          style={{
+            backgroundColor: 'var(--top-header-bg-color)',
+            boxShadow: 'var(--top-header-shadow)',
+            zIndex: 10
+          }}
         >
           {logo.value ? <Logo class="custom-hover"></Logo> : undefined}
           <Menu class="h-[var(--top-tool-height)] flex-1 px-10px"></Menu>
@@ -223,7 +240,13 @@ export const useRenderLayout = () => {
   const renderCutMenu = () => {
     return (
       <>
-        <div class="relative flex items-center bg-[var(--top-header-bg-color)] layout-border__bottom">
+        <div 
+          class="relative flex items-center layout-border__bottom"
+          style={{
+            backgroundColor: 'var(--top-header-bg-color)',
+            boxShadow: 'var(--top-header-shadow)'
+          }}
+        >
           {logo.value ? <Logo class="custom-hover !pr-15px"></Logo> : undefined}
 
           <ToolHeader class="flex-1"></ToolHeader>

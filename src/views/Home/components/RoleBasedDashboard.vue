@@ -383,7 +383,6 @@ const handleQuickActionClick = (action: any) => {
 <style scoped>
 .role-dashboard {
   padding: 20px;
-  background-color: #f5f5f5;
   min-height: calc(100vh - 50px);
 }
 

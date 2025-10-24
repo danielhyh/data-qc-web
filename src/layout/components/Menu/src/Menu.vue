@@ -112,12 +112,16 @@ export default defineComponent({
         id={prefixCls}
         class={[
           `${prefixCls} ${prefixCls}__${unref(menuMode)}`,
-          'h-[100%] overflow-hidden flex-col bg-[var(--left-menu-bg-color)]',
+          'h-[100%] overflow-hidden flex-col',
           {
             'w-[var(--left-menu-min-width)]': unref(collapse) && unref(layout) !== 'cutMenu',
             'w-[var(--left-menu-max-width)]': !unref(collapse) && unref(layout) !== 'cutMenu'
           }
         ]}
+        style={{
+          backgroundColor: 'var(--left-menu-bg-color)',
+          boxShadow: unref(layout) !== 'top' ? 'var(--left-menu-shadow)' : 'none'
+        }}
       >
         {renderMenuWrap()}
       </div>
@@ -132,10 +136,13 @@ $prefix-cls: #{$namespace}-menu;
 .#{$prefix-cls} {
   position: relative;
   transition: width var(--transition-time-02);
+  // 背景色和阴影由内联 style 应用，不在这里硬编码
+  z-index: 10;
 
   :deep(.#{$elNamespace}-menu) {
     width: 100% !important;
     border-right: none;
+    background: transparent;
 
     // 设置选中时子标题的颜色
     .is-active {
@@ -149,7 +156,9 @@ $prefix-cls: #{$namespace}-menu;
     .#{$elNamespace}-menu-item {
       &:hover {
         color: var(--left-menu-text-active-color) !important;
-        background-color: var(--left-menu-bg-color) !important;
+        background-color: var(--left-menu-hover-bg-color, var(--left-menu-bg-active-color)) !important;
+        border-radius: 4px;
+        transition: all 0.3s ease;
       }
     }
 
@@ -208,6 +217,7 @@ $prefix-cls: #{$namespace}-menu;
   // 水平菜单
   &__horizontal {
     height: calc(var(--top-tool-height)) !important;
+    // 背景色由内联 style 应用
 
     :deep(.#{$elNamespace}-menu--horizontal) {
       height: calc(var(--top-tool-height));
@@ -255,7 +265,9 @@ $prefix-cls: #{$namespace}-menu-popper;
   .el-menu-item {
     &:hover {
       color: var(--left-menu-text-active-color) !important;
-      background-color: var(--left-menu-bg-color) !important;
+      background-color: var(--left-menu-hover-bg-color, var(--left-menu-bg-active-color)) !important;
+      border-radius: 4px;
+      transition: all 0.3s ease;
     }
   }
 

@@ -1,35 +1,48 @@
 :root {
   --login-bg-color: #293146;
 
-  --left-menu-max-width: 210px;
+  /* 统一圆角系统 */
+  --border-radius-small: 6px;
+  --border-radius-base: 8px;
+  --border-radius-medium: 10px;
+  --border-radius-large: 12px;
+  --border-radius-xlarge: 18px;
+
+  --left-menu-max-width: 260px;
 
   --left-menu-min-width: 64px;
 
-  --left-menu-bg-color: #001529;
+  --left-menu-bg-color: #e8f0fe;
 
-  --left-menu-bg-light-color: #0f2438;
+  --left-menu-bg-light-color: #e8f0fe;
 
-  --left-menu-bg-active-color: var(--el-color-primary);
+  --left-menu-hover-bg-color: #d3e3fd;
 
-  --left-menu-text-color: #bfcbd9;
+  --left-menu-bg-active-color: #c2d9fc;
 
-  --left-menu-text-active-color: #fff;
+  --left-menu-shadow: 2px 0 8px rgba(91, 141, 239, 0.1);
 
-  --left-menu-collapse-bg-active-color: var(--el-color-primary);
+  --left-menu-text-color: #334155;
+
+  --left-menu-text-active-color: var(--el-color-primary);
+
+  --left-menu-collapse-bg-active-color: #c2d9fc;
   /* left menu end */
 
   /* logo start */
-  --logo-height: 50px;
+  --logo-height: 60px;
 
-  --logo-title-text-color: #fff;
+  --logo-title-text-color: #334155;
   /* logo end */
 
   /* header start */
-  --top-header-bg-color: '#fff';
+  --top-header-bg-color: #fff;
 
-  --top-header-text-color: 'inherit';
+  --top-header-text-color: inherit;
 
   --top-header-hover-color: #f6f6f6;
+
+  --top-header-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
   --top-tool-height: var(--logo-height);
 
@@ -48,11 +61,51 @@
 
   --app-content-padding: 20px;
 
-  --app-content-bg-color: #f5f7f9;
+  --app-content-bg-color: linear-gradient(135deg, #f8fafc 0%, #f0f4f8 50%, #f8fafc 100%);
 
   --app-footer-height: 50px;
 
   --transition-time-02: 0.2s;
+
+  /* 科技感主题 - 统一协调的渐变色系 */
+  --tech-primary-color: #5B8DEF;
+  --tech-secondary-color: #7c3aed;
+  
+  /* 主渐变 */
+  --tech-gradient-primary: linear-gradient(135deg, #5B8DEF 0%, #7c3aed 100%);
+  
+  /* 背景渐变层级 */
+  --tech-gradient-bg-1: linear-gradient(135deg, rgba(91,141,239,0.04), rgba(124,58,237,0.03));
+  --tech-gradient-bg-2: linear-gradient(135deg, rgba(91,141,239,0.06), rgba(124,58,237,0.04));
+  --tech-gradient-bg-3: linear-gradient(135deg, rgba(91,141,239,0.08), rgba(124,58,237,0.06));
+  
+  /* 旧版兼容 */
+  --tech-gradient-light: linear-gradient(135deg, rgba(91,141,239,0.1), rgba(124,58,237,0.1));
+  --tech-gradient-ultra-light: linear-gradient(135deg, rgba(91,141,239,0.02), rgba(124,58,237,0.02));
+  
+  /* 浅色模式科技感背景 */
+  --tech-light-bg: #f8fafc;
+  --tech-light-card: #ffffff;
+  --tech-light-border: rgba(91, 141, 239, 0.1);
+  
+  /* 悬停和激活效果 - 统一透明度 */
+  --tech-hover-bg: rgba(91, 141, 239, 0.06);
+  --tech-hover-bg-light: rgba(91, 141, 239, 0.04);
+  --tech-active-bg: rgba(91, 141, 239, 0.12);
+  --tech-parent-active-bg: rgba(91, 141, 239, 0.08);
+  
+  /* 文字颜色 */
+  --tech-text-primary: #1e293b;
+  --tech-text-secondary: #64748b;
+  --tech-text-tertiary: #94a3b8;
+  
+  /* 阴影效果 */
+  --tech-shadow-sm: 0 2px 8px rgba(91, 141, 239, 0.08);
+  --tech-shadow-md: 0 4px 16px rgba(91, 141, 239, 0.12);
+  --tech-shadow-lg: 0 8px 24px rgba(91, 141, 239, 0.16);
+  
+  /* 过渡动画 */
+  --tech-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {

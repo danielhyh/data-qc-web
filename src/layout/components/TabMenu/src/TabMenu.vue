@@ -139,12 +139,15 @@ export default defineComponent({
         id={`${variables.namespace}-menu`}
         class={[
           prefixCls,
-          'relative bg-[var(--left-menu-bg-color)] layout-border__right',
+          'relative layout-border__right',
           {
             'w-[var(--tab-menu-max-width)]': !unref(collapse),
             'w-[var(--tab-menu-min-width)]': unref(collapse)
           }
         ]}
+        style={{
+          backgroundColor: 'var(--left-menu-bg-color)'
+        }}
         onMouseleave={mouseleave}
       >
         <ElScrollbar class="!h-[calc(100%-var(--tab-menu-collapse-height))]">

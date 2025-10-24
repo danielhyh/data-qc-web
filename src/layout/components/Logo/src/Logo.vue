@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, unref, watch } from 'vue'
 import { useAppStore } from '@/store/modules/app'
+import { useUserStore } from '@/store/modules/user'
 import { useDesign } from '@/hooks/web/useDesign'
 
 defineOptions({ name: 'Logo' })
@@ -10,6 +11,7 @@ const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('logo')
 
 const appStore = useAppStore()
+const userStore = useUserStore()
 
 const show = ref(true)
 
@@ -18,6 +20,11 @@ const title = computed(() => appStore.getTitle)
 const layout = computed(() => appStore.getLayout)
 
 const collapse = computed(() => appStore.getCollapse)
+
+// 获取机构名称
+const institutionName = computed(() => {
+  return userStore.user?.deptName || '数据质控平台'
+})
 
 onMounted(() => {
   if (unref(collapse)) show.value = false
@@ -57,32 +64,302 @@ watch(
 </script>
 
 <template>
-  <div>
+  <div class="logo-wrapper">
     <router-link
-      :class="[
-        prefixCls,
-        layout !== 'classic' ? `${prefixCls}__Top` : '',
-        'flex !h-[var(--logo-height)] items-center cursor-pointer pl-8px relative decoration-none overflow-hidden'
-      ]"
+      :class="[prefixCls, 'logo-container', layout !== 'classic' ? `${prefixCls}__Top` : '']"
       to="/"
     >
-      <img
-        class="h-[calc(var(--logo-height)-10px)] w-[calc(var(--logo-height)-10px)]"
-        src="@/assets/imgs/logo.png"
-      />
-      <div
-        v-if="show"
-        :class="[
-          'ml-10px text-16px font-700',
-          {
-            'text-[var(--logo-title-text-color)]': layout === 'classic',
-            'text-[var(--top-header-text-color)]':
-              layout === 'topLeft' || layout === 'top' || layout === 'cutMenu'
-          }
-        ]"
-      >
-        {{ title }}
+      <!-- Logo 图标区域 -->
+      <div class="logo-icon-box">
+        <!-- 动态光环 -->
+        <div class="logo-ring"></div>
+        <!-- Logo 图片 -->
+        <img class="logo-img" src="@/assets/imgs/logo.png" alt="Logo" />
       </div>
+
+      <!-- Logo 文字信息 -->
+      <transition name="logo-fade">
+        <div v-if="show" class="logo-info">
+          <!-- 系统标题 -->
+          <div
+            :class="[
+              'logo-title',
+              {
+                'logo-title-classic': layout === 'classic',
+                'logo-title-top': layout === 'topLeft' || layout === 'top' || layout === 'cutMenu'
+              }
+            ]"
+          >
+            {{ title }}
+          </div>
+
+          <!-- 机构名称 -->
+          <div class="logo-dept">
+            <svg class="dept-icon" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"
+              />
+            </svg>
+            <span class="dept-text">{{ institutionName }}</span>
+          </div>
+        </div>
+      </transition>
     </router-link>
   </div>
 </template>
+
+<style scoped lang="scss">
+$prefix-cls: #{$namespace}-logo;
+
+// Logo 外层包装
+.logo-wrapper {
+  height: var(--logo-height);
+  position: relative;
+}
+
+// Logo 容器
+.logo-container {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 12px;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border-radius: 0 10px 10px 0;
+  background: var(--tech-gradient-bg-1);
+
+  // Top 布局 - 固定宽度，背景透明融入顶部栏
+  &.#{$prefix-cls}__Top {
+    width: 260px; // 固定宽度，不影响菜单
+    max-width: 260px;
+    flex-shrink: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  // 悬停效果
+  &:hover {
+    background: var(--tech-gradient-bg-2);
+    
+    // Top 布局悬停时也使用渐变
+    &.#{$prefix-cls}__Top {
+      background: var(--tech-hover-bg-light);
+    }
+    
+    transform: translateX(2px);
+
+    .logo-ring {
+      opacity: 0.6;
+      transform: rotate(90deg) scale(1.15);
+    }
+
+    .logo-img {
+      transform: scale(1.08);
+    }
+
+    .logo-title {
+      letter-spacing: 0.3px;
+    }
+  }
+}
+
+// Logo 图标盒子
+.logo-icon-box {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Logo 图片
+.logo-img {
+  width: 30px;
+  height: 30px;
+  position: relative;
+  z-index: 2;
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 2px 6px rgba(37, 99, 235, 0.25));
+}
+
+// 动态光环
+.logo-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(37, 99, 235, 0.3),
+    rgba(124, 58, 237, 0.3),
+    rgba(219, 39, 119, 0.3),
+    rgba(37, 99, 235, 0.3)
+  );
+  opacity: 0;
+  transform: rotate(0deg);
+  transition: all 0.5s ease;
+  z-index: 1;
+  filter: blur(4px);
+  animation: spin-ring 4s linear infinite;
+}
+
+// Logo 信息区
+.logo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-left: 10px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+// 系统标题
+.logo-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-wide);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.3s;
+  background: linear-gradient(120deg, #2563eb, #7c3aed, #db2777);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.25));
+
+  // Classic 布局
+  &.logo-title-classic {
+    color: var(--logo-title-text-color);
+    background: none;
+    -webkit-text-fill-color: var(--logo-title-text-color);
+    filter: none;
+  }
+
+  // Top 布局
+  &.logo-title-top {
+    font-size: 13px;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: none;
+  }
+}
+
+// 机构名称
+.logo-dept {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-normal);
+  color: rgba(37, 99, 235, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 10px;
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.08), rgba(124, 58, 237, 0.08));
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s;
+  width: fit-content;
+  max-width: 100%;
+
+  &:hover {
+    background: linear-gradient(120deg, rgba(37, 99, 235, 0.12), rgba(124, 58, 237, 0.12));
+    border-color: rgba(37, 99, 235, 0.25);
+  }
+}
+
+// 机构图标
+.dept-icon {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  color: rgba(37, 99, 235, 0.8);
+}
+
+// 机构文字
+.dept-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 淡入淡出动画
+.logo-fade-enter-active,
+.logo-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.logo-fade-enter-from,
+.logo-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+// 光环旋转动画
+@keyframes spin-ring {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// 响应式
+@media (max-width: 768px) {
+  .logo-container {
+    padding: 0 10px;
+
+    &.#{$prefix-cls}__Top {
+      width: 220px;
+      max-width: 220px;
+    }
+  }
+
+  .logo-icon-box {
+    width: 30px;
+    height: 30px;
+  }
+
+  .logo-img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .logo-info {
+    margin-left: 8px;
+    gap: 2px;
+  }
+
+  .logo-title {
+    font-size: 13px;
+
+    &.logo-title-top {
+      font-size: 12px;
+    }
+  }
+
+  .logo-dept {
+    font-size: 9px;
+    padding: 2px 6px;
+    gap: 3px;
+  }
+
+  .dept-icon {
+    width: 10px;
+    height: 10px;
+  }
+}
+</style>

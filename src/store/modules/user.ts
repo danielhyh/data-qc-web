@@ -1,6 +1,6 @@
 import { store } from '@/store'
 import { defineStore } from 'pinia'
-import { getAccessToken, removeToken } from '@/utils/auth'
+import { getAccessToken } from '@/utils/auth'
 import { CACHE_KEY, useCache, deleteUserCache } from '@/hooks/web/useCache'
 import { getInfo, loginOut } from '@/api/login'
 import { useAppStore } from './app'
@@ -13,6 +13,9 @@ interface UserVO {
   avatar: string
   nickname: string
   deptId: number
+  deptName?: string
+  roleCode?: string
+  roleName?: string
 }
 
 interface UserInfoVO {
@@ -32,7 +35,10 @@ export const useUserStore = defineStore('admin-user', {
       id: 0,
       avatar: '',
       nickname: '',
-      deptId: 0
+      deptId: 0,
+      deptName: '',
+      roleCode: '',
+      roleName: ''
     }
   }),
   getters: {
@@ -112,7 +118,10 @@ export const useUserStore = defineStore('admin-user', {
         id: 0,
         avatar: '',
         nickname: '',
-        deptId: 0
+        deptId: 0,
+        deptName: '',
+        roleCode: '',
+        roleName: ''
       }
     }
   }

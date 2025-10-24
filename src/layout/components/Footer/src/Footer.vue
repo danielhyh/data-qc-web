@@ -20,7 +20,10 @@ const currentYear = computed(() => new Date().getFullYear())
 <template>
   <div
     :class="prefixCls"
-    class="h-[var(--app-footer-height)] bg-[var(--app-content-bg-color)] text-center leading-[var(--app-footer-height)] text-[var(--el-text-color-placeholder)] dark:bg-[var(--el-bg-color)] overflow-hidden"
+    class="h-[var(--app-footer-height)] text-center leading-[var(--app-footer-height)] text-[var(--el-text-color-placeholder)] overflow-hidden"
+    :style="{
+      background: 'var(--app-content-bg-color)'
+    }"
   >
     <span class="text-14px">Copyright ©{{ currentYear }} </span>
   </div>

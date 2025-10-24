@@ -4,7 +4,9 @@
       "Bash(npx eslint:*)",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
-      "WebFetch(domain:typora-picgo-save-image.oss-cn-beijing.aliyuncs.com)"
+      "WebFetch(domain:typora-picgo-save-image.oss-cn-beijing.aliyuncs.com)",
+      "Read(//d/workspace/hanford/data-qc/data-qc-server/yudao-module-system/src/main/java/cn/iocoder/yudao/module/system/controller/admin/auth/**)",
+      "Read(//d/workspace/hanford/data-qc/data-qc-server/**)"
     ],
     "deny": []
   }

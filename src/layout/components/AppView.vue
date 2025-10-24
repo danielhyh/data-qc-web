@@ -36,12 +36,15 @@ provide('reload', reload)
 <template>
   <section
     :class="[
-      'p-[var(--app-content-padding)] w-full bg-[var(--app-content-bg-color)] dark:bg-[var(--el-bg-color)]',
+      'p-[var(--app-content-padding)] w-full',
       {
         '!min-h-[calc(100vh-var(--top-tool-height)-var(--tags-view-height)-var(--app-footer-height))] pb-0':
           footer
       }
     ]"
+    :style="{
+      background: 'var(--app-content-bg-color)'
+    }"
   >
     <router-view v-if="routerAlive">
       <template #default="{ Component, route }">

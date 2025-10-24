@@ -109,11 +109,7 @@ router.beforeEach(async (to, from, next) => {
   } else {
     // SSO  白名单：这些路由允许在未登录状态下访问
     const ssoWhiteList = [
-      '/social-login',
-      '/auth-redirect',
-      '/bind',
-      '/register',
-      '/oauthLogin/gitee'
+      '/login'
     ]
 
     if (ssoWhiteList.indexOf(to.path) !== -1) {

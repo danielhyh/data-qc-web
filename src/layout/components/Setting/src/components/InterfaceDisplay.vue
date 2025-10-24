@@ -2,18 +2,18 @@
 import { setCssVar } from '@/utils'
 
 import { useDesign } from '@/hooks/web/useDesign'
-import { useWatermark } from '@/hooks/web/useWatermark'
+// import { useWatermark } from '@/hooks/web/useWatermark'
 import { useAppStore } from '@/store/modules/app'
 
 defineOptions({ name: 'InterfaceDisplay' })
 
 const { t } = useI18n()
 const { getPrefixCls } = useDesign()
-const { setWatermark } = useWatermark()
+// const { setWatermark } = useWatermark()
 const prefixCls = getPrefixCls('interface-display')
 const appStore = useAppStore()
 
-const water = ref()
+// const water = ref()
 
 // 面包屑
 const breadcrumb = ref(appStore.getBreadcrumb)
@@ -43,19 +43,12 @@ const screenfullChange = (show: boolean) => {
   appStore.setScreenfull(show)
 }
 
-// 尺寸图标
-const size = ref(appStore.getSize)
-
-const sizeChange = (show: boolean) => {
-  appStore.setSize(show)
-}
-
 // 多语言图标
-const locale = ref(appStore.getLocale)
+// const locale = ref(appStore.getLocale)
 
-const localeChange = (show: boolean) => {
-  appStore.setLocale(show)
-}
+// const localeChange = (show: boolean) => {
+//   appStore.setLocale(show)
+// }
 
 // 消息图标
 const message = ref(appStore.getMessage)
@@ -95,25 +88,25 @@ const logoChange = (show: boolean) => {
 }
 
 // 菜单手风琴
-const uniqueOpened = ref(appStore.getUniqueOpened)
+// const uniqueOpened = ref(appStore.getUniqueOpened)
 
-const uniqueOpenedChange = (uniqueOpened: boolean) => {
-  appStore.setUniqueOpened(uniqueOpened)
-}
+// const uniqueOpenedChange = (uniqueOpened: boolean) => {
+//   appStore.setUniqueOpened(uniqueOpened)
+// }
 
 // 固定头部
-const fixedHeader = ref(appStore.getFixedHeader)
+// const fixedHeader = ref(appStore.getFixedHeader)
 
-const fixedHeaderChange = (show: boolean) => {
-  appStore.setFixedHeader(show)
-}
+// const fixedHeaderChange = (show: boolean) => {
+//   appStore.setFixedHeader(show)
+// }
 
 // 页脚
-const footer = ref(appStore.getFooter)
+// const footer = ref(appStore.getFooter)
 
-const footerChange = (show: boolean) => {
-  appStore.setFooter(show)
-}
+// const footerChange = (show: boolean) => {
+//   appStore.setFooter(show)
+// }
 
 // 灰色模式
 const greyMode = ref(appStore.getGreyMode)
@@ -123,16 +116,16 @@ const greyModeChange = (show: boolean) => {
 }
 
 // 固定菜单
-const fixedMenu = ref(appStore.getFixedMenu)
+// const fixedMenu = ref(appStore.getFixedMenu)
 
-const fixedMenuChange = (show: boolean) => {
-  appStore.setFixedMenu(show)
-}
+// const fixedMenuChange = (show: boolean) => {
+//   appStore.setFixedMenu(show)
+// }
 
 // 设置水印
-const setWater = () => {
-  setWatermark(water.value)
-}
+// const setWater = () => {
+//   setWatermark(water.value)
+// }
 
 const layout = computed(() => appStore.getLayout)
 
@@ -168,15 +161,11 @@ watch(
       <ElSwitch v-model="screenfull" @change="screenfullChange" />
     </div>
 
-    <div class="flex items-center justify-between">
-      <span class="text-14px">{{ t('setting.sizeIcon') }}</span>
-      <ElSwitch v-model="size" @change="sizeChange" />
-    </div>
-
-    <div class="flex items-center justify-between">
+    <!-- 多语言图标 -->
+    <!-- <div class="flex items-center justify-between">
       <span class="text-14px">{{ t('setting.localeIcon') }}</span>
       <ElSwitch v-model="locale" @change="localeChange" />
-    </div>
+    </div> -->
 
     <div class="flex items-center justify-between">
       <span class="text-14px">{{ t('setting.messageIcon') }}</span>
@@ -203,34 +192,39 @@ watch(
       <ElSwitch v-model="logo" @change="logoChange" />
     </div>
 
-    <div class="flex items-center justify-between">
+    <!-- 菜单手风琴 -->
+    <!-- <div class="flex items-center justify-between">
       <span class="text-14px">{{ t('setting.uniqueOpened') }}</span>
       <ElSwitch v-model="uniqueOpened" @change="uniqueOpenedChange" />
-    </div>
+    </div> -->
 
-    <div class="flex items-center justify-between">
+    <!-- 固定头部 -->
+    <!-- <div class="flex items-center justify-between">
       <span class="text-14px">{{ t('setting.fixedHeader') }}</span>
       <ElSwitch v-model="fixedHeader" @change="fixedHeaderChange" />
-    </div>
+    </div> -->
 
-    <div class="flex items-center justify-between">
+    <!-- 页脚 -->
+    <!-- <div class="flex items-center justify-between">
       <span class="text-14px">{{ t('setting.footer') }}</span>
       <ElSwitch v-model="footer" @change="footerChange" />
-    </div>
+    </div> -->
 
     <div class="flex items-center justify-between">
       <span class="text-14px">{{ t('setting.greyMode') }}</span>
       <ElSwitch v-model="greyMode" @change="greyModeChange" />
     </div>
 
-    <div class="flex items-center justify-between">
+    <!-- 固定菜单 -->
+    <!-- <div class="flex items-center justify-between">
       <span class="text-14px">{{ t('setting.fixedMenu') }}</span>
       <ElSwitch v-model="fixedMenu" @change="fixedMenuChange" />
-    </div>
+    </div> -->
 
-    <div class="flex items-center justify-between">
+    <!-- 水印 -->
+    <!-- <div class="flex items-center justify-between">
       <span class="text-14px">{{ t('watermark.watermark') }}</span>
       <ElInput v-model="water" class="right-1 w-20" @change="setWater()" />
-    </div>
+    </div> -->
   </div>
 </template>

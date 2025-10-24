@@ -50,6 +50,7 @@ defineProps({
   </ElCard>
 </template>
 
+<!--
 <style lang="scss" scoped>
 .v-content-wrap {
   background: #ffffff;
@@ -78,18 +79,53 @@ defineProps({
 
 :deep(.el-card__header) {
   padding: 0;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid color-mix(in srgb, var(&#45;&#45;el-color-primary) 10%, #ebeef5);
 }
 
 /* 标题区域样式 */
 .header-wrapper {
-  padding: 10px 20px;
-  transition: background-color 0.3s ease;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-/* 带背景色的标题 */
+/* 带背景色的标题 - 使用主题渐变 */
 .header-wrapper.with-background {
-  background-color: #fafafa;
+  /* 降级方案：纯色半透明背景 */
+  background-color: rgba(91, 141, 239, 0.05);
+
+  /* 现代浏览器：主题色渐变 */
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(&#45;&#45;el-color-primary) 5%, transparent) 0%,
+    color-mix(in srgb, var(&#45;&#45;el-color-primary) 8%, transparent) 50%,
+    color-mix(in srgb, var(&#45;&#45;el-color-primary) 5%, transparent) 100%
+  );
+
+  /* 顶部装饰线 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(&#45;&#45;el-color-primary) 50%,
+      transparent 100%
+    );
+    opacity: 0.3;
+  }
+
+  /* 标题文字增强对比度 */
+  span {
+    color: var(&#45;&#45;el-text-color-primary);
+    position: relative;
+    z-index: 1;
+  }
 }
 
 /* 标题图标样式 */
@@ -108,11 +144,16 @@ defineProps({
 /* 响应式设计 */
 @media (max-width: 768px) {
   .header-wrapper {
-    padding: 12px 16px;
+    padding: 10px 12px;
   }
 
   .header-icon {
     display: none;
   }
+
+  :deep(.el-card) {
+    border-radius: var(&#45;&#45;border-radius-base);
+  }
 }
 </style>
+-->

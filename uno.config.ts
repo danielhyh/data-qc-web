@@ -102,6 +102,13 @@ ${selector}:after {
   presets: [presetUno({ dark: 'class', attributify: false })],
   // transformers: [transformerVariantGroup()],
   shortcuts: {
-    'wh-full': 'w-full h-full'
+    'wh-full': 'w-full h-full',
+    'tech-card-light': 'bg-white rounded-12px border-1 border-[rgba(91,141,239,0.1)] shadow-sm hover:shadow-md transition-all',
+    'tech-gradient-text': 'bg-clip-text text-transparent bg-gradient-to-r from-[#5B8DEF] to-[#7c3aed]',
+    'tech-hover-scale': 'transition-all hover:scale-102 hover:-translate-y-1',
+    'tech-btn-primary': 'px-6 py-3 rounded-10px text-white font-600 bg-gradient-to-r from-[#5B8DEF] to-[#7c3aed] hover:shadow-md transition-all',
+    'tech-input': 'rounded-10px border-1 border-[rgba(91,141,239,0.1)] focus:border-[#5B8DEF] transition-all',
+    'tech-shadow': 'shadow-[0_2px_8px_rgba(91,141,239,0.08)]',
+    'tech-badge': 'px-3 py-1 rounded-6px text-xs font-600 bg-[rgba(91,141,239,0.1)] text-[#5B8DEF] border-1 border-[rgba(91,141,239,0.3)]'
   }
 })

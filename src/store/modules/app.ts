@@ -6,10 +6,20 @@ import { CACHE_KEY, useCache } from '@/hooks/web/useCache'
 import { ElementPlusSize } from '@/types/elementPlus'
 import { LayoutType } from '@/types/layout'
 import { ThemeTypes } from '@/types/theme'
+import { getThemePresetById, INSTITUTION_THEME_ID, DEFAULT_THEME_ID } from '@/config/theme'
 
 const { wsCache } = useCache()
 
 // 机构用户的样式配置
+const getInstitutionThemeConfig = () => {
+  const preset = getThemePresetById(INSTITUTION_THEME_ID)
+  if (!preset) {
+    console.warn('机构主题预设不存在，使用默认主题')
+    return getThemePresetById(DEFAULT_THEME_ID)!.config
+  }
+  return preset.config
+}
+
 const institutionThemeConfig = {
   // 面包屑
   breadcrumb: true,
@@ -22,15 +32,15 @@ const institutionThemeConfig = {
   // 尺寸图标
   size: true,
   // 多语言图标
-  locale: true,
+  locale: false,
   // 消息图标
   message: true,
   // 标签页
-  tagsView: true,
+  tagsView: false,
   // 标签页
   tagsViewImmerse: false,
   // 标签页图标
-  tagsViewIcon: true,
+  tagsViewIcon: false,
   // logo
   logo: true,
   // 菜单手风琴
@@ -47,36 +57,9 @@ const institutionThemeConfig = {
   isDark: false,
   // 组件尺寸
   currentSize: 'default' as ElementPlusSize,
-  // 主题相关
-  theme: {
-    // 主题色
-    elColorPrimary: '#409eff',
-    // 左侧菜单边框颜色
-    leftMenuBorderColor: 'inherit',
-    // 左侧菜单背景颜色
-    leftMenuBgColor: '#151515',
-    // 左侧菜单浅色背景颜色
-    leftMenuBgLightColor: '#242424',
-    // 左侧菜单选中背景颜色
-    leftMenuBgActiveColor: 'var(--el-color-primary)',
-    // 左侧菜单收起选中背景颜色
-    leftMenuCollapseBgActiveColor: 'var(--el-color-primary)',
-    // 左侧菜单字体颜色
-    leftMenuTextColor: '#bfcbd9',
-    // 左侧菜单选中字体颜色
-    leftMenuTextActiveColor: '#fff',
-    // logo字体颜色
-    logoTitleTextColor: '#fff',
-    // logo边框颜色
-    logoBorderColor: '#151515',
-    // 头部背景颜色
-    topHeaderBgColor: '#151515',
-    // 头部字体颜色
-    topHeaderTextColor: '#fff',
-    // 头部悬停颜色
-    topHeaderHoverColor: '#242424',
-    // 头部边框颜色
-    topToolBorderColor: '#151515'
+  // 主题相关 - 使用预设主题
+  get theme() {
+    return getInstitutionThemeConfig()
   }
 }
 
@@ -129,10 +112,10 @@ export const useAppStore = defineStore('app', {
       screenfull: true, // 全屏图标
       search: true, // 搜索图标
       size: true, // 尺寸图标
-      locale: true, // 多语言图标
+      locale: false, // 多语言图标
       message: true, // 消息图标
       tagsView: true, // 标签页
-      tagsViewImmerse: false, // 标签页沉浸
+      tagsViewImmerse: true, // 标签页沉浸
       tagsViewIcon: true, // 是否显示标签图标
       logo: true, // logo
       fixedHeader: true, // 固定toolheader
@@ -157,37 +140,30 @@ export const useAppStore = defineStore('app', {
           }
           // 用户不匹配,返回默认主题
         }
-
-        // 兼容旧版缓存格式或返回默认主题
+        // 使用默认主题预设
+        const defaultPreset = getThemePresetById(DEFAULT_THEME_ID)
+        if (defaultPreset) {
+          return defaultPreset.config
+        }
+        // 降级方案：如果找不到默认主题，返回基础配置
         return {
-          // 主题色
-          elColorPrimary: '#409eff',
-          // 左侧菜单边框颜色
+          elColorPrimary: '#5B8DEF',
           leftMenuBorderColor: 'inherit',
-          // 左侧菜单背景颜色
-          leftMenuBgColor: '#001529',
-          // 左侧菜单浅色背景颜色
-          leftMenuBgLightColor: '#0f2438',
-          // 左侧菜单选中背景颜色
-          leftMenuBgActiveColor: 'var(--el-color-primary)',
-          // 左侧菜单收起选中背景颜色
-          leftMenuCollapseBgActiveColor: 'var(--el-color-primary)',
-          // 左侧菜单字体颜色
-          leftMenuTextColor: '#bfcbd9',
-          // 左侧菜单选中字体颜色
-          leftMenuTextActiveColor: '#fff',
-          // logo字体颜色
-          logoTitleTextColor: '#fff',
-          // logo边框颜色
+          leftMenuBgColor: '#e8f0fe',
+          leftMenuBgLightColor: '#e8f0fe',
+          leftMenuHoverBgColor: '#d3e3fd',
+          leftMenuBgActiveColor: '#c2d9fc',
+          leftMenuCollapseBgActiveColor: '#c2d9fc',
+          leftMenuTextColor: '#334155',
+          leftMenuTextActiveColor: 'var(--el-color-primary)',
+          leftMenuShadow: '2px 0 8px rgba(91, 141, 239, 0.1)',
+          logoTitleTextColor: '#334155',
           logoBorderColor: 'inherit',
-          // 头部背景颜色
-          topHeaderBgColor: '#fff',
-          // 头部字体颜色
+          topHeaderBgColor: '#f8fafc',
           topHeaderTextColor: 'inherit',
-          // 头部悬停颜色
-          topHeaderHoverColor: '#f6f6f6',
-          // 头部边框颜色
-          topToolBorderColor: '#eee'
+          topHeaderHoverColor: 'rgba(91, 141, 239, 0.08)',
+          topToolBorderColor: 'rgba(91, 141, 239, 0.1)',
+          topHeaderShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
         }
       })()
     }
@@ -377,8 +353,19 @@ export const useAppStore = defineStore('app', {
     },
     setCssVarTheme() {
       for (const key in this.theme) {
-        setCssVar(`--${humpToUnderline(key)}`, this.theme[key])
+        const cssVarName = `--${humpToUnderline(key)}`
+        const value = this.theme[key]
+        setCssVar(cssVarName, value)
       }
+
+      // 强制触发 Element Plus 重新计算颜色（通过微小延迟确保变量已设置）
+      setTimeout(() => {
+        const primaryColor = this.theme.elColorPrimary
+        if (primaryColor) {
+          // 重新设置一次以触发 Element Plus 的响应式更新
+          setCssVar('--el-color-primary', primaryColor)
+        }
+      }, 10)
     },
     setFooter(footer: boolean) {
       this.footer = footer
@@ -465,22 +452,31 @@ export const useAppStore = defineStore('app', {
         this.setIsDark(false)
         this.setCurrentSize('default')
 
-        // 使用默认主题
-        this.theme = {
-          elColorPrimary: '#409eff',
-          leftMenuBorderColor: 'inherit',
-          leftMenuBgColor: '#001529',
-          leftMenuBgLightColor: '#0f2438',
-          leftMenuBgActiveColor: 'var(--el-color-primary)',
-          leftMenuCollapseBgActiveColor: 'var(--el-color-primary)',
-          leftMenuTextColor: '#bfcbd9',
-          leftMenuTextActiveColor: '#fff',
-          logoTitleTextColor: '#fff',
-          logoBorderColor: 'inherit',
-          topHeaderBgColor: '#fff',
-          topHeaderTextColor: 'inherit',
-          topHeaderHoverColor: '#f6f6f6',
-          topToolBorderColor: '#eee'
+        // 使用默认主题预设
+        const defaultPreset = getThemePresetById(DEFAULT_THEME_ID)
+        if (defaultPreset) {
+          this.theme = { ...defaultPreset.config }
+        } else {
+          // 降级方案
+          this.theme = {
+            elColorPrimary: '#5B8DEF',
+            leftMenuBorderColor: 'inherit',
+            leftMenuBgColor: '#e8f0fe',
+            leftMenuBgLightColor: '#e8f0fe',
+            leftMenuHoverBgColor: '#d3e3fd',
+            leftMenuBgActiveColor: '#c2d9fc',
+            leftMenuCollapseBgActiveColor: '#c2d9fc',
+            leftMenuTextColor: '#334155',
+            leftMenuTextActiveColor: 'var(--el-color-primary)',
+            leftMenuShadow: '2px 0 8px rgba(91, 141, 239, 0.1)',
+            logoTitleTextColor: '#334155',
+            logoBorderColor: 'inherit',
+            topHeaderBgColor: '#f8fafc',
+            topHeaderTextColor: 'inherit',
+            topHeaderHoverColor: 'rgba(91, 141, 239, 0.08)',
+            topToolBorderColor: 'rgba(91, 141, 239, 0.1)',
+            topHeaderShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+          }
         }
 
         // 保存默认主题到缓存
