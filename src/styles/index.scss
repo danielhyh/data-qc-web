@@ -338,6 +338,11 @@ ul, ol {
   margin: 2px 0;
   padding: 8px 12px;
   transition: all 0.2s ease;
+  /* 确保文字垂直居中对齐 */
+  display: flex;
+  align-items: center;
+  line-height: 1.5;
+  min-height: 34px;
   
   &:hover {
     background: var(--tech-hover-bg);
@@ -360,6 +365,10 @@ ul, ol {
   border-radius: var(--border-radius-small);
   margin: 2px 0;
   transition: all 0.2s ease;
+  /* 确保文字垂直居中对齐 */
+  display: flex;
+  align-items: center;
+  line-height: 1.5;
   
   &:hover {
     background: var(--tech-hover-bg);
@@ -385,6 +394,11 @@ ul, ol {
   margin: 2px 0;
   padding: 8px 12px;
   transition: all 0.2s ease;
+  /* 确保文字垂直居中对齐 */
+  display: flex;
+  align-items: center;
+  line-height: 1.5;
+  min-height: 34px;
   
   &:hover {
     background: var(--tech-hover-bg);
@@ -424,6 +438,207 @@ ul, ol {
   overflow: hidden;
 }
 
+/* 表格表头样式优化 - 放大字体 */
+.el-table__header {
+  th {
+    font-size: 14.5px !important;
+    font-weight: 600 !important;
+    color: var(--tech-text-primary) !important;
+    letter-spacing: 0.02em;
+  }
+  
+  .el-table__cell {
+    font-size: 14.5px !important;
+    font-weight: 600 !important;
+    padding: 14px 0 !important;
+  }
+}
+
+/* 表格表头列名 */
+.el-table th.el-table__cell {
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  color: var(--tech-text-primary) !important;
+  letter-spacing: 0.02em;
+  
+  > .cell {
+    font-size: 14.5px !important;
+    font-weight: 600 !important;
+    line-height: 1.5;
+  }
+}
+
+/* 表格数据行样式优化 - 提升清晰度 */
+.el-table__body {
+  td {
+    font-size: 14px !important;
+    font-weight: 450 !important;
+    color: #2c3e50 !important;
+    line-height: 1.6 !important;
+  }
+  
+  .el-table__cell {
+    font-size: 14px !important;
+    font-weight: 450 !important;
+    padding: 12px 0 !important;
+    
+    > .cell {
+      font-size: 14px !important;
+      font-weight: 450 !important;
+      line-height: 1.6 !important;
+      color: #2c3e50 !important;
+    }
+  }
+}
+
+/* 表格数据单元格 */
+.el-table td.el-table__cell {
+  font-size: 14px !important;
+  font-weight: 450 !important;
+  color: #2c3e50 !important;
+  
+  > .cell {
+    font-size: 14px !important;
+    font-weight: 450 !important;
+    line-height: 1.6 !important;
+    color: #2c3e50 !important;
+  }
+}
+
+/* 表格中的数字优化 - 使用等宽字体 */
+.el-table__body {
+  .cell {
+    /* 如果内容全是数字，使用等宽字体 */
+    &[class*="number"],
+    &[data-type="number"] {
+      font-family: var(--font-family-mono);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+  }
+}
+
+/* 表格行悬停效果优化 */
+.el-table__body tr:hover > td {
+  background-color: rgba(91, 141, 239, 0.04) !important;
+  
+  .cell {
+    color: #1a202c !important;
+    font-weight: 500 !important;
+  }
+}
+
+/* ============================================
+   虚拟表格 (el-table-v2) 样式优化
+   ============================================ */
+
+/* 虚拟表格容器 */
+.el-table-v2 {
+  border-radius: var(--border-radius-large);
+  overflow: hidden;
+  border: 1px solid rgba(91, 141, 239, 0.1);
+  box-shadow: 0 2px 8px rgba(91, 141, 239, 0.06);
+}
+
+/* 虚拟表格表头样式 */
+.el-table-v2__header {
+  background: var(--tech-gradient-light) !important;
+  border-bottom: 2px solid rgba(91, 141, 239, 0.15) !important;
+}
+
+.el-table-v2__header-row {
+  background: transparent !important;
+}
+
+.el-table-v2__header-cell {
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+  color: var(--tech-text-primary) !important;
+  letter-spacing: 0.02em;
+  padding: 14px 12px !important;
+  background: transparent !important;
+  border-right: 1px solid rgba(91, 141, 239, 0.08) !important;
+  
+  &:last-child {
+    border-right: none !important;
+  }
+}
+
+/* 虚拟表格数据行样式 */
+.el-table-v2__row {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(91, 141, 239, 0.06);
+  
+  &:hover {
+    background-color: rgba(91, 141, 239, 0.04) !important;
+  }
+}
+
+.el-table-v2__row-cell {
+  font-size: 14px !important;
+  font-weight: 450 !important;
+  color: #2c3e50 !important;
+  line-height: 1.6 !important;
+  padding: 12px !important;
+  border-right: 1px solid rgba(91, 141, 239, 0.05);
+  
+  &:last-child {
+    border-right: none;
+  }
+}
+
+/* 虚拟表格悬停效果 */
+.el-table-v2__row:hover .el-table-v2__row-cell {
+  color: #1a202c !important;
+  font-weight: 500 !important;
+}
+
+/* 虚拟表格展开图标 */
+.el-table-v2__expand-icon {
+  color: #5B8DEF;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    color: #7c3aed;
+    transform: scale(1.1);
+  }
+}
+
+/* 虚拟表格操作按钮 */
+.el-table-v2__row-cell {
+  .el-button--link {
+    font-weight: 500;
+    
+    &.el-button--primary {
+      color: #5B8DEF;
+      
+      &:hover {
+        color: #7c3aed;
+      }
+    }
+    
+    &.el-button--danger {
+      color: #ef4444;
+      
+      &:hover {
+        color: #dc2626;
+      }
+    }
+  }
+}
+
+/* 虚拟表格固定列阴影 */
+.el-table-v2__left,
+.el-table-v2__right {
+  box-shadow: 0 0 10px rgba(91, 141, 239, 0.1);
+}
+
+/* 虚拟表格空状态 */
+.el-table-v2__empty {
+  color: var(--tech-text-secondary);
+  font-size: 14px;
+}
+
 /* 抽屉优化 */
 .el-drawer {
   box-shadow: -4px 0 16px rgba(91, 141, 239, 0.12);
@@ -461,6 +676,11 @@ ul, ol {
   padding: 8px 12px;
   font-weight: 500;
   margin: 2px 0;
+  /* 确保文字垂直居中对齐 */
+  display: flex;
+  align-items: center;
+  line-height: 1.5;
+  min-height: 34px;
   
   &:hover {
     background: var(--tech-hover-bg);
@@ -472,38 +692,210 @@ ul, ol {
   }
 }
 
-/* 消息提示优化 */
+/* ============================================
+   消息提示优化 - 现代化专业样式
+   ============================================ */
 .el-message {
   border-radius: var(--border-radius-medium);
-  border: 1px solid var(--tech-light-border);
-  box-shadow: var(--tech-shadow-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 
+              0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 14px 18px;
+  font-weight: 500;
+  min-width: 320px;
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
   
+  /* 成功消息 - 清新绿 */
   &.el-message--success {
-    background: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, 
+      rgba(236, 253, 245, 0.98) 0%, 
+      rgba(220, 252, 231, 0.98) 100%
+    );
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: #047857;
+    
+    .el-message__icon {
+      color: #10b981;
+      font-size: 18px;
+    }
   }
   
+  /* 警告消息 - 活力橙 */
   &.el-message--warning {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, 
+      rgba(254, 252, 232, 0.98) 0%, 
+      rgba(254, 243, 199, 0.98) 100%
+    );
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    color: #b45309;
+    
+    .el-message__icon {
+      color: #f59e0b;
+      font-size: 18px;
+    }
   }
   
+  /* 错误消息 - 鲜明红 */
   &.el-message--error {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
+    background: linear-gradient(135deg, 
+      rgba(254, 242, 242, 0.98) 0%, 
+      rgba(254, 226, 226, 0.98) 100%
+    );
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #b91c1c;
+    
+    .el-message__icon {
+      color: #ef4444;
+      font-size: 18px;
+    }
   }
   
+  /* 信息消息 - 科技蓝 */
   &.el-message--info {
-    background: rgba(91, 141, 239, 0.1);
-    border-color: rgba(91, 141, 239, 0.3);
+    background: linear-gradient(135deg, 
+      rgba(239, 246, 255, 0.98) 0%, 
+      rgba(224, 242, 254, 0.98) 100%
+    );
+    border: 1px solid rgba(91, 141, 239, 0.5);
+    color: #1e40af;
+    
+    .el-message__icon {
+      color: #5B8DEF;
+      font-size: 18px;
+    }
+  }
+  
+  /* 消息文字样式 */
+  .el-message__content {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+  }
+  
+  /* 关闭按钮 */
+  .el-message__closeBtn {
+    font-size: 16px;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
   }
 }
 
-/* 通知优化 */
+/* ============================================
+   通知优化 - 现代化专业样式
+   ============================================ */
 .el-notification {
   border-radius: var(--border-radius-large);
-  border: 1px solid var(--tech-light-border);
-  box-shadow: var(--tech-shadow-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 
+              0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 18px 20px;
+  min-width: 360px;
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+  
+  /* 通知标题 */
+  .el-notification__title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+  
+  /* 通知内容 */
+  .el-notification__content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #4b5563;
+  }
+  
+  /* 成功通知 */
+  &.el-notification--success {
+    background: linear-gradient(135deg, 
+      rgba(240, 253, 244, 0.98) 0%, 
+      rgba(220, 252, 231, 0.98) 100%
+    );
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    
+    .el-notification__title {
+      color: #047857;
+    }
+    
+    .el-notification__icon {
+      color: #10b981;
+      font-size: 24px;
+    }
+  }
+  
+  /* 警告通知 */
+  &.el-notification--warning {
+    background: linear-gradient(135deg, 
+      rgba(255, 251, 235, 0.98) 0%, 
+      rgba(254, 243, 199, 0.98) 100%
+    );
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    
+    .el-notification__title {
+      color: #b45309;
+    }
+    
+    .el-notification__icon {
+      color: #f59e0b;
+      font-size: 24px;
+    }
+  }
+  
+  /* 错误通知 */
+  &.el-notification--error {
+    background: linear-gradient(135deg, 
+      rgba(254, 242, 242, 0.98) 0%, 
+      rgba(254, 226, 226, 0.98) 100%
+    );
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    
+    .el-notification__title {
+      color: #b91c1c;
+    }
+    
+    .el-notification__icon {
+      color: #ef4444;
+      font-size: 24px;
+    }
+  }
+  
+  /* 信息通知 */
+  &.el-notification--info {
+    background: linear-gradient(135deg, 
+      rgba(239, 246, 255, 0.98) 0%, 
+      rgba(219, 234, 254, 0.98) 100%
+    );
+    border: 1px solid rgba(91, 141, 239, 0.4);
+    
+    .el-notification__title {
+      color: #1e40af;
+    }
+    
+    .el-notification__icon {
+      color: #5B8DEF;
+      font-size: 24px;
+    }
+  }
+  
+  /* 关闭按钮 */
+  .el-notification__closeBtn {
+    font-size: 18px;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+  }
 }
 
 /* 加载遮罩优化 */
@@ -511,6 +903,36 @@ ul, ol {
   background-color: rgba(248, 250, 252, 0.8);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
+}
+
+/* ============================================
+   模态框遮罩层毛玻璃效果
+   ============================================ */
+
+/* Element Plus 模态框遮罩层 - Dialog/Drawer/MessageBox 等 */
+.el-overlay {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+}
+
+/* 兼容旧版本的遮罩层 */
+.v-modal {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+}
+
+/* Drawer 抽屉遮罩层 */
+.el-drawer__overlay {
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+}
+
+/* Dialog 对话框遮罩层增强 */
+.el-dialog__wrapper {
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
 }
 
 /* 空状态优化 */
@@ -548,53 +970,96 @@ ul, ol {
 
 /* 标签页容器 */
 .v-tags-view {
+  /* 更深的渐变背景，增加对比度 */
   background: linear-gradient(90deg, 
-    rgba(255, 255, 255, 0.95) 0%, 
-    rgba(248, 250, 252, 0.95) 50%, 
-    rgba(255, 255, 255, 0.95) 100%
+    rgba(236, 240, 246, 1) 0%, 
+    rgba(229, 235, 243, 1) 50%, 
+    rgba(236, 240, 246, 1) 100%
   );
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 2px 8px rgba(91, 141, 239, 0.06);
-  border-bottom: 1px solid rgba(91, 141, 239, 0.08);
-  padding: 4px 8px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(91, 141, 239, 0.1);
+  border-bottom: 1px solid rgba(91, 141, 239, 0.15);
+  padding: 6px 10px;
+  position: relative;
+  
+  /* 顶部装饰线 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(91, 141, 239, 0.3) 50%, 
+      transparent 100%
+    );
+  }
   
   /* 标签项 */
   .v-tags-view__item {
-    background: var(--tech-light-card);
-    border: 1px solid rgba(91, 141, 239, 0.12);
+    /* 更明显的白色背景 */
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(91, 141, 239, 0.2);
     border-radius: var(--border-radius-large);
-    padding: 4px 12px;
-    margin: 0 4px;
+    padding: 5px 14px;
+    margin: 0 5px;
     font-size: var(--font-size-xs);
+    font-weight: 500;
     transition: all 0.25s ease;
-    box-shadow: 0 1px 3px rgba(91, 141, 239, 0.08);
+    box-shadow: 0 2px 4px rgba(91, 141, 239, 0.08),
+                0 1px 2px rgba(0, 0, 0, 0.05);
+    color: #5a6c7d;
+    position: relative;
+    
+    /* 微妙的内阴影 */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--border-radius-large);
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.5);
+      pointer-events: none;
+    }
     
     &:hover {
-      background: var(--tech-hover-bg-light);
-      border-color: rgba(91, 141, 239, 0.2);
+      background: rgba(255, 255, 255, 1);
+      border-color: rgba(91, 141, 239, 0.35);
       transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(91, 141, 239, 0.12);
+      box-shadow: 0 4px 8px rgba(91, 141, 239, 0.15),
+                  0 2px 4px rgba(0, 0, 0, 0.08);
+      color: #5B8DEF;
     }
     
     &.is-active {
-      background: var(--tech-gradient-primary);
+      /* 更鲜艳的渐变背景 */
+      background: linear-gradient(135deg, #5B8DEF 0%, #7c3aed 100%);
       color: white;
       border-color: transparent;
-      box-shadow: 0 2px 8px rgba(91, 141, 239, 0.25);
+      box-shadow: 0 4px 12px rgba(91, 141, 239, 0.35),
+                  0 2px 6px rgba(124, 58, 237, 0.25);
       font-weight: 600;
+      transform: translateY(-1px);
+      
+      &::after {
+        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3),
+                    inset 0 -1px 2px rgba(0, 0, 0, 0.1);
+      }
       
       &::before {
         content: '';
         position: absolute;
-        bottom: 0;
+        bottom: -1px;
         left: 50%;
         transform: translateX(-50%);
-        width: 60%;
-        height: 2px;
+        width: 70%;
+        height: 3px;
         background: white;
-        border-radius: 1px;
-        opacity: 0.8;
+        border-radius: 2px 2px 0 0;
+        opacity: 0.9;
+        box-shadow: 0 -2px 8px rgba(255, 255, 255, 0.5);
       }
     }
   }

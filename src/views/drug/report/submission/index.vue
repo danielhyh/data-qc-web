@@ -1,13 +1,14 @@
 <template>
-  <ContentWrap>
-    <!-- 搜索工作栏 -->
-    <el-form
-      class="-mb-15px"
-      :model="queryParams"
-      ref="queryFormRef"
-      :inline="true"
-      label-width="68px"
-    >
+  <div class="submission-container">
+    <ContentWrap>
+      <!-- 搜索工作栏 -->
+      <el-form
+        class="-mb-15px"
+        :model="queryParams"
+        ref="queryFormRef"
+        :inline="true"
+        label-width="68px"
+      >
       <el-form-item label="年份" prop="reportYear">
         <el-select
           v-model="queryParams.reportYear"
@@ -44,16 +45,14 @@
         </el-button>
       </el-form-item>
     </el-form>
-  </ContentWrap>
+    </ContentWrap>
 
-  <!-- 列表 -->
-  <ContentWrap title="我的填报任务">
+    <!-- 列表 -->
+    <ContentWrap title="我的填报任务">
     <el-table
       v-loading="loading"
       :data="list"
       :show-overflow-tooltip="true"
-      border
-      :row-class-name="getRowClassName"
     >
       <el-table-column label="序号" width="60" type="index" align="center" />
       <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px" />
@@ -130,7 +129,6 @@
               <!-- 上报按钮 -->
               <el-button
                 v-if="scope.row.reportStatus === 0"
-                link
                 type="primary"
                 size="small"
                 @click="handleReport(scope)"
@@ -142,7 +140,6 @@
               <!-- 重新上报按钮 -->
               <el-button
                 v-if="scope.row.reportStatus === 2"
-                link
                 type="warning"
                 size="small"
                 @click="handleResubmit(scope)"
@@ -154,7 +151,6 @@
               <!-- 提交至国家平台按钮 -->
               <el-button
                 v-if="scope.row.reportStatus === 3"
-                link
                 type="success"
                 size="small"
                 @click="handleSubmit(scope)"
@@ -167,7 +163,6 @@
             <!-- 查看类按钮（任务结束与否都可以查看） -->
             <el-button
               v-if="scope.row.reportStatus !== 0"
-              link
               type="primary"
               size="small"
               @click="handleCheckStatus(scope)"
@@ -178,7 +173,6 @@
 
             <el-button
               v-if="scope.row.reportStatus !== 0"
-              link
               type="info"
               size="small"
               @click="handleReportLogs(scope)"
@@ -206,10 +200,11 @@
       v-model:limit="queryParams.pageSize"
       @pagination="getList"
     />
-  </ContentWrap>
+    </ContentWrap>
 
-  <!-- 日志弹窗 -->
-  <ReportLogDialog ref="reportLogRef" />
+    <!-- 日志弹窗 -->
+    <ReportLogDialog ref="reportLogRef" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -314,32 +309,6 @@ function getRemainingTimeClass(endDate?: number): string {
   return 'text-green-500'
 }
 
-/**
- * 获取任务状态文本
- */
-function getTaskStatusText(row: any): string {
-  const now = Date.now()
-  const endDate = row.endDate
-
-  if (row.reportStatus === 1) return '已完成'
-  if (endDate < now) return '已逾期'
-  if (endDate - now <= 24 * 60 * 60 * 1000) return '即将到期'
-  if (row.reportStatus === 3) return '待提交'
-  if (row.reportStatus === 2) return '被退回'
-  return '进行中'
-}
-
-/**
- * 表格行样式
- */
-const getRowClassName = ({ row }) => {
-  // 已完成的任务高亮显示
-  if (row.reportStatus === 1) return 'completed-row'
-  // 逾期的任务警告显示
-  if (row.endDate < Date.now()) return 'overdue-row'
-  return ''
-}
-
 /** 上报 */
 const handleReport = ({ row }) => {
   router.push({
@@ -414,38 +383,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 已完成任务行样式 */
-:deep(.completed-row) {
-  background-color: var(--el-color-success-light-9) !important;
+.submission-container {
+  padding: 20px;
+  min-height: calc(100vh - 50px);
 }
 
-:deep(.completed-row:hover) {
-  background-color: var(--el-color-success-light-8) !important;
-}
-
-/* 逾期任务行样式 */
-:deep(.overdue-row) {
-  background-color: var(--el-color-danger-light-9) !important;
-}
-
-:deep(.overdue-row:hover) {
-  background-color: var(--el-color-danger-light-8) !important;
-}
-
-/* 表头可读性美化 */
-:deep(.el-table__header) th {
-  background: #f4f6fa !important;
-  color: #2d3a4b !important;
-  font-weight: bold !important;
-  font-size: 15px;
-  border-bottom: 2px solid #e0e6ed !important;
-  letter-spacing: 0.5px;
-}
-
-/* 剩余时间字体加粗 */
-.text-red-500, .text-orange-500, .text-green-500 {
-  font-weight: 600;
-}
 /* 操作按钮区域 */
 .action-links {
   display: flex;
@@ -462,6 +404,13 @@ onMounted(() => {
     .mr-1 {
       margin-right: 4px;
     }
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .submission-container {
+    padding: 10px;
   }
 }
 </style>

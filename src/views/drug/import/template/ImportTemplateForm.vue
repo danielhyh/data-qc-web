@@ -69,20 +69,6 @@
             </el-col>
           </el-row>
 
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="是否默认模板" prop="isDefault">
-                <el-radio-group v-model="formData.isDefault">
-                  <el-radio :value="true">是</el-radio>
-                  <el-radio :value="false">否</el-radio>
-                </el-radio-group>
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <!-- 预留空间 -->
-            </el-col>
-          </el-row>
-
           <el-form-item label="标题行文本" prop="titleText">
             <el-input
               v-model="formData.titleText"
@@ -90,7 +76,6 @@
               placeholder="请输入Excel第1行的标题文本"
               show-word-limit
             />
-            <div class="form-tip">这是Excel文件第1行显示的标题文本</div>
           </el-form-item>
 
           <el-form-item label="说明行文本" prop="descriptionText">
@@ -102,7 +87,6 @@
               show-word-limit
               type="textarea"
             />
-            <div class="form-tip">这是Excel文件第2行显示的说明文本，可以包含详细的填写说明</div>
           </el-form-item>
 
           <el-form-item label="备注" prop="remark">
@@ -347,7 +331,6 @@ const formData = ref<ImportTemplateSaveReqVO>({
   titleText: '',
   descriptionText: '',
   status: true,
-  isDefault: false,
   remark: '',
   fields: []
 })
@@ -364,8 +347,7 @@ const formRules = reactive({
   ],
   tableType: [{ required: true, message: '表类型不能为空', trigger: 'change' }],
   titleText: [{ required: true, message: '标题行文本不能为空', trigger: 'blur' }],
-  status: [{ required: true, message: '状态不能为空', trigger: 'change' }],
-  isDefault: [{ required: true, message: '是否默认模板不能为空', trigger: 'change' }]
+  status: [{ required: true, message: '状态不能为空', trigger: 'change' }]
 })
 
 const formRef = ref()
@@ -488,7 +470,6 @@ const resetForm = () => {
     titleText: '',
     descriptionText: '',
     status: true,
-    isDefault: false,
     remark: '',
     fields: []
   }
@@ -996,11 +977,6 @@ const refreshPreview = () => {
   opacity: 0.5;
   background: #e6f3ff;
 }
-
-.sortable-chosen {
-  /* 移除倾斜动画 */
-}
-
 .sortable-drag {
   /* 移除倾斜动画 */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);

@@ -220,7 +220,7 @@ $prefix-cls: #{$namespace}-logo;
 
 // 系统标题
 .logo-title {
-  font-size: var(--font-size-sm);
+  font-size: 15px;
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
   letter-spacing: var(--letter-spacing-wide);
@@ -244,7 +244,7 @@ $prefix-cls: #{$namespace}-logo;
 
   // Top 布局
   &.logo-title-top {
-    font-size: 13px;
+    font-size: 15px;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -258,7 +258,7 @@ $prefix-cls: #{$namespace}-logo;
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-normal);
   letter-spacing: var(--letter-spacing-normal);
@@ -344,10 +344,10 @@ $prefix-cls: #{$namespace}-logo;
   }
 
   .logo-title {
-    font-size: 13px;
+    font-size: 15px;
 
     &.logo-title-top {
-      font-size: 12px;
+      font-size: 14px;
     }
   }
 

@@ -59,7 +59,7 @@
   </ContentWrap>
 
   <!-- 列表 -->
-  <ContentWrap>
+  <ContentWrap title="地区列表">
     <div style="width: 100%; height: 700px">
       <!-- AutoResizer 自动调节大小 -->
       <el-auto-resizer>

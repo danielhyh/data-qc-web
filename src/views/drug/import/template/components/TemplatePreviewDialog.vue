@@ -6,7 +6,7 @@
         <el-card shadow="never">
           <template #header>
             <div class="info-header">
-              <Icon icon="ep:info" class="header-icon" />
+              <Icon icon="ep:info-filled" class="header-icon" />
               <span class="header-title">模板信息</span>
             </div>
           </template>
@@ -30,7 +30,7 @@
               <el-col :span="12">
                 <div class="detail-item">
                   <span class="detail-label">表类型：</span>
-                  <span class="detail-value">{{ templateInfo.tableTypeName }}</span>
+                  <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="templateInfo.tableType" />
                 </div>
               </el-col>
               <el-col :span="12">
@@ -44,16 +44,8 @@
               <el-col :span="12">
                 <div class="detail-item">
                   <span class="detail-label">状态：</span>
-                  <el-tag :type="templateInfo.status === 1 ? 'success' : 'info'" size="small">
+                  <el-tag :type="templateInfo.status ? 'success' : 'info'" size="small">
                     {{ templateInfo.statusText }}
-                  </el-tag>
-                </div>
-              </el-col>
-              <el-col :span="12">
-                <div class="detail-item">
-                  <span class="detail-label">类型：</span>
-                  <el-tag :type="templateInfo.isDefault ? 'warning' : 'primary'" size="small">
-                    {{ templateInfo.isDefault ? '默认模板' : '自定义模板' }}
                   </el-tag>
                 </div>
               </el-col>
@@ -240,21 +232,27 @@
         </el-button>
       </div>
     </template>
+
+    <!-- 下载配置弹窗 -->
+    <TemplateDownloadDialog ref="downloadRef" />
   </Dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Icon } from '@/components/Icon'
+import { DICT_TYPE } from '@/utils/dict'
 import {
   ImportTemplateApi,
   TemplatePreviewVO,
   ImportTemplateRespVO,
   TemplateFieldRespVO,
   FIELD_TYPE_NAMES,
-  FIELD_TYPE,
-  TABLE_TYPE_NAMES
+  FIELD_TYPE
 } from '@/api/drug/task/template'
+import TemplateDownloadDialog from './TemplateDownloadDialog.vue'
+import DictTag from '@/components/DictTag/src/DictTag.vue'
 
 defineOptions({ name: 'TemplatePreviewDialog' })
 
@@ -267,6 +265,7 @@ const currentTemplateId = ref<number>()
 const templateInfo = ref<ImportTemplateRespVO>()
 const previewData = ref<any>()
 const fieldList = ref<TemplateFieldRespVO[]>([])
+const downloadRef = ref()
 
 // 字段类型颜色映射
 const FIELD_TYPE_COLORS = {
@@ -317,7 +316,6 @@ const loadPreviewData = async () => {
     // 修复数据结构映射
     templateInfo.value = {
       ...response.template,
-      tableTypeName: getTableTypeName(response.template.tableType), // 添加表类型名称
       statusText: response.template.status ? '启用' : '禁用'
     }
 
@@ -354,10 +352,7 @@ const convertFieldType = (apiFieldType: string) => {
   }
   return typeMapping[apiFieldType] || FIELD_TYPE.TEXT
 }
-// 添加获取表类型名称的函数
-const getTableTypeName = (tableType: number): string => {
-  return TABLE_TYPE_NAMES[tableType] || '未知类型'
-}
+
 /** 切换示例数据显示 */
 const toggleExampleData = () => {
   showExampleData.value = !showExampleData.value
@@ -366,10 +361,9 @@ const toggleExampleData = () => {
 /** 下载模板 */
 const downloadTemplate = () => {
   if (!currentTemplateId.value) return
-
-  // 触发下载，这里可以打开下载配置弹窗
-  // 或者直接下载基础模板
-  ElMessage.info('请使用下载配置功能自定义下载选项')
+  
+  // 打开下载配置弹窗
+  downloadRef.value.open(currentTemplateId.value)
 }
 
 // ========================= 工具方法 =========================

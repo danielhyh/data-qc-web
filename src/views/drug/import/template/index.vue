@@ -1,9 +1,7 @@
 <template>
   <div class="template-container">
-    <!-- 页面头部 -->
-    <PageHeader content="管理数据导入模板，包括默认模板和自定义模板" title="导入模板管理" />
-
     <!-- 统计概览卡片 -->
+<!--
     <div class="stats-overview">
       <el-row :gutter="20">
         <el-col :lg="6" :md="6" :sm="6" :xl="6" :xs="12">
@@ -35,6 +33,7 @@
         </el-col>
       </el-row>
     </div>
+-->
 
     <!-- 搜索和操作区域 -->
     <ContentWrap>
@@ -122,16 +121,12 @@
     </ContentWrap>
 
     <!-- 列表 -->
-    <ContentWrap>
-      <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+    <ContentWrap title="模板列表">
+      <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
         <el-table-column label="模板名称" align="center" prop="templateName" min-width="200px">
           <template #default="{ row }">
             <div class="template-info">
               <div class="template-name">
-                <Icon
-                  :class="{ 'default-icon': row.isDefault }"
-                  :icon="row.isDefault ? 'ep:star-filled' : 'ep:document'"
-                />
                 {{ row.templateName }}
               </div>
               <div class="template-code">{{ row.templateCode }}</div>
@@ -150,7 +145,7 @@
         </el-table-column>
         <el-table-column label="下载次数" align="center" prop="downloadCount">
           <template #default="{ row }">
-            <span class="download-count">{{ formatNumber(row.downloadCount) }}</span>
+            <el-badge :value="formatNumber(row.downloadCount)" class="field-badge" type="success" />
           </template>
         </el-table-column>
         <el-table-column label="状态" align="center" prop="status">
@@ -163,13 +158,6 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="模板类型" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.isDefault ? 'warning' : 'primary'" size="small">
-              {{ row.isDefault ? '默认' : '自定义' }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column
           label="创建时间"
           align="center"
@@ -178,57 +166,67 @@
           width="180px"
         />
         <el-table-column label="创建人" align="center" prop="creator" />
-        <el-table-column label="操作" align="center" min-width="160px">
+        <el-table-column label="操作" align="center" width="240px" fixed="right">
           <template #default="{ row }">
             <el-button
-              link
+              size="small"
               type="primary"
               @click="handlePreview(row.id)"
               v-hasPermi="['drug:import-template:query']"
             >
+              <Icon icon="ep:view" />
               预览
             </el-button>
             <el-button
-              link
+              size="small"
               type="success"
               @click="handleDownload(row.id)"
               v-hasPermi="['drug:import-template:query']"
             >
+              <Icon icon="ep:download" />
               下载
             </el-button>
-            <el-button
-              link
-              type="primary"
-              @click="openForm('update', row.id)"
-              v-hasPermi="['drug:import-template:update']"
-            >
-              编辑
-            </el-button>
-            <el-button
-              link
-              type="warning"
-              @click="handleCopy(row.id)"
-              v-hasPermi="['drug:import-template:create']"
-            >
-              复制
-            </el-button>
-            <el-button
-              link
-              type="danger"
-              @click="handleDelete(row.id)"
-              :disabled="row.isDefault"
-              v-hasPermi="['drug:import-template:delete']"
-            >
-              删除
-            </el-button>
+            <el-dropdown @command="(command) => handleCommand(command, row)" trigger="click">
+              <el-button size="small" type="info" class="more-btn">
+                <Icon icon="ep:more-filled" />
+                更多
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    command="edit"
+                    v-hasPermi="['drug:import-template:update']"
+                  >
+                    <Icon icon="ep:edit" class="mr-5px" />
+                    编辑
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    command="copy"
+                    v-hasPermi="['drug:import-template:create']"
+                  >
+                    <Icon icon="ep:document-copy" class="mr-5px" />
+                    复制
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    command="delete"
+                    v-hasPermi="['drug:import-template:delete']"
+                  >
+                    <Icon icon="ep:delete" class="mr-5px" />
+                    删除
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
       <!-- 分页 -->
       <Pagination
         :total="total"
-        v-model:page="queryParams.pageNo"
-        v-model:limit="queryParams.pageSize"
+        :page="queryParams.pageNo"
+        :limit="queryParams.pageSize"
+        @update:page="queryParams.pageNo = $event"
+        @update:limit="queryParams.pageSize = $event"
         @pagination="getList"
       />
     </ContentWrap>
@@ -248,7 +246,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
-import {DICT_TYPE, getIntDictOptions, getDictLabel, getStrDictOptions} from '@/utils/dict'
+import { DICT_TYPE, getStrDictOptions } from '@/utils/dict'
 import {
   ImportTemplateApi,
   ImportTemplatePageReqVO,
@@ -256,8 +254,6 @@ import {
   TemplateStatisticsVO
 } from '@/api/drug/task/template'
 // 导入组件
-import PageHeader from '@/components/PageHeader/index.vue'
-import StatCard from '@/components/StatCard/index.vue'
 import ImportTemplateForm from './ImportTemplateForm.vue'
 import TemplatePreviewDialog from './components/TemplatePreviewDialog.vue'
 import TemplateDownloadDialog from './components/TemplateDownloadDialog.vue'
@@ -408,6 +404,21 @@ const handleCopy = async (id: number) => {
   }
 }
 
+/** 处理下拉菜单命令 */
+const handleCommand = (command: string, row: ImportTemplateRespVO) => {
+  switch (command) {
+    case 'edit':
+      openForm('update', row.id)
+      break
+    case 'copy':
+      handleCopy(row.id)
+      break
+    case 'delete':
+      handleDelete(row.id)
+      break
+  }
+}
+
 /** 删除按钮操作 */
 const handleDelete = async (id: number) => {
   try {
@@ -447,7 +458,6 @@ const formatNumber = (num: number | undefined): string => {
 <style scoped>
 .template-container {
   padding: 20px;
-  background-color: #f5f5f5;
   min-height: calc(100vh - 50px);
 }
 
@@ -464,13 +474,6 @@ const formatNumber = (num: number | undefined): string => {
   font-weight: 600;
   color: #303133;
   margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.template-name .default-icon {
-  color: #f56c6c;
 }
 
 .template-code {
@@ -482,9 +485,9 @@ const formatNumber = (num: number | undefined): string => {
   margin-right: 0;
 }
 
-.download-count {
-  font-weight: 600;
-  color: #67c23a;
+/* 操作按钮样式 */
+.more-btn {
+  margin-left: 8px;
 }
 
 /* 响应式设计 */

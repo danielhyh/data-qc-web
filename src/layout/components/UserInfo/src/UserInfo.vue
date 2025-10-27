@@ -100,15 +100,9 @@ const toDocument = () => {
 <template>
   <ElDropdown class="custom-hover" :class="prefixCls" trigger="click">
     <div class="tech-user-info">
-      <!-- 在线状态指示器 -->
-      <div class="status-indicator">
-        <span class="status-dot"></span>
-      </div>
-
-      <!-- 用户头像 - 带光晕效果 -->
+      <!-- 用户头像 -->
       <div class="avatar-container">
         <ElAvatar :src="avatar" alt="" class="user-avatar" />
-        <div class="avatar-ring"></div>
       </div>
 
       <!-- 用户信息 -->
@@ -194,64 +188,9 @@ $prefix-cls: #{$namespace}-user-info;
       opacity: 1;
     }
 
-    .avatar-ring {
-      opacity: 1;
-      transform: scale(1);
-    }
-
     .dropdown-arrow {
       transform: rotate(180deg);
     }
-  }
-}
-
-/* 在线状态指示器 */
-.status-indicator {
-  position: relative;
-  width: 8px;
-  height: 8px;
-
-  .status-dot {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: #22c55e;
-    border-radius: 50%;
-    animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-
-    &::before {
-      content: '';
-      position: absolute;
-      inset: -4px;
-      background: radial-gradient(circle, rgba(34, 197, 94, 0.4), transparent 70%);
-      border-radius: 50%;
-      animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-  }
-}
-
-@keyframes pulse-dot {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.8);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 0.3;
-  }
-  100% {
-    transform: scale(0.8);
-    opacity: 1;
   }
 }
 
@@ -266,21 +205,6 @@ $prefix-cls: #{$namespace}-user-info;
     border: 2px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transition: all 0.3s;
-    position: relative;
-    z-index: 2;
-  }
-
-  /* 头像光环 */
-  .avatar-ring {
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.6), rgba(147, 51, 234, 0.6));
-    opacity: 0;
-    transform: scale(0.9);
-    transition: all 0.3s;
-    z-index: 1;
-    filter: blur(8px);
   }
 }
 
@@ -297,7 +221,7 @@ $prefix-cls: #{$namespace}-user-info;
 }
 
 .user-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--top-header-text-color);
   white-space: nowrap;
@@ -310,7 +234,7 @@ $prefix-cls: #{$namespace}-user-info;
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 10px;
   padding: 2px 8px;
   border-radius: 10px;
   white-space: nowrap;
@@ -318,7 +242,7 @@ $prefix-cls: #{$namespace}-user-info;
   width: fit-content;
 
   .role-icon {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   /* 不同角色的颜色主题 */

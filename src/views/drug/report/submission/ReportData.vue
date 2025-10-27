@@ -17,36 +17,52 @@
     <!-- 上报进度步骤条 -->
     <ContentWrap class="progress-card">
       <el-steps :active="currentStep" align-center :process-status="getProcessStatus()">
-        <el-step title="准备" @click="changeSteps(0)">
+        <el-step 
+          title="准备" 
+          @click="changeSteps(0)"
+          :class="{ 'step-clickable': 0 <= currentTask.maxCurrentStep }"
+        >
           <template #icon>
-            <el-tooltip content="准备上报文件" placement="top">
+            <el-tooltip :content="0 <= currentTask.maxCurrentStep ? '点击返回准备阶段' : '准备上报文件'" placement="top">
               <el-icon>
                 <Document />
               </el-icon>
             </el-tooltip>
           </template>
         </el-step>
-        <el-step title="上传文件" @click="changeSteps(1)">
+        <el-step 
+          title="上传文件" 
+          @click="changeSteps(1)"
+          :class="{ 'step-clickable': 1 <= currentTask.maxCurrentStep }"
+        >
           <template #icon>
-            <el-tooltip content="上传数据文件" placement="top">
+            <el-tooltip :content="1 <= currentTask.maxCurrentStep ? '点击返回上传文件阶段' : '上传数据文件'" placement="top">
               <el-icon>
                 <Upload />
               </el-icon>
             </el-tooltip>
           </template>
         </el-step>
-        <el-step title="前置质控" @click="changeSteps(2)">
+        <el-step 
+          title="前置质控" 
+          @click="changeSteps(2)"
+          :class="{ 'step-clickable': 2 <= currentTask.maxCurrentStep }"
+        >
           <template #icon>
-            <el-tooltip content="数据格式验证" placement="top">
+            <el-tooltip :content="2 <= currentTask.maxCurrentStep ? '点击返回前置质控阶段' : '数据格式验证'" placement="top">
               <el-icon>
                 <CircleCheck />
               </el-icon>
             </el-tooltip>
           </template>
         </el-step>
-        <el-step title="提交上报" @click="changeSteps(3)">
+        <el-step 
+          title="提交上报" 
+          @click="changeSteps(3)"
+          :class="{ 'step-clickable': 3 <= currentTask.maxCurrentStep }"
+        >
           <template #icon>
-            <el-tooltip content="提交至管理端" placement="top">
+            <el-tooltip :content="3 <= currentTask.maxCurrentStep ? '点击返回提交上报阶段' : '提交至管理端'" placement="top">
               <el-icon>
                 <Promotion />
               </el-icon>
@@ -164,7 +180,7 @@
               action="#"
               :auto-upload="false"
               :on-change="handleFileChange"
-              accept=".zip,.xlsx"
+              accept=".zip,.rar,.xlsx"
               :disabled="currentStep < currentTask.maxCurrentStep"
               :show-file-list="false"
             >
@@ -172,7 +188,7 @@
                 <UploadFilled />
               </el-icon>
               <div class="el-upload__text">
-                拖拽ZIP压缩包或所有Excel文件到此处，或<em>点击上传</em>
+                拖拽ZIP，RAR压缩包或所有Excel文件到此处，或<em>点击上传</em>
               </div>
             </el-upload>
           </div>
@@ -180,8 +196,6 @@
           <!-- 文件列表 -->
           <el-table
             :data="fileList"
-            border
-            :row-class-name="getFileRowClassName"
             :show-overflow-tooltip="true"
           >
             <el-table-column label="序号" width="60" type="index" align="center" />
@@ -210,7 +224,6 @@
               <template #default="{ row }">
                 <el-button
                   v-if="row.status === 2"
-                  link
                   type="primary"
                   size="small"
                   :disabled="currentStep < currentTask.maxCurrentStep"
@@ -230,7 +243,7 @@
                   :show-file-list="false"
                   class="inline-upload"
                 >
-                  <el-button link type="warning" size="small">
+                  <el-button type="warning" size="small">
                     <Icon icon="ep:upload" class="mr-5px" />
                     上传
                   </el-button>
@@ -238,7 +251,6 @@
 
                 <el-button
                   v-if="[2, 3].includes(row.status)"
-                  link
                   type="danger"
                   size="small"
                   :disabled="currentStep < currentTask.maxCurrentStep"
@@ -295,8 +307,6 @@
         <!-- 质控详情表格 -->
         <el-table
           :data="preQCResult.details"
-          border
-          :row-class-name="getQCRowClassName"
           @selection-change="handleSelectionChange"
           :show-overflow-tooltip="true"
         >
@@ -343,7 +353,6 @@
           <el-table-column label="操作" width="220" fixed="right" align="center">
             <template #default="{ row }">
               <el-button
-                link
                 type="primary"
                 size="small"
                 :disabled="currentStep < currentTask.maxCurrentStep"
@@ -354,7 +363,6 @@
               </el-button>
               <el-button
                 v-if="row.qcStatus === 4"
-                link
                 type="danger"
                 size="small"
                 :disabled="currentStep < currentTask.maxCurrentStep"
@@ -365,7 +373,6 @@
               </el-button>
               <el-button
                 v-if="row.qcStatus === 4"
-                link
                 type="warning"
                 size="small"
                 :disabled="currentStep < currentTask.maxCurrentStep"
@@ -420,8 +427,6 @@
         <!-- 文件列表 -->
         <el-table
           :data="preQCResult.details"
-          border
-          :row-class-name="getSubmitRowClassName"
           :show-overflow-tooltip="true"
         >
           <el-table-column label="序号" width="60" type="index" align="center" />
@@ -453,7 +458,7 @@
           </el-table-column>-->
           <el-table-column label="操作" width="150" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button link type="primary" size="small" @click="viewFileData(row)">
+              <el-button type="primary" size="small" @click="viewFileData(row)">
                 <Icon icon="ep:view" class="mr-5px" />
                 查看详情
               </el-button>
@@ -724,25 +729,6 @@ function changeSteps(step: number) {
 const getProcessStatus = () => {
   if (currentTask.value.currentStep === 3) return 'success'
   return 'process'
-}
-
-// 获取表格行样式
-const getFileRowClassName = ({ row }) => {
-  if (row.status === 2) return 'success-row'
-  if (row.status === 3) return 'error-row'
-  return ''
-}
-
-const getQCRowClassName = ({ row }) => {
-  if (row.qcStatus === 2) return 'success-row'
-  if (row.qcStatus === 4) return 'error-row'
-  if (row.qcStatus === 3) return 'warning-row'
-  return ''
-}
-
-const getSubmitRowClassName = ({ row }) => {
-  if (row.qcStatus === 2) return 'success-row'
-  return ''
 }
 
 // 获取质控进度
@@ -1176,6 +1162,124 @@ const loadQCResults = async (taskId: number) => {
   padding: 20px;
 }
 
+/* 步骤条样式优化 */
+.progress-card {
+  margin-bottom: 20px;
+}
+
+/* 所有步骤图标改为圆形 */
+:deep(.el-step__icon) {
+  border-radius: 50% !important;
+}
+
+/* 可点击的步骤样式 */
+:deep(.step-clickable) {
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+:deep(.step-clickable .el-step__icon) {
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50% !important;
+}
+
+:deep(.step-clickable .el-step__title) {
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 可点击步骤的 hover 效果 - 增强版 */
+:deep(.step-clickable:hover .el-step__icon) {
+  transform: scale(1.2) translateY(-3px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4), 0 2px 6px rgba(64, 158, 255, 0.2);
+  filter: brightness(1.1);
+}
+
+:deep(.step-clickable:hover .el-step__title) {
+  color: #409eff !important;
+  font-weight: 600;
+  transform: translateY(-2px);
+}
+
+:deep(.step-clickable:hover .el-step__description) {
+  color: #409eff !important;
+}
+
+/* 已完成的可点击步骤 hover 效果 - 增强版 */
+:deep(.step-clickable.is-finish:hover .el-step__icon) {
+  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%) !important;
+  border-color: #409eff !important;
+  border-radius: 50% !important;
+  animation: pulse 0.6s ease-in-out;
+}
+
+:deep(.step-clickable.is-finish:hover .el-step__icon .el-icon) {
+  color: #ffffff !important;
+  transform: scale(1.1);
+}
+
+/* 可点击步骤在非hover状态下添加微妙提示 */
+:deep(.step-clickable .el-step__icon) {
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+  border-radius: 50% !important;
+}
+
+:deep(.step-clickable.is-finish .el-step__icon) {
+  position: relative;
+  border-radius: 50% !important;
+}
+
+:deep(.step-clickable.is-finish .el-step__icon::after) {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #67c23a;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  animation: blink 2s ease-in-out infinite;
+}
+
+/* 当前激活的步骤样式增强 */
+:deep(.el-step.is-process .el-step__icon) {
+  border-color: #409eff;
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.2);
+  animation: breathe 2s ease-in-out infinite;
+}
+
+/* 动画效果 */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1.2) translateY(-3px);
+  }
+  50% {
+    transform: scale(1.25) translateY(-4px);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(64, 158, 255, 0.15);
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
 .content-card {
   min-height: 400px;
   background: #ffffff;
@@ -1443,37 +1547,6 @@ const loadQCResults = async (taskId: number) => {
   display: flex;
   gap: 12px;
   justify-content: center;
-}
-
-/* 表格优化样式 - 参考 index.vue */
-:deep(.el-table) {
-  .success-row {
-    background-color: var(--el-color-success-light-9) !important;
-  }
-  .success-row:hover {
-    background-color: var(--el-color-success-light-8) !important;
-  }
-  .error-row {
-    background-color: var(--el-color-danger-light-9) !important;
-  }
-  .error-row:hover {
-    background-color: var(--el-color-danger-light-8) !important;
-  }
-  .warning-row {
-    background-color: var(--el-color-warning-light-9) !important;
-  }
-  .warning-row:hover {
-    background-color: var(--el-color-warning-light-8) !important;
-  }
-}
-
-:deep(.el-table__header) th {
-  background: #f4f6fa !important;
-  color: #2d3a4b !important;
-  font-weight: bold !important;
-  font-size: 15px;
-  border-bottom: 2px solid #e0e6ed !important;
-  letter-spacing: 0.5px;
 }
 
 .record-count {
