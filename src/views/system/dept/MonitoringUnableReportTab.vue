@@ -122,6 +122,11 @@ interface Props {
 
 const props = defineProps<Props>()
 
+// 定义事件
+const emit = defineEmits<{
+  countUpdated: [count: number]
+}>()
+
 const message = useMessage()
 const { t } = useI18n()
 
@@ -149,6 +154,9 @@ const getList = async () => {
     const data = await MonitoringUnableReportApi.getMonitoringUnableReportPage(queryParams)
     list.value = data.list
     total.value = data.total
+    
+    // 发射总数更新事件，通知父组件更新徽标
+    emit('countUpdated', data.total)
   } finally {
     loading.value = false
   }

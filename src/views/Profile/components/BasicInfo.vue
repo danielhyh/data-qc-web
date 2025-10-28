@@ -36,7 +36,7 @@ const emit = defineEmits<{
 
 // 表单校验
 const rules = reactive<FormRules>({
-  nickname: [{ required: true, message: t('profile.rules.nickname'), trigger: 'blur' }],
+  nickname: [{ required: true, message: t('profile.rules.name'), trigger: 'blur' }],
   email: [
     { required: true, message: t('profile.rules.mail'), trigger: 'blur' },
     {
@@ -57,7 +57,7 @@ const rules = reactive<FormRules>({
 const schema = reactive<FormSchema[]>([
   {
     field: 'nickname',
-    label: t('profile.user.nickname'),
+    label: t('profile.user.name'),
     component: 'Input'
   },
   {

@@ -4,6 +4,7 @@
       v-model="dialogVisible"
       :canFullscreen="false"
       :title="t('cropper.modalTitle')"
+      :appendToBody="true"
       maxHeight="380px"
       width="800px"
     >

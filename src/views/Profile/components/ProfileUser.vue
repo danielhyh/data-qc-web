@@ -25,13 +25,6 @@
         <div v-if="userInfo?.dept" class="pull-right">{{ userInfo?.dept.name }}</div>
       </li>
       <li class="list-group-item">
-        <Icon class="mr-5px" icon="ep:suitcase" />
-        {{ t('profile.user.posts') }}
-        <div v-if="userInfo?.posts" class="pull-right">
-          {{ userInfo?.posts.map((post) => post.name).join(',') }}
-        </div>
-      </li>
-      <li class="list-group-item">
         <Icon class="mr-5px" icon="icon-park-outline:peoples" />
         {{ t('profile.user.roles') }}
         <div v-if="userInfo?.roles" class="pull-right">

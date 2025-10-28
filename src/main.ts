@@ -72,3 +72,14 @@ const setupAll = async () => {
 setupAll()
 
 Logger.prettyPrimary(`欢迎使用`, import.meta.env.VITE_APP_TITLE)
+
+// 开发环境下加载表格调试工具
+if (import.meta.env.DEV) {
+  import('@/utils/tableDebug').then(() => {
+    console.log('🔧 表格调试工具已加载')
+    console.log('📌 使用方法:')
+    console.log('   1. 打开浏览器控制台')
+    console.log('   2. 输入: window.__debugTable()')
+    console.log('   3. 或输入: window.__highlightFixed()')
+  })
+}

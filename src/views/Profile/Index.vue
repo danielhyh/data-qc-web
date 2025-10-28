@@ -11,15 +11,27 @@
     </el-card>
     <el-card class="user ml-3 w-2/3" shadow="hover">
       <div>
-        <el-tabs v-model="activeName" class="profile-tabs" style="height: 400px" tab-position="top">
-          <el-tab-pane :label="t('profile.info.basicInfo')" name="basicInfo">
+        <el-tabs v-model="activeName" type="card" class="profile-tabs" style="height: 400px">
+          <!-- 基本信息 Tab -->
+          <el-tab-pane name="basicInfo">
+            <template #label>
+              <span class="tab-label">
+                <Icon icon="ep:user" class="tab-icon" />
+                <span>{{ t('profile.info.basicInfo') }}</span>
+              </span>
+            </template>
             <BasicInfo @success="handleBasicInfoSuccess" />
           </el-tab-pane>
-          <el-tab-pane :label="t('profile.info.resetPwd')" name="resetPwd">
+          
+          <!-- 修改密码 Tab -->
+          <el-tab-pane name="resetPwd">
+            <template #label>
+              <span class="tab-label">
+                <Icon icon="ep:lock" class="tab-icon" />
+                <span>{{ t('profile.info.resetPwd') }}</span>
+              </span>
+            </template>
             <ResetPwd />
-          </el-tab-pane>
-          <el-tab-pane :label="t('profile.info.userSocial')" name="userSocial">
-            <UserSocial v-model:activeName="activeName" />
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -27,7 +39,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { BasicInfo, ProfileUser, ResetPwd, UserSocial } from './components'
+import { BasicInfo, ProfileUser, ResetPwd } from './components'
 
 const { t } = useI18n()
 defineOptions({ name: 'Profile' })
@@ -39,7 +51,7 @@ const handleBasicInfoSuccess = async () => {
   await profileUserRef.value?.refresh()
 }
 </script>
-<style scoped>
+<style scoped lang="scss">
 .user {
   max-height: 960px;
   padding: 15px 20px 20px;
@@ -55,10 +67,42 @@ const handleBasicInfoSuccess = async () => {
   padding: 15px !important;
 }
 
-.profile-tabs > .el-tabs__content {
-  padding: 32px;
-  font-weight: 600;
-  color: #6b778c;
+/* Tab 标签美化 */
+.profile-tabs {
+  /* Tab 标签项优化 */
+  .tab-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    
+    .tab-icon {
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+  }
+  
+  /* Tab 内容区域 */
+  :deep(.el-tabs__content) {
+    padding: 24px;
+    font-weight: 500;
+    color: var(--tech-text-secondary);
+  }
+  
+  /* 激活状态图标动画 */
+  :deep(.el-tabs__item.is-active) {
+    .tab-icon {
+      color: #5B8DEF;
+      transform: scale(1.1);
+      filter: drop-shadow(0 2px 4px rgba(91, 141, 239, 0.3));
+    }
+  }
+  
+  /* 悬停状态图标动画 */
+  :deep(.el-tabs__item:hover:not(.is-active)) {
+    .tab-icon {
+      transform: translateY(-1px);
+    }
+  }
 }
 
 .el-tabs--left .el-tabs__content {

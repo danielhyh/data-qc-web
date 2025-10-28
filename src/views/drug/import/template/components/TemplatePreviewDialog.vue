@@ -87,10 +87,10 @@
                     </td>
                   </tr>
 
-                  <!-- 第2行：说明 -->
-                  <tr class="description-row">
+                  <!-- 第2行：说明（仅在有说明文本时显示） -->
+                  <tr v-if="previewData?.descriptionRow" class="description-row">
                     <td :colspan="fieldList.length || 1" class="description-cell">
-                      {{ previewData?.descriptionRow || '模板说明文本' }}
+                      {{ previewData.descriptionRow }}
                     </td>
                   </tr>
 
@@ -191,11 +191,11 @@
                 </div>
                 <div class="step-item">
                   <span class="step-number">2</span>
-                  <span class="step-text">删除示例数据行（第4行及以后），保留前3行</span>
+                  <span class="step-text">删除示例数据行，保留标题行、说明行（如有）、表头行</span>
                 </div>
                 <div class="step-item">
                   <span class="step-number">3</span>
-                  <span class="step-text">从第4行开始填写实际数据</span>
+                  <span class="step-text">从数据行开始填写实际数据</span>
                 </div>
                 <div class="step-item">
                   <span class="step-number">4</span>
@@ -311,24 +311,25 @@ const loadPreviewData = async () => {
 
   loading.value = true
   try {
-    const response = await ImportTemplateApi.previewImportTemplate(currentTemplateId.value)
+    const response: any = await ImportTemplateApi.previewImportTemplate(currentTemplateId.value)
 
-    // 修复数据结构映射
+    // 映射模板信息
     templateInfo.value = {
       ...response.template,
       statusText: response.template.status ? '启用' : '禁用'
     }
 
-    // 修复 previewData 结构
+    // 使用新的结构化数据（后端已改为返回对象而非数组）
+    const apiPreviewData = response.previewData as any
     previewData.value = {
-      titleRow: response.previewData[0]?.[0] || '模板标题',
-      descriptionRow: response.previewData[1]?.[0] || '模板说明文本',
-      headerRow: response.previewData[2] || [],
-      exampleRows: response.previewData.slice(3) || []
+      titleRow: apiPreviewData.title || '模板标题',
+      descriptionRow: apiPreviewData.description, // 可能为null/空字符串
+      headerRow: apiPreviewData.headers || [],
+      exampleRows: apiPreviewData.examples || []
     }
 
-    // 修复字段列表映射，并转换字段类型
-    fieldList.value = (response.fields || []).map((field) => ({
+    // 映射字段列表，并转换字段类型
+    fieldList.value = (response.fields || []).map((field: any) => ({
       ...field,
       fieldType: convertFieldType(field.fieldType), // 转换字段类型
       isRequired: field.isRequired || false
@@ -370,7 +371,7 @@ const downloadTemplate = () => {
 
 /** 获取字段规则描述 */
 const getFieldRule = (field: TemplateFieldRespVO): string => {
-  const rules = []
+  const rules: string[] = []
 
   if (field.isRequired) {
     rules.push('必填')

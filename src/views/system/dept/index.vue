@@ -20,8 +20,15 @@
     <!-- 右侧机构管理内容区域 -->
     <div class="flex-1 ml-5">
       <!-- Tab 标签页 -->
-      <el-tabs v-model="activeTab" type="card" @tab-change="handleTabChange">
-        <el-tab-pane label="机构管理" name="dept">
+      <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
+        <!-- 机构管理 Tab -->
+        <el-tab-pane name="dept">
+          <template #label>
+            <span class="tab-label-wrapper">
+              <Icon icon="ep:office-building" class="tab-icon" />
+              <span>机构管理</span>
+            </span>
+          </template>
           <!-- 搜索工作栏 -->
           <ContentWrap>
             <el-form
@@ -118,7 +125,7 @@
                 width="180"
                 :formatter="dateFormatter"
               />
-              <el-table-column label="操作" align="center">
+              <el-table-column label="操作" align="center" fixed="right">
                 <template #default="scope">
                   <el-button
                     link
@@ -142,17 +149,42 @@
           </ContentWrap>
         </el-tab-pane>
 
-        <el-tab-pane label="监测内无法上报机构" name="monitoring">
+        <!-- 监测内无法上报机构 Tab -->
+        <el-tab-pane name="monitoring">
+          <template #label>
+            <span class="tab-label-wrapper">
+              <Icon icon="ep:warning" class="tab-icon" />
+              <span>监测内无法上报机构</span>
+              <el-badge 
+                v-if="unableReportCount > 0" 
+                :value="unableReportCount" 
+                class="tab-badge tab-badge-danger"
+              />
+            </span>
+          </template>
           <!-- 监测内无法上报机构组件 -->
           <MonitoringUnableReportTab
             v-if="selectedRegionId"
             :area-code="selectedRegionCode"
             :selected-region-id="selectedRegionId"
+            @count-updated="handleUnableReportCountUpdate"
           />
           <div v-else class="empty-state">
             <Icon icon="ep:pointer" class="empty-icon" />
             <p>请先选择左侧地区查看监测内无法上报机构</p>
           </div>
+        </el-tab-pane>
+
+        <!-- 委直委管配置 Tab -->
+        <el-tab-pane name="categoryConfig">
+          <template #label>
+            <span class="tab-label-wrapper">
+              <Icon icon="ep:setting" class="tab-icon" />
+              <span>委直委管配置</span>
+            </span>
+          </template>
+          <!-- 委直委管配置组件 -->
+          <InstitutionCategoryConfigTab />
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -179,6 +211,7 @@ import InstitutionSyncModal from './InstitutionSyncModal.vue'
 import * as UserApi from '@/api/system/user'
 import RegionTree from '../user/RegionTree.vue'
 import MonitoringUnableReportTab from './MonitoringUnableReportTab.vue'
+import InstitutionCategoryConfigTab from './InstitutionCategoryConfigTab.vue'
 
 defineOptions({ name: 'SystemDept' })
 
@@ -201,6 +234,7 @@ const userList = ref<UserApi.UserVO[]>([]) // 用户列表
 const selectedRegionId = ref<string | undefined>() // 选中的地区Code
 const selectedRegionCode = ref<string | undefined>() // 选中的地区代码
 const activeTab = ref('dept') // 当前激活的标签页
+const unableReportCount = ref(0) // 无法上报机构数量（用于徽标显示）
 
 // 面板拖拽相关
 const selectorPanel = ref<HTMLElement>()
@@ -255,8 +289,17 @@ const handleRegionNodeClick = async (row) => {
   selectedRegionId.value = row.code
   selectedRegionCode.value = row.code
   queryParams.areaCode = row.code
+  
+  // 重置无法上报机构数量（切换地区时清零，等待子组件重新加载）
+  unableReportCount.value = 0
+  
   // 刷新机构列表
   await getList()
+}
+
+/** 处理无法上报机构数量更新 */
+const handleUnableReportCountUpdate = (count: number) => {
+  unableReportCount.value = count
 }
 
 /** Tab切换处理 */
@@ -322,6 +365,66 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
+/* Tab 标签图标优化 */
+.tab-label-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  
+  .tab-icon {
+    font-size: 16px;
+    transition: all 0.3s ease;
+  }
+  
+  .tab-badge {
+    margin-left: 4px;
+  }
+  
+  /* 警告徽标 - 红色样式 */
+  .tab-badge-danger {
+    :deep(.el-badge__content) {
+      background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
+      color: white;
+      font-weight: 600;
+    }
+  }
+}
+
+/* Tab 激活状态时图标动画 */
+:deep(.el-tabs__item.is-active) {
+  .tab-icon {
+    color: #5B8DEF;
+    transform: scale(1.1);
+    filter: drop-shadow(0 2px 4px rgba(91, 141, 239, 0.3));
+  }
+  
+  /* 激活状态时警告徽标脉动动画 */
+  .tab-badge-danger :deep(.el-badge__content) {
+    animation: badge-pulse-danger 1.5s ease-in-out infinite;
+  }
+}
+
+/* Tab 悬停状态时图标动画 */
+:deep(.el-tabs__item:hover:not(.is-active)) {
+  .tab-icon {
+    transform: translateY(-1px);
+  }
+}
+
+/* 红色徽标脉动动画 */
+@keyframes badge-pulse-danger {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.6);
+  }
+}
+
 .selector-panel {
   flex-shrink: 0;
   min-width: 250px;

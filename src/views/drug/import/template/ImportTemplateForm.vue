@@ -109,15 +109,21 @@
             <Icon class="section-icon" icon="ep:list" />
             <span class="section-title">字段配置</span>
             <div class="section-actions">
-              <el-button
-                v-if="formData.tableType"
-                size="small"
-                type="primary"
-                @click="openFieldLibrary"
+              <el-tooltip
+                :disabled="!!formData.tableType"
+                content="请先选择表类型后，才能从字段库添加"
+                placement="top"
               >
-                <Icon class="mr-5px" icon="ep:plus" />
-                从字段库添加
-              </el-button>
+                <el-button
+                  :disabled="!formData.tableType"
+                  size="small"
+                  type="primary"
+                  @click="openFieldLibrary"
+                >
+                  <Icon class="mr-5px" icon="ep:plus" />
+                  从字段库添加
+                </el-button>
+              </el-tooltip>
               <el-button size="small" type="success" @click="addField">
                 <Icon class="mr-5px" icon="ep:plus" />
                 添加字段
@@ -227,9 +233,9 @@
                     {{ formData.titleText || '标题行文本（第1行）' }}
                   </td>
                 </tr>
-                <tr class="description-row">
+                <tr v-if="formData.descriptionText" class="description-row">
                   <td class="description-cell" colspan="100%">
-                    {{ formData.descriptionText || '说明行文本（第2行，用户可自定义）' }}
+                    {{ formData.descriptionText }}
                   </td>
                 </tr>
                 <tr class="header-row">

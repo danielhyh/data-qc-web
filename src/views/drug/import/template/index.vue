@@ -121,7 +121,7 @@
     </ContentWrap>
 
     <!-- 列表 -->
-    <ContentWrap title="模板列表">
+    <ContentWrap>
       <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
         <el-table-column label="模板名称" align="center" prop="templateName" min-width="200px">
           <template #default="{ row }">
@@ -131,6 +131,21 @@
               </div>
               <div class="template-code">{{ row.templateCode }}</div>
             </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.tableType" />
+          </template>
+        </el-table-column>
+        <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.tableType" />
+          </template>
+        </el-table-column>
+        <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.tableType" />
           </template>
         </el-table-column>
         <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
@@ -186,30 +201,34 @@
               <Icon icon="ep:download" />
               下载
             </el-button>
-            <el-dropdown @command="(command) => handleCommand(command, row)" trigger="click">
+            <el-dropdown 
+              @command="(command) => handleCommand(command, row)" 
+              @visible-change="(visible) => handleDropdownVisibleChange(row.id, visible)"
+              trigger="click"
+            >
               <el-button size="small" type="info" class="more-btn">
-                <Icon icon="ep:more-filled" />
+                <Icon :icon="dropdownStates[row.id] ? 'ep:arrow-up' : 'ep:arrow-down'" />
                 更多
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item
                     command="edit"
-                    v-hasPermi="['drug:import-template:update']"
+                    v-if="checkPermi(['drug:import-template:update'])"
                   >
                     <Icon icon="ep:edit" class="mr-5px" />
                     编辑
                   </el-dropdown-item>
                   <el-dropdown-item
                     command="copy"
-                    v-hasPermi="['drug:import-template:create']"
+                    v-if="checkPermi(['drug:import-template:create'])"
                   >
                     <Icon icon="ep:document-copy" class="mr-5px" />
                     复制
                   </el-dropdown-item>
                   <el-dropdown-item
                     command="delete"
-                    v-hasPermi="['drug:import-template:delete']"
+                    v-if="checkPermi(['drug:import-template:delete'])"
                   >
                     <Icon icon="ep:delete" class="mr-5px" />
                     删除
@@ -247,6 +266,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { DICT_TYPE, getStrDictOptions } from '@/utils/dict'
+import { checkPermi } from '@/utils/permission'
 import {
   ImportTemplateApi,
   ImportTemplatePageReqVO,
@@ -269,6 +289,8 @@ const loading = ref(true)
 const list = ref<ImportTemplateRespVO[]>([])
 const total = ref(0)
 const exportLoading = ref(false)
+// 下拉菜单展开状态（用于动态切换图标）
+const dropdownStates = ref<Record<number, boolean>>({})
 
 const queryParams = reactive<ImportTemplatePageReqVO>({
   pageNo: 1,
@@ -404,6 +426,11 @@ const handleCopy = async (id: number) => {
   }
 }
 
+/** 处理下拉菜单可见性变化（用于切换图标） */
+const handleDropdownVisibleChange = (rowId: number, visible: boolean) => {
+  dropdownStates.value[rowId] = visible
+}
+
 /** 处理下拉菜单命令 */
 const handleCommand = (command: string, row: ImportTemplateRespVO) => {
   switch (command) {
@@ -483,11 +510,6 @@ const formatNumber = (num: number | undefined): string => {
 
 .field-badge {
   margin-right: 0;
-}
-
-/* 操作按钮样式 */
-.more-btn {
-  margin-left: 8px;
 }
 
 /* 响应式设计 */

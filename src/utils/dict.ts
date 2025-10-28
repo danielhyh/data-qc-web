@@ -232,4 +232,6 @@ export enum DICT_TYPE {
   SYNC_TYPE = 'sync_type', // 同步类型
   PROCESS_STATUS = 'process_status', // 处理状态
   OPERATION_TYPE = 'operation_type', // 操作类型
+
+  ADMINISTRATIVE_AFFILIATION = 'administrative_affiliation', // 行政归属
 }

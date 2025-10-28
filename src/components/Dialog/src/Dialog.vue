@@ -11,11 +11,12 @@ const props = defineProps({
   fullscreen: propTypes.bool.def(true),
   width: propTypes.oneOfType([String, Number]).def('40%'),
   scroll: propTypes.bool.def(false), // 是否开启滚动条。如果是的话，按照 maxHeight 设置最大高度
-  maxHeight: propTypes.oneOfType([String, Number]).def('400px')
+  maxHeight: propTypes.oneOfType([String, Number]).def('400px'),
+  appendToBody: propTypes.bool.def(true) // 是否将对话框挂载到 body 元素上，避免被父容器限制
 })
 
 const getBindValue = computed(() => {
-  const delArr: string[] = ['fullscreen', 'title', 'maxHeight', 'appendToBody']
+  const delArr: string[] = ['fullscreen', 'title', 'maxHeight']
   const attrs = useAttrs()
   const obj = { ...attrs, ...props }
   for (const key in obj) {
@@ -63,6 +64,7 @@ const dialogStyle = computed(() => {
     :close-on-click-modal="true"
     :fullscreen="isFullscreen"
     :width="width"
+    :append-to-body="appendToBody"
     destroy-on-close
     lock-scroll
     draggable

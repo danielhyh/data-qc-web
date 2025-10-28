@@ -1,6 +1,6 @@
 <template>
   <ContentWrap v-loading="formLoading">
-    <el-tabs v-model="activeName">
+    <el-tabs v-model="activeName" type="border-card">
       <el-tab-pane label="基本信息" name="basicInfo">
         <basic-info-form ref="basicInfoRef" :table="formData.table" />
       </el-tab-pane>
