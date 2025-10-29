@@ -9,6 +9,14 @@
         :inline="true"
         label-width="68px"
       >
+      <el-form-item label="任务名称" prop="taskName">
+        <el-input
+          v-model="queryParams.taskName"
+          placeholder="请输入任务名称"
+          clearable
+          class="!w-240px"
+        />
+      </el-form-item>
       <el-form-item label="年份" prop="reportYear">
         <el-select
           v-model="queryParams.reportYear"
@@ -48,13 +56,13 @@
     </ContentWrap>
 
     <!-- 列表 -->
-    <ContentWrap title="我的填报任务">
+    <ContentWrap>
     <el-table
       v-loading="loading"
       :data="list"
       :show-overflow-tooltip="true"
     >
-      <el-table-column label="序号" width="60" type="index" align="center" />
+      <el-table-column label="序号" width="80" type="index" align="center" />
       <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px" />
       <el-table-column label="年份" align="center" prop="reportYear" width="80px" />
       <el-table-column
@@ -151,7 +159,7 @@
               <!-- 提交至国家平台按钮 -->
               <el-button
                 v-if="scope.row.reportStatus === 3"
-                type="success"
+                type="danger"
                 size="small"
                 @click="handleSubmit(scope)"
               >
@@ -163,8 +171,9 @@
             <!-- 查看类按钮（任务结束与否都可以查看） -->
             <el-button
               v-if="scope.row.reportStatus !== 0"
-              type="primary"
+              type="info"
               size="small"
+              plain
               @click="handleCheckStatus(scope)"
             >
               <Icon icon="ep:document" class="mr-1" />
@@ -173,8 +182,8 @@
 
             <el-button
               v-if="scope.row.reportStatus !== 0"
-              type="info"
               size="small"
+              plain
               @click="handleReportLogs(scope)"
             >
               <Icon icon="ep:tickets" class="mr-1" />
@@ -229,6 +238,7 @@ const total = ref(0) // 列表的总页数
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
+  taskName: '',
   reportYear: '',
   reportStatus: ''
 })

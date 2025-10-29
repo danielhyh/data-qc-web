@@ -392,4 +392,40 @@ export const ReportDataApi = {
   getUsageList: (params: ViewDataTypesListVO): Promise<any> => {
     return request.get({ url: '/drug/report-data/file/data/usage', params })
   },
+
+  // ==================== 上传进度和结果API ====================
+  // 获取批次上传进度
+  getUploadProgress: (taskId: number): Promise<any> => {
+    return request.get({ url: '/drug/report-data/upload/progress', params: { taskId } })
+  },
+
+  // 获取批次上传结果
+  getUploadResult: (taskId: number): Promise<any> => {
+    return request.get({ url: '/drug/report-data/upload/result', params: { taskId } })
+  },
+
+  // ==================== 文件验证错误API ====================
+  // 获取文件的验证错误详情
+  getFileValidationErrors: (taskId: number, fileType: string): Promise<any> => {
+    return request.get({ 
+      url: '/drug/report-data/file/validation-errors', 
+      params: { taskId, fileType } 
+    })
+  },
+
+  // 下载错误Excel（单个文件）
+  downloadErrorExcel: (taskId: number, fileType: string): Promise<any> => {
+    return request.download({ 
+      url: '/drug/report-data/file/download-error-excel', 
+      params: { taskId, fileType } 
+    })
+  },
+
+  // 下载错误汇总（所有文件）
+  downloadErrorSummary: (taskId: number): Promise<any> => {
+    return request.download({ 
+      url: '/drug/report-data/file/download-error-summary', 
+      params: { taskId } 
+    })
+  },
 }

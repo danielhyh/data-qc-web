@@ -1,3 +1,4 @@
+<!--填报任务列表-->
 <template>
   <ContentWrap>
     <!-- 搜索工作栏 -->
@@ -71,11 +72,10 @@
   </ContentWrap>
 
   <!-- 列表 -->
-  <ContentWrap title="填报任务列表">
+  <ContentWrap>
     <el-table
       v-loading="loading"
       :data="list"
-      border
       :show-overflow-tooltip="true"
       :row-class-name="getRowClassName"
     >
@@ -98,7 +98,10 @@
       <!-- 新增 剩余时间 -->
       <el-table-column label="剩余时间" align="center" width="120px">
         <template #default="scope">
-          <span :class="getRemainingTimeClass(scope.row.endDate)">
+          <span v-if="scope.row.status === 3" class="text-gray-500">
+            已结束
+          </span>
+          <span v-else :class="getRemainingTimeClass(scope.row.endDate)">
             {{ calculateRemainingTime(scope.row.endDate) }}
           </span>
         </template>
@@ -135,72 +138,63 @@
         :formatter="dateFormatter"
         width="160px"
       />
-      <el-table-column label="操作" align="center" width="220px" fixed="right">
-        <template #default="scope">
-          <div class="action-links">
-            <!-- 查看按钮 - 始终显示 -->
-            <el-button
-              link
-              type="primary"
-              size="small"
-              @click="handleView(scope.row)"
-            >
-              <Icon icon="ep:view" class="mr-1" />
-              查看
+      <el-table-column label="操作" align="center" width="260px" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            size="small"
+            type="primary"
+            @click="handleView(row)"
+            v-hasPermi="['drug:report-task:query']"
+          >
+            <Icon icon="ep:view" />
+            查看
+          </el-button>
+          <el-button
+            size="small"
+            type="success"
+            @click="openForm('update', row.id)"
+            v-hasPermi="['drug:report-task:update']"
+          >
+            <Icon icon="ep:edit" />
+            编辑
+          </el-button>
+          <el-dropdown 
+            @command="(command) => handleCommand(command, row)" 
+            @visible-change="(visible) => handleDropdownVisibleChange(row.id, visible)"
+            trigger="click"
+          >
+            <el-button size="small" type="info" class="more-btn">
+              <Icon :icon="dropdownStates[row.id] ? 'ep:arrow-up' : 'ep:arrow-down'" />
+              更多
             </el-button>
-
-            <!-- 状态为3（已结束）时只显示删除按钮 -->
-            <template v-if="scope.row.status === 3">
-              <el-button
-                link
-                type="danger"
-                size="small"
-                @click="handleDelete(scope.row.id)"
-                v-hasPermi="['drug:report-task:delete']"
-              >
-                <Icon icon="ep:delete" class="mr-1" />
-                删除
-              </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  v-if="row.status !== 2"
+                  command="activate"
+                  v-hasPermi="['drug:report-task:update']"
+                >
+                  <Icon icon="ep:check" class="mr-5px" />
+                  启用
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-if="row.status === 2"
+                  command="deactivate"
+                  v-hasPermi="['drug:report-task:update']"
+                >
+                  <Icon icon="ep:close" class="mr-5px" />
+                  停用
+                </el-dropdown-item>
+                <el-dropdown-item
+                  command="delete"
+                  v-hasPermi="['drug:report-task:delete']"
+                >
+                  <Icon icon="ep:delete" class="mr-5px" />
+                  删除
+                </el-dropdown-item>
+              </el-dropdown-menu>
             </template>
-
-            <!-- 其他状态显示启用/停用和删除按钮 -->
-            <template v-else>
-              <el-button
-                v-if="scope.row.status !== 2"
-                link
-                type="success"
-                size="small"
-                @click="handleActivate(scope.row.id)"
-                v-hasPermi="['drug:report-task:update']"
-              >
-                <Icon icon="ep:check" class="mr-1" />
-                启用
-              </el-button>
-
-              <el-button
-                v-if="scope.row.status === 2"
-                link
-                type="warning"
-                size="small"
-                @click="handleDeactivate(scope.row.id)"
-                v-hasPermi="['drug:report-task:update']"
-              >
-                <Icon icon="ep:close" class="mr-1" />
-                停用
-              </el-button>
-
-              <el-button
-                link
-                type="danger"
-                size="small"
-                @click="handleDelete(scope.row.id)"
-                v-hasPermi="['drug:report-task:delete']"
-              >
-                <Icon icon="ep:delete" class="mr-1" />
-                删除
-              </el-button>
-            </template>
-          </div>
+          </el-dropdown>
         </template>
       </el-table-column>
     </el-table>
@@ -221,7 +215,9 @@
     <el-descriptions border>
       <el-descriptions-item label="任务名称">{{ viewDetail.taskName }}</el-descriptions-item>
       <el-descriptions-item label="上报年份">{{ viewDetail.reportYear }}</el-descriptions-item>
-      <el-descriptions-item label="剩余时间">{{ calculateRemainingTime(viewDetail.endDate) }}</el-descriptions-item>
+      <el-descriptions-item label="剩余时间">
+        {{ viewDetail.status === 3 ? '已结束' : calculateRemainingTime(viewDetail.endDate) }}
+      </el-descriptions-item>
       <el-descriptions-item label="状态"><dict-tag :type="DICT_TYPE.REPORT_STATUS_TYPE" :value="viewDetail.status" /></el-descriptions-item>
       <el-descriptions-item label="任务描述">{{ viewDetail.description }}</el-descriptions-item>
       <el-descriptions-item label="填报机构">{{ viewDetail.orgs ? viewDetail.orgs.length : 0 }}</el-descriptions-item>
@@ -253,11 +249,7 @@ import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
 import {dateFormatter, dateFormatter2} from '@/utils/formatTime'
 import { ReportTaskApi, ReportTaskVO } from '@/api/drug/reporttask'
 import ReportTaskForm from './ReportTaskForm.vue'
-import { getProgressColor, getProgressStatus } from '@/utils/progressColor'
-
-// 确保字典类型包含机构类别和医院等级
-DICT_TYPE.INSTITUTION_CATEGORY = 'institution_category'
-DICT_TYPE.INSTITUTION_LEVEL = 'institution_level'
+import { getProgressColor } from '@/utils/progressColor'
 
 /** 填报任务设置 列表 */
 defineOptions({ name: 'ReportTask' })
@@ -268,6 +260,8 @@ const { t } = useI18n() // 国际化
 const loading = ref(true) // 列表的加载中
 const list = ref<ReportTaskVO[]>([]) // 列表的数据
 const total = ref(0) // 列表的总页数
+// 下拉菜单展开状态（用于动态切换图标）
+const dropdownStates = ref<Record<number, boolean>>({})
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
@@ -341,6 +335,26 @@ const handleDeactivate = async (id: number) => {
     message.success('停用成功')
     await getList()
   } catch {}
+}
+
+/** 处理下拉菜单可见性变化（用于切换图标） */
+const handleDropdownVisibleChange = (rowId: number, visible: boolean) => {
+  dropdownStates.value[rowId] = visible
+}
+
+/** 处理下拉菜单命令 */
+const handleCommand = (command: string, row: any) => {
+  switch (command) {
+    case 'activate':
+      handleActivate(row.id)
+      break
+    case 'deactivate':
+      handleDeactivate(row.id)
+      break
+    case 'delete':
+      handleDelete(row.id)
+      break
+  }
 }
 
 /** 表格行样式 */
@@ -426,33 +440,5 @@ onMounted(() => {
 /* 时间选择器容器 */
 .date-range-container .flex {
   width: 100%;
-}
-
-/* —— 表头可读性美化 —— */
-:deep(.el-table__header) th {
-  background: #f4f6fa !important; /* 柔和明亮底色（可调整） */
-  color: #2d3a4b !important; /* 对比更高，醒目 */
-  font-weight: bold !important;
-  font-size: 15px;
-  border-bottom: 2px solid #e0e6ed !important;
-  letter-spacing: 0.5px;
-}
-/* 操作按钮区域 */
-.action-links {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-
-  :deep(.el-button) {
-    margin: 0;
-    padding: 4px 0;
-    font-weight: 500;
-
-    .mr-1 {
-      margin-right: 4px;
-    }
-  }
 }
 </style>

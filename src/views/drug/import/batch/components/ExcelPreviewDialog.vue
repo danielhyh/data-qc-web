@@ -1,12 +1,17 @@
 <template>
-  <el-dialog
+  <Dialog
     v-model="dialogVisible"
-    :title="dialogTitle"
     width="90%"
-    :close-on-click-modal="false"
-    :close-on-press-escape="true"
-    class="excel-preview-dialog"
+    :fullscreen="true"
+    :scroll="true"
+    maxHeight="80vh"
   >
+    <template #title>
+      <div class="preview-dialog-title">
+        <Icon icon="ep:view" class="preview-title-icon" />
+        <span class="preview-title-text">{{ dialogTitle }}</span>
+      </div>
+    </template>
     <div v-loading="loading" class="preview-container">
       <div v-if="!loading && templateInfo" class="excel-content">
         <!-- Excel预览 -->
@@ -91,16 +96,19 @@
         </el-button>
       </div>
     </template>
-  </el-dialog>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Dialog } from '@/components/Dialog'
+import type {
+  ImportTemplateRespVO,
+  TemplateFieldRespVO
+} from '@/api/drug/task/template'
 import {
   ImportTemplateApi,
-  ImportTemplateRespVO,
-  TemplateFieldRespVO,
   FIELD_TYPE_NAMES,
   FIELD_TYPE,
   TABLE_TYPE_NAMES
@@ -127,7 +135,8 @@ const dialogTitle = computed(() => {
 })
 
 const exampleRows = computed(() => {
-  if (!previewData.value?.exampleRows) {
+  // 检查是否有示例数据，空数组也算没有
+  if (!previewData.value?.exampleRows || previewData.value.exampleRows.length === 0) {
     // 生成默认示例数据
     return Array.from({ length: 3 }, (_, rowIndex) =>
       fieldList.value.map(
@@ -162,12 +171,16 @@ const loadPreviewData = async () => {
       statusText: response.template.status ? '启用' : '禁用'
     }
 
-    // 修复 previewData 结构
+    // 从 template 对象中获取标题和说明，如果 previewData 中没有的话
+    const titleRow = response.previewData?.titleRow || response.template?.titleText || '模板标题'
+    const descriptionRow = response.previewData?.descriptionRow || response.template?.descriptionText || '模板说明文本'
+
+    // previewData 已经是正确的对象格式，但需要确保 titleRow 和 descriptionRow 有值
     previewData.value = {
-      titleRow: response.previewData[0]?.[0] || '模板标题',
-      descriptionRow: response.previewData[1]?.[0] || '模板说明文本',
-      headerRow: response.previewData[2] || [],
-      exampleRows: response.previewData.slice(3) || []
+      titleRow,
+      descriptionRow,
+      headerRow: response.previewData?.headerRow || [],
+      exampleRows: response.previewData?.exampleRows || []
     }
 
     // 修复字段列表映射，并转换字段类型
@@ -246,13 +259,23 @@ defineExpose({
 </script>
 
 <style scoped>
-.excel-preview-dialog {
-  --dialog-width: 90%;
+/* 标题样式 */
+.preview-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.preview-container {
-  max-height: 80vh;
-  overflow-y: auto;
+.preview-title-icon {
+  font-size: 20px;
+  color: #409eff;
+}
+
+.preview-title-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  letter-spacing: 0.3px;
 }
 
 /* 各个区块 */
@@ -381,14 +404,6 @@ defineExpose({
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .excel-preview-dialog {
-    --dialog-width: 95vw;
-  }
-
-  .preview-container {
-    max-height: 70vh;
-  }
-
   .preview-header {
     flex-direction: column;
     gap: 12px;

@@ -542,327 +542,102 @@ ul, ol {
    表格固定列优化 - 解决操作列重叠问题
    ============================================ */
 
-/* 固定列表头 - 完全不透明背景（通用规则） */
+/* 固定列背景和层级 */
 .el-table__fixed,
 .el-table__fixed-right,
 .el-table__fixed-left {
-  /* 确保固定列表头完全不透明 */
+  background-color: #ffffff !important;
+  
   th.el-table__cell {
     background-color: var(--tech-gradient-light) !important;
-    opacity: 1 !important;
-    z-index: 10 !important;
-  }
-
-  /* 数据单元格背景也要不透明 */
-  td.el-table__cell {
-    background-color: #ffffff !important;
-    opacity: 1 !important;
     z-index: 3 !important;
   }
-}
 
-/* 固定列表头 - 完全不透明背景 */
-.el-table__fixed,
-.el-table__fixed-right {
-  /* 表头背景不透明 */
-  .el-table__header-wrapper {
+  td.el-table__cell {
     background-color: #ffffff !important;
-    
-    th.el-table__cell {
-      background-color: var(--tech-gradient-light) !important;
-      opacity: 1 !important;
-      z-index: 5 !important;
-    }
-  }
-  
-  /* 数据单元格背景不透明 */
-  .el-table__body-wrapper {
-    background-color: #ffffff !important;
-    
-    td.el-table__cell {
-      background-color: #ffffff !important;
-      opacity: 1 !important;
-      z-index: 3 !important;
-    }
-  }
-  
-  /* 阴影效果增强 - 更明显的分隔 */
-  &::before {
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.12) !important;
+    z-index: 2 !important;
   }
 }
 
-/* 右侧固定列特殊处理 */
+/* 固定列阴影效果 */
 .el-table__fixed-right {
   box-shadow: -2px 0 12px rgba(0, 0, 0, 0.1) !important;
-
-  /* 表头确保完全不透明 */
-  .el-table__header-wrapper {
-    th.el-table__cell {
-      background: linear-gradient(135deg,
-        rgba(248, 250, 252, 1) 0%,
-        rgba(241, 245, 249, 1) 100%) !important;
-      border-bottom: 2px solid rgba(91, 141, 239, 0.15) !important;
-      opacity: 1 !important;
-    }
-  }
-  
-  /* 数据单元格hover时保持不透明 */
-  .el-table__body {
-    td.el-table__cell {
-      background-color: #ffffff !important;
-      transition: all 0.2s ease;
-      position: relative;
-      z-index: 4 !important;
-    }
-  }
 }
 
-/* 固定列hover时的特殊处理 */
+.el-table__fixed-left {
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 固定列hover效果 */
 .el-table__body tr:hover {
   > td.el-table-fixed-column--right,
-  > td.is-fixed-column--right {
-    background-color: rgba(91, 141, 239, 0.04) !important;
-    z-index: 5 !important;
-  }
-
+  > td.is-fixed-column--right,
   > td.el-table-fixed-column--left,
   > td.is-fixed-column--left {
     background-color: rgba(91, 141, 239, 0.04) !important;
-    z-index: 5 !important;
   }
 }
 
-/* 操作列按钮容器优化 */
-.el-table__fixed-right,
-.el-table-fixed-column--right {
-  .cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding: 8px 12px !important;
-    position: relative;
-    z-index: 10 !important;
-    background-color: inherit;
-  }
-}
-
-/* 操作列按钮样式优化 */
-.el-table__fixed-right .el-button,
-.el-table-fixed-column--right .el-button {
-  position: relative;
-  z-index: 11 !important;
-  margin: 2px 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-  
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-  
-  /* 确保按钮背景完全不透明 */
-  &.el-button--primary {
-    background: linear-gradient(135deg, #5B8DEF 0%, #7c3aed 100%) !important;
-    border: none !important;
-    
-    &:hover {
-      background: linear-gradient(135deg, #6b9def 0%, #8b5cf6 100%) !important;
-    }
-  }
-  
-  &.el-button--success {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    border: none !important;
-    
-    &:hover {
-      background: linear-gradient(135deg, #34d399 0%, #10b981 100%) !important;
-    }
-  }
-  
-  &.el-button--warning {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-    border: none !important;
-    
-    &:hover {
-      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
-    }
-  }
-  
-  &.el-button--danger {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-    border: none !important;
-    
-    &:hover {
-      background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
-    }
-  }
-  
-  &.el-button--info {
-    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
-    border: none !important;
-    
-    &:hover {
-      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important;
-    }
-  }
-  
-  /* 文字按钮样式 */
-  &.el-button--text,
-  &.is-link {
-    background: transparent !important;
-    box-shadow: none !important;
-    
-    &:hover {
-      background: rgba(91, 141, 239, 0.1) !important;
-      box-shadow: none !important;
-    }
-  }
-}
-
-/* 固定列斑马纹背景优化 */
-.el-table--striped {
-  .el-table__body {
-    tr.el-table__row--striped {
-      td.el-table-fixed-column--right,
-      td.is-fixed-column--right {
-        background-color: rgba(250, 250, 250, 1) !important;
-        opacity: 1 !important;
-      }
-      
-      &:hover {
-        td.el-table-fixed-column--right,
-        td.is-fixed-column--right {
-          background-color: rgba(91, 141, 239, 0.04) !important;
-        }
-      }
-    }
-    
-    tr:not(.el-table__row--striped) {
-      td.el-table-fixed-column--right,
-      td.is-fixed-column--right {
-        background-color: #ffffff !important;
-        opacity: 1 !important;
-      }
-    }
-  }
-}
-
-/* 表格固定列遮罩层 - 防止内容穿透 */
-.el-table__fixed,
-.el-table__fixed-right {
-  background-color: #ffffff !important;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: #ffffff;
-    opacity: 1;
-    z-index: -1;
-    pointer-events: none;
-  }
-}
-
-/* 操作列表头特殊样式 - 突出显示 */
+/* 操作列表头样式 - 调试模式 */
 .el-table th.el-table__cell.is-fixed-column--right,
 .el-table th.el-table-fixed-column--right {
-  background: linear-gradient(135deg,
-    rgba(91, 141, 239, 0.08) 0%,
-    rgba(124, 58, 237, 0.08) 100%) !important;
+  /* 🔍 调试日志：这里的透明度有问题！rgba(..., 0.08) 太透明了 */
+  /* 旧的问题样式：background: linear-gradient(135deg, rgba(91, 141, 239, 0.08), rgba(124, 58, 237, 0.08)) !important; */
+  
+  /* ✅ 修复方案1：使用完全不透明的渐变背景 */
+  background: linear-gradient(135deg, 
+    rgba(248, 250, 252, 1) 0%, 
+    rgba(241, 245, 249, 1) 100%) !important;
+  
+  /* 🎨 在不透明背景上添加蓝色边框来突出显示 */
   font-weight: 700 !important;
   color: #5B8DEF !important;
-  border-left: 2px solid rgba(91, 141, 239, 0.2) !important;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08) !important;
-  position: relative;
-  z-index: 10 !important;
+  border-left: 3px solid #5B8DEF !important;
   
-  /* 左侧渐变装饰线 */
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--tech-gradient-primary);
-    border-radius: 0 2px 2px 0;
-  }
+  /* 📝 调试信息：通过浏览器控制台可以看到这个元素 */
+  position: relative !important;
   
-  .cell {
-    font-weight: 700 !important;
-    color: #5B8DEF !important;
-    text-align: center;
-    letter-spacing: 0.05em;
+  &::after {
+    content: '🔧 DEBUG: 操作列表头' !important;
+    position: absolute !important;
+    top: -20px !important;
+    right: 0 !important;
+    font-size: 10px !important;
+    color: red !important;
+    background: yellow !important;
+    padding: 2px 4px !important;
+    border-radius: 3px !important;
+    z-index: 9999 !important;
+    white-space: nowrap !important;
   }
 }
 
 /* 左侧固定列表头样式 */
 .el-table th.el-table__cell.is-fixed-column--left,
 .el-table th.el-table-fixed-column--left {
-  background: linear-gradient(135deg,
-    rgba(91, 141, 239, 0.06) 0%,
-    rgba(124, 58, 237, 0.06) 100%) !important;
+  /* 🔍 调试日志：左侧固定列也有同样的问题 rgba(..., 0.06) */
+  /* ✅ 修复：改为不透明背景 */
+  background: linear-gradient(135deg, 
+    rgba(248, 250, 252, 1) 0%, 
+    rgba(241, 245, 249, 1) 100%) !important;
   border-right: 2px solid rgba(91, 141, 239, 0.15) !important;
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.06) !important;
-  position: relative;
-  z-index: 10 !important;
-  
-  /* 右侧渐变装饰线 */
-  &::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--tech-gradient-primary);
-    border-radius: 2px 0 0 2px;
-  }
 }
 
-/* 左侧固定列数据单元格样式 */
-.el-table td.el-table__cell.is-fixed-column--left,
-.el-table td.el-table-fixed-column--left {
-  background-color: rgba(248, 250, 252, 0.95) !important;
-  border-right: 1px solid rgba(91, 141, 239, 0.08) !important;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04) !important;
-  z-index: 4 !important;
-  
-  .cell {
-    font-weight: 500 !important;
-  }
+/* 操作列按钮容器 */
+.el-table__fixed-right .cell,
+.el-table-fixed-column--right .cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-/* 固定列在滚动时的阴影增强 */
-.el-table--scrollable-x {
-  .el-table__fixed-right {
-    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12) !important;
-  }
-  
-  .el-table__fixed-left {
-    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.12) !important;
-  }
-}
-
-/* 操作列按钮图标优化 */
-.el-table__fixed-right .el-button .el-icon,
-.el-table-fixed-column--right .el-button .el-icon {
-  font-size: 14px;
-  margin-right: 4px;
-  vertical-align: middle;
-}
-
-/* 操作列下拉菜单优化 */
-.el-table__fixed-right .el-dropdown,
-.el-table-fixed-column--right .el-dropdown {
-  .el-dropdown__trigger {
-    z-index: 12 !important;
+/* 斑马纹表格固定列 */
+.el-table--striped .el-table__body {
+  tr.el-table__row--striped td.el-table-fixed-column--right,
+  tr.el-table__row--striped td.is-fixed-column--right {
+    background-color: #fafafa !important;
   }
 }
 
@@ -1030,209 +805,32 @@ ul, ol {
   }
 }
 
-/* ============================================
-   消息提示优化 - 现代化专业样式
-   ============================================ */
+/* 消息提示优化 */
 .el-message {
   border-radius: var(--border-radius-medium);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 
-              0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   padding: 14px 18px;
   font-weight: 500;
   min-width: 320px;
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   
-  /* 成功消息 - 清新绿 */
-  &.el-message--success {
-    background: linear-gradient(135deg, 
-      rgba(236, 253, 245, 0.98) 0%, 
-      rgba(220, 252, 231, 0.98) 100%
-    );
-    border: 1px solid rgba(16, 185, 129, 0.5);
-    color: #047857;
-    
-    .el-message__icon {
-      color: #10b981;
-      font-size: 18px;
-    }
-  }
-  
-  /* 警告消息 - 活力橙 */
-  &.el-message--warning {
-    background: linear-gradient(135deg, 
-      rgba(254, 252, 232, 0.98) 0%, 
-      rgba(254, 243, 199, 0.98) 100%
-    );
-    border: 1px solid rgba(245, 158, 11, 0.5);
-    color: #b45309;
-    
-    .el-message__icon {
-      color: #f59e0b;
-      font-size: 18px;
-    }
-  }
-  
-  /* 错误消息 - 鲜明红 */
-  &.el-message--error {
-    background: linear-gradient(135deg, 
-      rgba(254, 242, 242, 0.98) 0%, 
-      rgba(254, 226, 226, 0.98) 100%
-    );
-    border: 1px solid rgba(239, 68, 68, 0.5);
-    color: #b91c1c;
-    
-    .el-message__icon {
-      color: #ef4444;
-      font-size: 18px;
-    }
-  }
-  
-  /* 信息消息 - 科技蓝 */
-  &.el-message--info {
-    background: linear-gradient(135deg, 
-      rgba(239, 246, 255, 0.98) 0%, 
-      rgba(224, 242, 254, 0.98) 100%
-    );
-    border: 1px solid rgba(91, 141, 239, 0.5);
-    color: #1e40af;
-    
-    .el-message__icon {
-      color: #5B8DEF;
-      font-size: 18px;
-    }
-  }
-  
-  /* 消息文字样式 */
-  .el-message__content {
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 1.6;
-    letter-spacing: 0.01em;
-  }
-  
-  /* 关闭按钮 */
-  .el-message__closeBtn {
-    font-size: 16px;
-    opacity: 0.6;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      opacity: 1;
-      transform: scale(1.1);
-    }
+  .el-message__icon {
+    font-size: 18px;
   }
 }
 
-/* ============================================
-   通知优化 - 现代化专业样式
-   ============================================ */
+/* 通知优化 */
 .el-notification {
   border-radius: var(--border-radius-large);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 
-              0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   padding: 18px 20px;
   min-width: 360px;
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   
-  /* 通知标题 */
-  .el-notification__title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 6px;
-    letter-spacing: 0.02em;
-  }
-  
-  /* 通知内容 */
-  .el-notification__content {
-    font-size: 14px;
-    line-height: 1.6;
-    color: #4b5563;
-  }
-  
-  /* 成功通知 */
-  &.el-notification--success {
-    background: linear-gradient(135deg, 
-      rgba(240, 253, 244, 0.98) 0%, 
-      rgba(220, 252, 231, 0.98) 100%
-    );
-    border: 1px solid rgba(16, 185, 129, 0.4);
-    
-    .el-notification__title {
-      color: #047857;
-    }
-    
-    .el-notification__icon {
-      color: #10b981;
-      font-size: 24px;
-    }
-  }
-  
-  /* 警告通知 */
-  &.el-notification--warning {
-    background: linear-gradient(135deg, 
-      rgba(255, 251, 235, 0.98) 0%, 
-      rgba(254, 243, 199, 0.98) 100%
-    );
-    border: 1px solid rgba(245, 158, 11, 0.4);
-    
-    .el-notification__title {
-      color: #b45309;
-    }
-    
-    .el-notification__icon {
-      color: #f59e0b;
-      font-size: 24px;
-    }
-  }
-  
-  /* 错误通知 */
-  &.el-notification--error {
-    background: linear-gradient(135deg, 
-      rgba(254, 242, 242, 0.98) 0%, 
-      rgba(254, 226, 226, 0.98) 100%
-    );
-    border: 1px solid rgba(239, 68, 68, 0.4);
-    
-    .el-notification__title {
-      color: #b91c1c;
-    }
-    
-    .el-notification__icon {
-      color: #ef4444;
-      font-size: 24px;
-    }
-  }
-  
-  /* 信息通知 */
-  &.el-notification--info {
-    background: linear-gradient(135deg, 
-      rgba(239, 246, 255, 0.98) 0%, 
-      rgba(219, 234, 254, 0.98) 100%
-    );
-    border: 1px solid rgba(91, 141, 239, 0.4);
-    
-    .el-notification__title {
-      color: #1e40af;
-    }
-    
-    .el-notification__icon {
-      color: #5B8DEF;
-      font-size: 24px;
-    }
-  }
-  
-  /* 关闭按钮 */
-  .el-notification__closeBtn {
-    font-size: 18px;
-    opacity: 0.5;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      opacity: 1;
-      transform: scale(1.1);
-    }
+  .el-notification__icon {
+    font-size: 24px;
   }
 }
 
@@ -1431,7 +1029,6 @@ ul, ol {
   }
   
   &:hover {
-    transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(91, 141, 239, 0.12), 
                 0 0 1px rgba(91, 141, 239, 0.15) !important;
     border-color: rgba(91, 141, 239, 0.15) !important;
@@ -2016,145 +1613,21 @@ ul, ol {
   }
 }
 
-/* ============================================
-   Tab 位置变体 - 左/右/底部
-   ============================================ */
-
-/* 左侧 Tab */
-.el-tabs--left {
-  .el-tabs__header.is-left {
-    margin-right: 16px;
-    margin-bottom: 0;
-    
-    .el-tabs__nav-wrap {
-      &::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        right: 0;
-        width: 2px;
-        height: auto;
-        background: linear-gradient(
-          180deg,
-          transparent 0%,
-          rgba(91, 141, 239, 0.12) 20%,
-          rgba(91, 141, 239, 0.12) 80%,
-          transparent 100%
-        ) !important;
-      }
-    }
-    
-    .el-tabs__item {
-      text-align: left;
-      justify-content: flex-start;
-      padding: 12px 20px;
-      margin-bottom: 4px;
-      margin-right: 0;
-      
-      &.is-active::after {
-        top: 20%;
-        bottom: 20%;
-        left: auto;
-        right: 0;
-        width: 3px;
-        height: auto;
-        border-radius: 3px 0 0 3px;
-      }
-    }
-    
-    .el-tabs__active-bar {
-      width: 3px !important;
-      height: auto;
-      right: 0;
-      left: auto;
-      top: 0;
-      border-radius: 3px 0 0 3px;
-    }
+/* Tab 位置变体 - 简化版 */
+.el-tabs--left .el-tabs__header.is-left,
+.el-tabs--right .el-tabs__header.is-right {
+  margin-bottom: 0;
+  
+  .el-tabs__item {
+    text-align: left;
+    justify-content: flex-start;
+    padding: 12px 20px;
+    margin-bottom: 4px;
   }
-}
-
-/* 右侧 Tab */
-.el-tabs--right {
-  .el-tabs__header.is-right {
-    margin-left: 16px;
-    margin-bottom: 0;
-    
-    .el-tabs__nav-wrap {
-      &::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        width: 2px;
-        height: auto;
-        background: linear-gradient(
-          180deg,
-          transparent 0%,
-          rgba(91, 141, 239, 0.12) 20%,
-          rgba(91, 141, 239, 0.12) 80%,
-          transparent 100%
-        ) !important;
-      }
-    }
-    
-    .el-tabs__item {
-      text-align: left;
-      justify-content: flex-start;
-      padding: 12px 20px;
-      margin-bottom: 4px;
-      margin-right: 0;
-      
-      &.is-active::after {
-        top: 20%;
-        bottom: 20%;
-        right: auto;
-        left: 0;
-        width: 3px;
-        height: auto;
-        border-radius: 0 3px 3px 0;
-      }
-    }
-    
-    .el-tabs__active-bar {
-      width: 3px !important;
-      height: auto;
-      left: 0;
-      right: auto;
-      top: 0;
-      border-radius: 0 3px 3px 0;
-    }
-  }
-}
-
-/* 底部 Tab */
-.el-tabs--bottom {
-  .el-tabs__header.is-bottom {
-    margin-top: 16px;
-    margin-bottom: 0;
-    
-    .el-tabs__nav-wrap {
-      &::after {
-        bottom: auto;
-        top: 0;
-      }
-    }
-    
-    .el-tabs__item {
-      &.is-active::after {
-        top: 0;
-        bottom: auto;
-        border-radius: 3px 3px 0 0;
-      }
-    }
-    
-    .el-tabs__active-bar {
-      bottom: auto;
-      top: 0;
-      border-radius: 0 0 3px 3px;
-      box-shadow: 0 2px 12px rgba(91, 141, 239, 0.35);
-    }
+  
+  .el-tabs__active-bar {
+    width: 3px !important;
+    height: auto;
   }
 }
 
@@ -2186,172 +1659,18 @@ ul, ol {
   }
 }
 
-/* ============================================
-   响应式优化
-   ============================================ */
-
-/* 小屏幕设备 */
+/* 响应式优化 */
 @media (max-width: 768px) {
-  .el-tabs {
-    .el-tabs__item {
-      padding: 10px 16px;
-      font-size: var(--font-size-sm);
-      margin-right: 4px;
-    }
-    
-    .el-tabs__nav-prev,
-    .el-tabs__nav-next {
-      width: 32px;
-    }
-  }
-  
-  .el-tabs--card > .el-tabs__header .el-tabs__item {
-    padding: 6px 14px;
-  }
-  
-  .el-tabs--border-card > .el-tabs__header .el-tabs__item {
+  .el-tabs .el-tabs__item {
     padding: 10px 16px;
+    font-size: var(--font-size-sm);
   }
 }
 
-/* 超小屏幕设备 */
-@media (max-width: 480px) {
-  .el-tabs {
-    --el-tabs-header-height: 42px;
-    
-    .el-tabs__item {
-      padding: 8px 12px;
-      font-size: var(--font-size-xs);
-    }
-  }
+/* Tab 图标样式 */
+.el-tabs__item .el-icon {
+  margin-right: 6px;
+  font-size: 16px;
+  vertical-align: middle;
 }
 
-/* ============================================
-   辅助工具类 - Tab 增强样式
-   ============================================ */
-
-/* Tab 带图标样式 */
-.el-tabs__item {
-  .el-icon {
-    margin-right: 6px;
-    font-size: 16px;
-    vertical-align: middle;
-    transition: all 0.2s ease;
-  }
-  
-  &.is-active .el-icon {
-    color: #5B8DEF;
-    transform: scale(1.1);
-  }
-}
-
-/* Tab 带徽标样式 */
-.el-tabs__item {
-  .el-badge {
-    vertical-align: middle;
-    margin-left: 6px;
-    
-    .el-badge__content {
-      background: var(--tech-gradient-primary);
-      border: 2px solid white;
-      box-shadow: 0 2px 6px rgba(91, 141, 239, 0.3);
-      font-size: 11px;
-      height: 18px;
-      line-height: 14px;
-      padding: 0 5px;
-    }
-  }
-  
-  &.is-active .el-badge__content {
-    animation: badge-pulse 1.5s ease-in-out infinite;
-  }
-}
-
-/* 徽标脉动动画 */
-@keyframes badge-pulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 2px 6px rgba(91, 141, 239, 0.3);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 3px 10px rgba(91, 141, 239, 0.5);
-  }
-}
-
-/* Tab 前缀/后缀插槽优化 */
-.el-tabs__new-tab {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--border-radius-small);
-  color: var(--tech-text-secondary);
-  transition: all 0.2s ease;
-  cursor: pointer;
-  margin-left: 8px;
-  border: 1px solid var(--tech-light-border);
-  background: var(--tech-light-card);
-  
-  &:hover {
-    color: #5B8DEF;
-    background: var(--tech-hover-bg);
-    border-color: rgba(91, 141, 239, 0.3);
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(91, 141, 239, 0.15);
-  }
-  
-  .el-icon {
-    font-size: 16px;
-  }
-}
-
-/* ============================================
-   深色模式支持（可选）
-   ============================================ */
-.dark .el-tabs {
-  .el-tabs__item {
-    color: #cbd5e1 !important;
-    
-    &:hover:not(.is-active):not(.is-disabled) {
-      color: #5B8DEF !important;
-    }
-    
-    &.is-active {
-      color: #5B8DEF !important;
-    }
-  }
-  
-  .el-tabs__nav-wrap::after {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.1) 20%,
-      rgba(255, 255, 255, 0.1) 80%,
-      transparent 100%
-    ) !important;
-  }
-}
-
-.dark .el-tabs--card > .el-tabs__header {
-  background: rgba(255, 255, 255, 0.05);
-  
-  .el-tabs__item.is-active {
-    background: rgba(255, 255, 255, 0.1) !important;
-  }
-}
-
-.dark .el-tabs--border-card {
-  background: var(--tech-dark-card);
-  border-color: rgba(255, 255, 255, 0.1);
-  
-  > .el-tabs__header {
-    background: rgba(255, 255, 255, 0.05);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-    
-    .el-tabs__item.is-active {
-      background: var(--tech-dark-card) !important;
-    }
-  }
-}

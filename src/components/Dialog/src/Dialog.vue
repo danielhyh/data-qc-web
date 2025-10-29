@@ -1,6 +1,8 @@
 <script lang="ts" setup>
+import { computed, ref, watch, nextTick, useSlots, useAttrs, unref } from 'vue'
 import { propTypes } from '@/utils/propTypes'
 import { isNumber } from '@/utils/is'
+
 defineOptions({ name: 'Dialog' })
 
 const slots = useSlots()
@@ -73,26 +75,25 @@ const dialogStyle = computed(() => {
     @close="$emit('update:modelValue', false)"
   >
     <template #header="{ close }">
-      <div class="relative h-54px flex items-center justify-between pl-15px pr-15px">
-        <slot name="title">
-          {{ title }}
-        </slot>
-        <div
-          class="absolute right-15px top-[50%] h-54px flex translate-y-[-50%] items-center justify-between"
-        >
+      <div class="dialog-header-wrapper">
+        <div class="dialog-title-section">
+          <slot name="title">
+            <div class="dialog-title-content">
+              <Icon icon="ep:document" class="dialog-title-icon" />
+              <span class="dialog-title-text">{{ title }}</span>
+            </div>
+          </slot>
+        </div>
+        <div class="dialog-actions">
           <Icon
             v-if="fullscreen"
-            class="is-hover mr-10px cursor-pointer"
+            class="dialog-action-icon"
             :icon="isFullscreen ? 'radix-icons:exit-full-screen' : 'radix-icons:enter-full-screen'"
-            color="var(--el-color-info)"
-            hover-color="var(--el-color-primary)"
             @click="toggleFull"
           />
           <Icon
-            class="is-hover cursor-pointer"
+            class="dialog-action-icon"
             icon="ep:close"
-            hover-color="var(--el-color-primary)"
-            color="var(--el-color-info)"
             @click.stop="close"
           />
         </div>
@@ -125,6 +126,7 @@ const dialogStyle = computed(() => {
       padding: 0;
       margin-right: 0 !important;
       border-bottom: 1px solid var(--el-border-color);
+      background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
     }
 
     &__body {
@@ -137,6 +139,59 @@ const dialogStyle = computed(() => {
 
     &__headerbtn {
       top: 0;
+    }
+  }
+
+  // 标题样式优化
+  .dialog-header-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 54px;
+    padding: 0 20px;
+  }
+
+  .dialog-title-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+
+  .dialog-title-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dialog-title-icon {
+    font-size: 20px;
+    color: #409eff;
+  }
+
+  .dialog-title-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #303133;
+    letter-spacing: 0.3px;
+  }
+
+  .dialog-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .dialog-action-icon {
+    font-size: 18px;
+    color: #606266;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 4px;
+    border-radius: 4px;
+
+    &:hover {
+      color: #409eff;
+      background: rgba(64, 158, 255, 0.1);
     }
   }
 }

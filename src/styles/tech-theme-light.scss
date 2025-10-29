@@ -301,8 +301,8 @@
     }
     
     &.is-active {
-      background: var(--tech-gradient-primary) !important;
-      color: white !important;
+      background: rgba(91, 141, 239, 0.12) !important;
+      color: var(--tech-primary-color) !important;
       box-shadow: var(--tech-shadow-sm);
       font-size: var(--font-size-sm) !important;
       font-weight: var(--font-weight-semibold) !important;
@@ -315,8 +315,9 @@
         transform: translateY(-50%);
         width: 4px;
         height: 60%;
-        background: white;
+        background: var(--tech-gradient-primary);
         border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 8px rgba(91, 141, 239, 0.4);
       }
     }
   }

@@ -9,7 +9,7 @@ export interface NavigationBarProperty {
   // 图片链接
   bgImg: string
   // 样式类型：默认 | 沉浸式
-  styleType: 'normal' | 'inner'
+  styleType: 'inner' | 'normal'
   // 常驻显示
   alwaysShow: boolean
   // 小程序单元格列表

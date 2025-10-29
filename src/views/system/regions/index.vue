@@ -1,3 +1,4 @@
+<!--地区管理页面-->
 <template>
   <ContentWrap>
     <!-- 搜索工作栏 -->
@@ -59,7 +60,7 @@
   </ContentWrap>
 
   <!-- 列表 -->
-  <ContentWrap title="地区列表">
+  <ContentWrap>
     <div style="width: 100%; height: 700px">
       <!-- AutoResizer 自动调节大小 -->
       <el-auto-resizer>

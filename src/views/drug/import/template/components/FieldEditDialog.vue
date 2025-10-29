@@ -1,33 +1,57 @@
 <template>
-  <Dialog :title="dialogTitle" v-model="dialogVisible" width="600px" class="field-edit-dialog">
+  <Dialog :title="dialogTitle" v-model="dialogVisible" width="650px" class="field-edit-dialog">
     <el-form
       ref="formRef"
       :model="formData"
       :rules="formRules"
-      label-width="100px"
+      label-width="110px"
       class="field-form"
     >
-      <el-form-item label="字段名称" prop="fieldName">
+      <!-- 字段名称 -->
+      <el-form-item prop="fieldName">
+        <template #label>
+          <Tooltip
+            title="字段名称"
+            message="在Excel表头中显示的字段名称，便于用户识别"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-input
           v-model="formData.fieldName"
           placeholder="请输入字段名称（Excel表头显示文本）"
           maxlength="50"
           show-word-limit
+          clearable
         />
-        <div class="form-tip">在Excel表头中显示的字段名称</div>
       </el-form-item>
 
-      <el-form-item label="字段编码" prop="fieldCode">
+      <!-- 字段编码 -->
+      <el-form-item prop="fieldCode">
+        <template #label>
+          <Tooltip
+            title="字段编码"
+            message="用于数据处理的字段标识，建议使用英文字母、数字和下划线组合"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-input
           v-model="formData.fieldCode"
-          placeholder="请输入字段编码（英文字母、数字、下划线）"
+          placeholder="如：hospital_name"
           maxlength="50"
           show-word-limit
+          clearable
         />
-        <div class="form-tip">用于数据处理的字段标识，建议使用英文</div>
       </el-form-item>
 
-      <el-form-item label="字段类型" prop="fieldType">
+      <!-- 字段类型 -->
+      <el-form-item prop="fieldType">
+        <template #label>
+          <Tooltip
+            title="字段类型"
+            message="选择合适的字段类型，系统将根据类型自动进行数据验证"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-select v-model="formData.fieldType" placeholder="请选择字段类型" style="width: 100%">
           <el-option
             v-for="(name, type) in FIELD_TYPE_NAMES"
@@ -36,15 +60,25 @@
             :value="type"
           >
             <div class="field-type-option">
-              <span class="type-name">{{ name }}</span>
+              <div class="type-info">
+                <Icon :icon="getFieldTypeIcon(type)" class="type-icon" />
+                <span class="type-name">{{ name }}</span>
+              </div>
               <span class="type-desc">{{ getFieldTypeDesc(type) }}</span>
             </div>
           </el-option>
         </el-select>
-        <div class="form-tip">{{ getFieldTypeDesc(formData.fieldType) }}</div>
       </el-form-item>
 
-      <el-form-item label="是否必填" prop="isRequired">
+      <!-- 是否必填 -->
+      <el-form-item prop="isRequired">
+        <template #label>
+          <Tooltip
+            title="是否必填"
+            message="必填字段在Excel模板中会标红显示，用户必须填写才能通过验证"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-radio-group v-model="formData.isRequired">
           <el-radio :value="true">
             <span class="radio-label">
@@ -59,31 +93,55 @@
             </span>
           </el-radio>
         </el-radio-group>
-        <div class="form-tip">必填字段在Excel表头会标红显示</div>
       </el-form-item>
 
-      <el-form-item label="示例值" prop="exampleValue">
+      <!-- 示例值 -->
+      <el-form-item prop="exampleValue">
+        <template #label>
+          <Tooltip
+            title="示例值"
+            message="在Excel模板的示例行中显示，帮助用户理解应该填写什么样的数据"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-input
           v-model="formData.exampleValue"
           :placeholder="getExamplePlaceholder(formData.fieldType)"
           maxlength="100"
           show-word-limit
+          clearable
         />
-        <div class="form-tip">在Excel示例行中显示的参考数据</div>
       </el-form-item>
 
-      <el-form-item label="排序序号" prop="sortOrder">
+      <!-- 排序序号 -->
+      <el-form-item prop="sortOrder">
+        <template #label>
+          <Tooltip
+            title="排序序号"
+            message="控制字段在表格中的显示顺序，数字越小越靠前（最小值为1）"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-input-number
           v-model="formData.sortOrder"
           :min="1"
           :max="maxSortOrder"
-          placeholder="字段显示顺序"
+          :step="1"
+          placeholder="输入序号"
           style="width: 100%"
+          controls-position="right"
         />
-        <div class="form-tip">字段在表格中的显示顺序，数字越小越靠前</div>
       </el-form-item>
 
-      <el-form-item label="字段说明" prop="helpText">
+      <!-- 字段说明 -->
+      <el-form-item prop="helpText">
+        <template #label>
+          <Tooltip
+            title="字段说明"
+            message="详细说明字段的含义、填写要求和注意事项，帮助用户正确填写数据"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-input
           v-model="formData.helpText"
           type="textarea"
@@ -92,105 +150,205 @@
           maxlength="200"
           show-word-limit
         />
-        <div class="form-tip">字段的详细说明和填写要求</div>
       </el-form-item>
 
-      <!-- 字段验证规则（高级配置） -->
-      <el-collapse v-model="activeCollapse" class="advanced-config">
-        <el-collapse-item title="高级配置" name="advanced">
-          <template #title>
-            <div class="collapse-title">
-              <Icon icon="ep:setting" class="mr-5px" />
-              高级配置（可选）
-            </div>
-          </template>
-
-          <div class="advanced-form">
-            <el-form-item label="最小长度" v-if="formData.fieldType === FIELD_TYPE.TEXT">
-              <el-input-number
-                v-model="formData.minLength"
-                :min="0"
-                :max="1000"
-                placeholder="最小字符长度"
-                style="width: 100%"
-              />
-            </el-form-item>
-
-            <el-form-item label="最大长度" v-if="formData.fieldType === FIELD_TYPE.TEXT">
-              <el-input-number
-                v-model="formData.maxLength"
-                :min="1"
-                :max="1000"
-                placeholder="最大字符长度"
-                style="width: 100%"
-              />
-            </el-form-item>
-
-            <el-form-item
-              label="数值范围"
-              v-if="[FIELD_TYPE.NUMBER, FIELD_TYPE.DECIMAL].includes(formData.fieldType)"
-            >
-              <el-row :gutter="10">
-                <el-col :span="12">
-                  <el-input-number
-                    v-model="formData.minValue"
-                    placeholder="最小值"
-                    style="width: 100%"
-                  />
-                </el-col>
-                <el-col :span="12">
-                  <el-input-number
-                    v-model="formData.maxValue"
-                    placeholder="最大值"
-                    style="width: 100%"
-                  />
-                </el-col>
-              </el-row>
-            </el-form-item>
-
-            <el-form-item label="小数位数" v-if="formData.fieldType === FIELD_TYPE.DECIMAL">
-              <el-input-number
-                v-model="formData.decimalPlaces"
-                :min="0"
-                :max="10"
-                placeholder="小数点后位数"
-                style="width: 100%"
-              />
-            </el-form-item>
-
-            <el-form-item label="日期格式" v-if="formData.fieldType === FIELD_TYPE.DATE">
-              <el-select
-                v-model="formData.dateFormat"
-                placeholder="选择日期格式"
-                style="width: 100%"
-              >
-                <el-option label="YYYY-MM-DD" value="YYYY-MM-DD" />
-                <el-option label="YYYY/MM/DD" value="YYYY/MM/DD" />
-                <el-option label="DD/MM/YYYY" value="DD/MM/YYYY" />
-                <el-option label="MM/DD/YYYY" value="MM/DD/YYYY" />
-                <el-option label="YYYY-MM-DD HH:mm:ss" value="YYYY-MM-DD HH:mm:ss" />
-              </el-select>
-            </el-form-item>
-
-            <el-form-item label="正则表达式">
-              <el-input
-                v-model="formData.pattern"
-                placeholder="请输入验证正则表达式（可选）"
-                maxlength="200"
-              />
-              <div class="form-tip">用于验证字段值格式的正则表达式</div>
-            </el-form-item>
-
-            <el-form-item label="错误提示">
-              <el-input
-                v-model="formData.errorMessage"
-                placeholder="验证失败时的错误提示信息"
-                maxlength="100"
-              />
-            </el-form-item>
+      <!-- 高级配置 -->
+      <div class="advanced-config-section">
+        <div class="section-header" @click="toggleAdvanced">
+          <div class="header-left">
+            <Icon :icon="activeCollapse.includes('advanced') ? 'ep:arrow-down' : 'ep:arrow-right'" class="toggle-icon" />
+            <Icon icon="ep:setting" class="section-icon" />
+            <span class="section-title">高级配置</span>
+            <el-tag size="small" type="info" effect="plain">可选</el-tag>
           </div>
-        </el-collapse-item>
-      </el-collapse>
+          <span class="section-desc">根据字段类型配置验证规则</span>
+        </div>
+
+        <el-collapse v-model="activeCollapse" class="advanced-collapse">
+          <el-collapse-item name="advanced">
+            <template #title>
+              <span></span>
+            </template>
+
+            <div class="advanced-form">
+              <!-- 文本类型：长度限制 -->
+              <div v-if="formData.fieldType === FIELD_TYPE.TEXT" class="config-group">
+                <div class="group-title">
+                  <Icon icon="ep:document-copy" />
+                  <span>文本长度限制</span>
+                </div>
+                
+                <el-form-item>
+                  <template #label>
+                    <Tooltip
+                      title="最小长度"
+                      message="允许输入的最小字符数（不填则不限制）"
+                      icon="ep:info-filled"
+                    />
+                  </template>
+                  <el-input-number
+                    v-model="formData.minLength"
+                    :min="0"
+                    :max="1000"
+                    placeholder="最小字符长度"
+                    style="width: 100%"
+                    controls-position="right"
+                  />
+                </el-form-item>
+
+                <el-form-item>
+                  <template #label>
+                    <Tooltip
+                      title="最大长度"
+                      message="允许输入的最大字符数（不填则不限制）"
+                      icon="ep:info-filled"
+                    />
+                  </template>
+                  <el-input-number
+                    v-model="formData.maxLength"
+                    :min="1"
+                    :max="1000"
+                    placeholder="最大字符长度"
+                    style="width: 100%"
+                    controls-position="right"
+                  />
+                </el-form-item>
+              </div>
+
+              <!-- 数值类型：范围限制 -->
+              <div v-if="isNumericType(formData.fieldType)" class="config-group">
+                <div class="group-title">
+                  <Icon icon="ep:data-line" />
+                  <span>数值范围限制</span>
+                </div>
+                
+                <el-form-item>
+                  <template #label>
+                    <Tooltip
+                      title="数值范围"
+                      message="设置允许输入的数值范围（不填则不限制）"
+                      icon="ep:info-filled"
+                    />
+                  </template>
+                  <el-row :gutter="12">
+                    <el-col :span="12">
+                      <el-input-number
+                        v-model="formData.minValue"
+                        placeholder="最小值"
+                        style="width: 100%"
+                        controls-position="right"
+                      />
+                    </el-col>
+                    <el-col :span="12">
+                      <el-input-number
+                        v-model="formData.maxValue"
+                        placeholder="最大值"
+                        style="width: 100%"
+                        controls-position="right"
+                      />
+                    </el-col>
+                  </el-row>
+                </el-form-item>
+              </div>
+
+              <!-- 小数类型：精度设置 -->
+              <div v-if="formData.fieldType === FIELD_TYPE.DECIMAL" class="config-group">
+                <div class="group-title">
+                  <Icon icon="ep:coordinate" />
+                  <span>小数精度设置</span>
+                </div>
+                
+                <el-form-item>
+                  <template #label>
+                    <Tooltip
+                      title="小数位数"
+                      message="设置小数点后保留的位数（0-10位）"
+                      icon="ep:info-filled"
+                    />
+                  </template>
+                  <el-input-number
+                    v-model="formData.decimalPlaces"
+                    :min="0"
+                    :max="10"
+                    placeholder="小数点后位数"
+                    style="width: 100%"
+                    controls-position="right"
+                  />
+                </el-form-item>
+              </div>
+
+              <!-- 日期类型：格式设置 -->
+              <div v-if="formData.fieldType === FIELD_TYPE.DATE" class="config-group">
+                <div class="group-title">
+                  <Icon icon="ep:calendar" />
+                  <span>日期格式设置</span>
+                </div>
+                
+                <el-form-item>
+                  <template #label>
+                    <Tooltip
+                      title="日期格式"
+                      message="选择日期的显示和验证格式"
+                      icon="ep:info-filled"
+                    />
+                  </template>
+                  <el-select
+                    v-model="formData.dateFormat"
+                    placeholder="选择日期格式"
+                    style="width: 100%"
+                  >
+                    <el-option label="YYYY-MM-DD（如：2024-01-01）" value="YYYY-MM-DD" />
+                    <el-option label="YYYY/MM/DD（如：2024/01/01）" value="YYYY/MM/DD" />
+                    <el-option label="DD/MM/YYYY（如：01/01/2024）" value="DD/MM/YYYY" />
+                    <el-option label="MM/DD/YYYY（如：01/01/2024）" value="MM/DD/YYYY" />
+                    <el-option label="YYYY-MM-DD HH:mm:ss（含时间）" value="YYYY-MM-DD HH:mm:ss" />
+                  </el-select>
+                </el-form-item>
+              </div>
+
+              <!-- 自定义验证规则 -->
+              <div class="config-group">
+                <div class="group-title">
+                  <Icon icon="ep:magic-stick" />
+                  <span>自定义验证规则</span>
+                </div>
+                
+                <el-form-item>
+                  <template #label>
+                    <Tooltip
+                      title="正则表达式"
+                      message="使用正则表达式自定义验证规则（适用于高级用户）"
+                      icon="ep:info-filled"
+                    />
+                  </template>
+                  <el-input
+                    v-model="formData.pattern"
+                    placeholder="如：^[A-Z0-9]+$ （大写字母和数字）"
+                    maxlength="200"
+                    clearable
+                  />
+                </el-form-item>
+
+                <el-form-item>
+                  <template #label>
+                    <Tooltip
+                      title="错误提示"
+                      message="验证失败时显示给用户的提示信息"
+                      icon="ep:info-filled"
+                    />
+                  </template>
+                  <el-input
+                    v-model="formData.errorMessage"
+                    placeholder="如：请输入有效的格式"
+                    maxlength="100"
+                    clearable
+                  />
+                </el-form-item>
+              </div>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
     </el-form>
 
     <template #footer>
@@ -209,6 +367,7 @@
 import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { TemplateFieldSaveReqVO, FIELD_TYPE_NAMES, FIELD_TYPE } from '@/api/drug/task/template'
+import { Tooltip } from '@/components/Tooltip'
 
 defineOptions({ name: 'FieldEditDialog' })
 
@@ -264,13 +423,7 @@ const formRules = reactive({
   ],
   fieldType: [{ required: true, message: '字段类型不能为空', trigger: 'change' }],
   sortOrder: [
-    { required: true, message: '排序序号不能为空', trigger: 'blur' },
-    { 
-      type: 'number', 
-      min: 1, 
-      message: '排序序号必须大于等于1', 
-      trigger: 'blur' 
-    }
+    { required: true, message: '排序序号不能为空', trigger: 'blur' }
   ]
 })
 
@@ -393,6 +546,23 @@ const resetForm = () => {
 
 // ========================= 工具方法 =========================
 
+/** 判断是否是数值类型 */
+const isNumericType = (fieldType: string): boolean => {
+  return fieldType === FIELD_TYPE.NUMBER || fieldType === FIELD_TYPE.DECIMAL
+}
+
+/** 获取字段类型图标 */
+const getFieldTypeIcon = (fieldType: string): string => {
+  const icons = {
+    [FIELD_TYPE.TEXT]: 'ep:document',
+    [FIELD_TYPE.NUMBER]: 'ep:sort',
+    [FIELD_TYPE.DATE]: 'ep:calendar',
+    [FIELD_TYPE.DECIMAL]: 'ep:data-analysis',
+    [FIELD_TYPE.BOOLEAN]: 'ep:finished'
+  }
+  return icons[fieldType] || 'ep:document'
+}
+
 /** 获取字段类型描述 */
 const getFieldTypeDesc = (fieldType: string): string => {
   const descriptions = {
@@ -416,118 +586,120 @@ const getExamplePlaceholder = (fieldType: string): string => {
   }
   return placeholders[fieldType] || '请输入示例值'
 }
+
+/** 切换高级配置 */
+const toggleAdvanced = () => {
+  if (activeCollapse.value.includes('advanced')) {
+    activeCollapse.value = []
+  } else {
+    activeCollapse.value = ['advanced']
+  }
+}
 </script>
 
 <style scoped>
+/* ==================== 对话框主体 ==================== */
 .field-edit-dialog {
-  --dialog-width: 600px;
+  --dialog-width: 650px;
 }
 
 .field-form {
-  max-height: 70vh;
+  max-height: 75vh;
   overflow-y: auto;
-  padding-right: 10px;
+  padding-right: 16px;
 }
 
-.form-tip {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
-  line-height: 1.4;
+/* ==================== 表单项样式 ==================== */
+:deep(.el-form-item) {
+  margin-bottom: 24px;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+/* ==================== 输入框样式 ==================== */
+:deep(.el-input__wrapper) {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+:deep(.el-textarea__inner) {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+:deep(.el-textarea__inner:hover) {
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+}
+
+:deep(.el-textarea__inner:focus) {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* ==================== 选择框样式 ==================== */
+:deep(.el-select .el-input__wrapper) {
+  border-radius: 8px;
 }
 
 .field-type-option {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 6px 0;
+}
+
+.type-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.type-icon {
+  font-size: 18px;
+  color: #3b82f6;
 }
 
 .type-name {
   font-weight: 600;
-  color: #303133;
+  color: #1f2937;
+  font-size: 14px;
 }
 
 .type-desc {
   font-size: 12px;
-  color: #909399;
+  color: #9ca3af;
+  margin-left: auto;
 }
 
+/* ==================== 单选框样式 ==================== */
 .radio-label {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .required-icon {
   color: #f56c6c;
+  font-size: 16px;
 }
 
 .optional-icon {
   color: #909399;
-}
-
-.advanced-config {
-  margin-top: 20px;
-}
-
-.collapse-title {
-  display: flex;
-  align-items: center;
-  color: #606266;
-  font-weight: 500;
-}
-
-.advanced-form {
-  padding: 16px 0;
-  border-left: 3px solid #e4e7ed;
-  padding-left: 16px;
-  margin-left: 8px;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: end;
-  gap: 12px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .field-edit-dialog {
-    --dialog-width: 95vw;
-  }
-
-  .field-form {
-    max-height: 60vh;
-  }
-
-  .field-type-option {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .dialog-footer {
-    flex-direction: column-reverse;
-    gap: 8px;
-  }
-}
-
-/* 表单样式优化 */
-:deep(.el-form-item__label) {
-  font-weight: 600;
-  color: #24292f;
-}
-
-:deep(.el-input__wrapper) {
-  border-radius: 6px;
-}
-
-:deep(.el-textarea__inner) {
-  border-radius: 6px;
-}
-
-:deep(.el-select .el-input__wrapper) {
-  border-radius: 6px;
+  font-size: 16px;
 }
 
 :deep(.el-radio__label) {
@@ -539,29 +711,231 @@ const getExamplePlaceholder = (fieldType: string): string => {
   color: #409eff;
 }
 
-/* 折叠面板样式 */
-:deep(.el-collapse) {
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
-}
-
-:deep(.el-collapse-item__header) {
-  background: #f8f9fa;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-:deep(.el-collapse-item__content) {
-  padding: 16px;
-  background: #fafbfc;
-}
-
-/* 数字输入框样式 */
+/* ==================== 数字输入框样式 ==================== */
 :deep(.el-input-number) {
   width: 100%;
 }
 
 :deep(.el-input-number .el-input__wrapper) {
-  border-radius: 6px;
+  border-radius: 8px;
+}
+
+:deep(.el-input-number__decrease),
+:deep(.el-input-number__increase) {
+  border-radius: 4px;
+}
+
+/* ==================== 高级配置样式 ==================== */
+.advanced-config-section {
+  margin-top: 32px;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  overflow: hidden;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.advanced-config-section:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.05);
+}
+
+.section-header {
+  padding: 16px 20px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.section-header:hover {
+  background: linear-gradient(135deg, #f3f4f6 0%, #f9fafb 100%);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-icon {
+  font-size: 16px;
+  color: #6b7280;
+  transition: transform 0.2s ease;
+}
+
+.section-icon {
+  font-size: 18px;
+  color: #3b82f6;
+}
+
+.section-title {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 15px;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.advanced-collapse {
+  border: none;
+}
+
+:deep(.advanced-collapse .el-collapse-item__header) {
+  display: none;
+}
+
+:deep(.advanced-collapse .el-collapse-item__wrap) {
+  border: none;
+}
+
+:deep(.advanced-collapse .el-collapse-item__content) {
+  padding: 0;
+  background: transparent;
+}
+
+.advanced-form {
+  padding: 24px 20px;
+  background: #fafbfc;
+}
+
+/* ==================== 配置组样式 ==================== */
+.config-group {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.config-group:last-child {
+  margin-bottom: 0;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f3f4f6;
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.group-title svg {
+  font-size: 18px;
+  color: #3b82f6;
+}
+
+.config-group :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+
+.config-group :deep(.el-form-item:last-child) {
+  margin-bottom: 0;
+}
+
+/* ==================== 底部按钮 ==================== */
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+:deep(.dialog-footer .el-button) {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+:deep(.dialog-footer .el-button--primary) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  box-shadow: 0 2px 4px 0 rgba(59, 130, 246, 0.3);
+}
+
+:deep(.dialog-footer .el-button--primary:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px 0 rgba(59, 130, 246, 0.4);
+}
+
+/* ==================== 响应式设计 ==================== */
+@media (max-width: 768px) {
+  .field-edit-dialog {
+    --dialog-width: 95vw;
+  }
+
+  .field-form {
+    max-height: 65vh;
+    padding-right: 8px;
+  }
+
+  .field-type-option {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .type-desc {
+    margin-left: 0;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .section-desc {
+    padding-left: 40px;
+  }
+
+  .advanced-form {
+    padding: 16px;
+  }
+
+  .config-group {
+    padding: 16px;
+  }
+
+  .dialog-footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  :deep(.dialog-footer .el-button) {
+    width: 100%;
+  }
+}
+
+/* ==================== 滚动条样式 ==================== */
+.field-form::-webkit-scrollbar {
+  width: 6px;
+}
+
+.field-form::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 3px;
+}
+
+.field-form::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.field-form::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 </style>

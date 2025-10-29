@@ -80,7 +80,7 @@
   --tech-gradient-bg-3: linear-gradient(135deg, rgba(91,141,239,0.08), rgba(124,58,237,0.06));
   
   /* 旧版兼容 */
-  --tech-gradient-light: linear-gradient(135deg, rgba(91,141,239,0.1), rgba(124,58,237,0.1));
+  --tech-gradient-light: linear-gradient(135deg, rgba(248, 250, 252, 1), rgba(241, 245, 249, 1));
   --tech-gradient-ultra-light: linear-gradient(135deg, rgba(91,141,239,0.02), rgba(124,58,237,0.02));
   
   /* 浅色模式科技感背景 */

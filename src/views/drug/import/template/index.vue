@@ -1,3 +1,4 @@
+<!--导入模板管理页面-->
 <template>
   <div class="template-container">
     <!-- 统计概览卡片 -->
@@ -131,21 +132,6 @@
               </div>
               <div class="template-code">{{ row.templateCode }}</div>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
-          <template #default="scope">
-            <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.tableType" />
-          </template>
-        </el-table-column>
-        <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
-          <template #default="scope">
-            <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.tableType" />
-          </template>
-        </el-table-column>
-        <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
-          <template #default="scope">
-            <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.tableType" />
           </template>
         </el-table-column>
         <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
