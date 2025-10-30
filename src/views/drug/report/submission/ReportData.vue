@@ -17,7 +17,7 @@
         <div class="step-info">
           <span class="step-label">第 {{ currentStep + 1 }} 步</span>
           <span class="step-divider">/</span>
-          <span class="step-total">共 4 步</span>
+          <span class="step-total">共 5 步</span>
         </div>
       </div>
       
@@ -67,7 +67,20 @@
           :class="{ 'step-clickable': 3 <= currentTask.maxCurrentStep }"
         >
           <template #icon>
-            <el-tooltip :content="getStepTooltip(3, '提交上报阶段', '提交至管理端')" placement="top">
+            <el-tooltip :content="getStepTooltip(3, '提交上报阶段', '提交至管理端审核')" placement="top">
+              <el-icon>
+                <Promotion />
+              </el-icon>
+            </el-tooltip>
+          </template>
+        </el-step>
+        <el-step 
+          title="提交国家平台" 
+          @click="changeSteps(4)"
+          :class="{ 'step-clickable': 4 <= currentTask.maxCurrentStep }"
+        >
+          <template #icon>
+            <el-tooltip :content="getStepTooltip(4, '提交国家平台阶段', '提交至国家平台')" placement="top">
               <el-icon>
                 <Promotion />
               </el-icon>
@@ -157,37 +170,27 @@
 
       <!-- 步骤1: 上传与校验 -->
       <div v-if="currentStep === 1" class="step-content">
-        <div class="step-header-with-progress">
-          <h3 class="step-title">上传与校验</h3>
-          <div class="upload-progress-inline">
-            <div class="progress-info">
-              <span class="progress-text">上传进度：{{ uploadedFileCount }}/{{ totalFileCount }} 个文件</span>
-              <span class="progress-percent" :class="{ 'complete': overallUploadProgress === 100 }">
-                {{ overallUploadProgress }}%
-              </span>
-            </div>
-            <el-progress
-              :percentage="overallUploadProgress"
-              :color="getProgressColor(overallUploadProgress)"
-              :stroke-width="8"
-              :show-text="false"
-              style="width: 300px;"
-            />
-            <el-button
-              type="primary"
-              size="small"
-              :icon="RefreshRight"
-              :loading="refreshingFileList"
-              @click="refreshFileList"
-              circle
-            />
-          </div>
-        </div>
+        <h3 class="step-title">上传与校验</h3>
+        
+        <!-- 总览卡片（整合进度信息） -->
+        <StepSummaryCard 
+          :key="`step1-${stepSummaryKey}`"
+          :step-type="1" 
+          :task-id="currentTask.taskId"
+          :is-processing="isUploading"
+          :current-phase="currentBatchPhase"
+          :uploaded-count="uploadedFileCount"
+          :total-count="totalFileCount"
+          :overall-progress="overallProgress"
+          @refresh="loadStepSummary"
+          @close="handleSummaryClose"
+        />
+        
         <div class="upload-section">
 
           <!-- 批量上传区域 -->
           <div class="batch-upload">
-            <!-- 拖拽上传区域（上传后置灰） -->
+            <!-- 拖拽上传区域（上传中时置灰） -->
             <el-upload
               ref="uploadRef"
               class="upload-dragger"
@@ -204,139 +207,107 @@
                 <UploadFilled />
               </el-icon>
               <div class="el-upload__text">
-                <template v-if="!isUploading">
-                  拖拽ZIP，RAR压缩包或所有Excel文件到此处，或<em>点击上传</em>
-                </template>
-                <template v-else>
-                  <el-icon><Loading /></el-icon>
-                  文件处理中，请稍候...
-                </template>
+                拖拽ZIP，RAR压缩包或所有Excel文件到此处，或<em>点击上传</em>
               </div>
             </el-upload>
 
-            <!-- 上传进度区域（在拖拽区域下方） -->
+            <!-- 上传进度由总览卡片显示，此处移除独立进度区域 -->
+
+            <!-- 上传结果总览（处理完成后显示） -->
             <transition name="fade-slide">
-              <div v-if="isUploading || uploadResult" class="upload-progress-section">
-                <!-- 动态进度显示 -->
-                <div v-if="isUploading" class="progress-container">
-                  <div class="progress-header">
-                    <div class="header-left">
-                      <el-icon class="processing-icon"><Loading /></el-icon>
-                      <h4>{{ currentBatchPhase }}</h4>
+              <div v-if="uploadResult && !isUploading" class="upload-progress-section">
+                <el-alert
+                  :type="uploadResult.failedCount > 0 ? 'warning' : 'success'"
+                  :closable="true"
+                  @close="closeResultSummary"
+                >
+                  <template #title>
+                    <div class="result-title">
+                      <el-icon><SuccessFilled v-if="uploadResult.failedCount === 0" /><WarningFilled v-else /></el-icon>
+                      <span>上传结果总览</span>
                     </div>
-                    <div class="header-right">
-                      <span class="file-count">{{ processedFilesCount }}/{{ totalFilesCount }}</span>
+                  </template>
+
+                  <div class="result-content">
+                    <!-- 统计数据 -->
+                    <div class="result-stats">
+                      <div class="stat-item">
+                        <span class="stat-label">共处理</span>
+                        <span class="stat-value total">{{ uploadResult.totalFiles }}</span>
+                        <span class="stat-label">个文件</span>
+                      </div>
+                      <div class="stat-divider"></div>
+                      <div class="stat-item success">
+                        <el-icon><CircleCheckFilled /></el-icon>
+                        <span class="stat-label">成功:</span>
+                        <span class="stat-value">{{ uploadResult.successCount }}个</span>
+                      </div>
+                      <div class="stat-divider"></div>
+                      <div class="stat-item failed" v-if="uploadResult.failedCount > 0">
+                        <el-icon><CircleCloseFilled /></el-icon>
+                        <span class="stat-label">失败:</span>
+                        <span class="stat-value">{{ uploadResult.failedCount }}个</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <!-- 总体进度条 -->
-                  <el-progress 
-                    :percentage="overallProgress" 
-                    :color="getProgressColor(overallProgress)"
-                    :stroke-width="12"
-                    :show-text="false"
-                  />
+                    <!-- 基础错误列表 -->
+                    <div v-if="uploadResult.basicErrors && uploadResult.basicErrors.length > 0" class="basic-errors">
+                      <div class="error-title">
+                        <el-icon><Warning /></el-icon>
+                        <span>基础错误提示</span>
+                      </div>
+                      <ul class="error-list">
+                        <li v-for="(error, index) in uploadResult.basicErrors" :key="index" class="error-item">
+                          <el-icon :class="['error-icon', getErrorIconClass(error.errorType)]">
+                            <component :is="getBasicErrorIcon(error.errorType)" />
+                          </el-icon>
+                          <span class="error-message">{{ error.message }}</span>
+                        </li>
+                      </ul>
+                    </div>
 
-                  <!-- 详细进度信息列表 -->
-                  <div class="progress-messages">
-                    <transition-group name="list" tag="div">
-                      <div 
-                        v-for="msg in progressMessages" 
-                        :key="msg.id"
-                        class="progress-message-item"
+                    <!-- 操作按钮 -->
+                    <div class="result-actions">
+                      <el-button 
+                        size="small" 
+                        @click="downloadErrorSummary"
+                        v-if="uploadResult.failedCount > 0"
                       >
-                        <el-icon 
-                          :class="['message-icon', msg.type]"
-                        >
-                          <component :is="getMessageIcon(msg.type)" />
-                        </el-icon>
-                        <span class="message-text">{{ msg.text }}</span>
-                        <el-tag 
-                          v-if="msg.tag"
-                          :type="msg.tagType"
-                          size="small"
-                          effect="plain"
-                        >
-                          {{ msg.tag }}
-                        </el-tag>
-                      </div>
-                    </transition-group>
+                        <el-icon><Download /></el-icon>
+                        下载错误汇总
+                      </el-button>
+                    </div>
                   </div>
-                </div>
-
-                <!-- 上传结果总览（处理完成后显示） -->
-                <transition name="fade">
-                  <div v-if="uploadResult && !isUploading" class="upload-result-summary">
-                    <el-alert
-                      :type="uploadResult.failedCount > 0 ? 'warning' : 'success'"
-                      :closable="true"
-                      @close="closeResultSummary"
-                    >
-                      <template #title>
-                        <div class="result-title">
-                          <el-icon><SuccessFilled v-if="uploadResult.failedCount === 0" /><WarningFilled v-else /></el-icon>
-                          <span>上传结果总览</span>
-                        </div>
-                      </template>
-
-                      <div class="result-content">
-                        <!-- 统计数据 -->
-                        <div class="result-stats">
-                          <div class="stat-item">
-                            <span class="stat-label">共处理</span>
-                            <span class="stat-value total">{{ uploadResult.totalFiles }}</span>
-                            <span class="stat-label">个文件</span>
-                          </div>
-                          <div class="stat-divider"></div>
-                          <div class="stat-item success">
-                            <el-icon><CircleCheckFilled /></el-icon>
-                            <span class="stat-label">成功:</span>
-                            <span class="stat-value">{{ uploadResult.successCount }}个</span>
-                          </div>
-                          <div class="stat-divider"></div>
-                          <div class="stat-item failed" v-if="uploadResult.failedCount > 0">
-                            <el-icon><CircleCloseFilled /></el-icon>
-                            <span class="stat-label">失败:</span>
-                            <span class="stat-value">{{ uploadResult.failedCount }}个</span>
-                          </div>
-                        </div>
-
-                        <!-- 基础错误列表 -->
-                        <div v-if="uploadResult.basicErrors && uploadResult.basicErrors.length > 0" class="basic-errors">
-                          <div class="error-title">
-                            <el-icon><Warning /></el-icon>
-                            <span>基础错误提示</span>
-                          </div>
-                          <ul class="error-list">
-                            <li v-for="(error, index) in uploadResult.basicErrors" :key="index" class="error-item">
-                              <el-icon :class="['error-icon', getErrorIconClass(error.errorType)]">
-                                <component :is="getBasicErrorIcon(error.errorType)" />
-                              </el-icon>
-                              <span class="error-message">{{ error.message }}</span>
-                            </li>
-                          </ul>
-                        </div>
-
-                        <!-- 操作按钮 -->
-                        <div class="result-actions">
-                          <el-button 
-                            size="small" 
-                            @click="downloadErrorSummary"
-                            v-if="uploadResult.failedCount > 0"
-                          >
-                            <el-icon><Download /></el-icon>
-                            下载错误汇总
-                          </el-button>
-                        </div>
-                      </div>
-                    </el-alert>
-                  </div>
-                </transition>
+                </el-alert>
               </div>
             </transition>
           </div>
 
-          <!-- 文件列表 -->
+          <!-- 文件列表（带总进度和刷新按钮） -->
+          <div class="table-header">
+            <span class="table-title">文件列表</span>
+            
+            <!-- 总进度条（上传中时显示） -->
+            <div v-if="isUploading" class="header-progress">
+              <span class="progress-label">总进度：</span>
+              <el-progress 
+                :percentage="overallProgress" 
+                :color="getProgressColor(overallProgress)"
+                :stroke-width="6"
+                class="progress-bar"
+              />
+              <span class="progress-count">{{ uploadedFileCount }}/{{ totalFileCount }}</span>
+            </div>
+            
+            <el-button
+              type="primary"
+              size="small"
+              :icon="RefreshRight"
+              :loading="refreshingFileList"
+              @click="refreshFileList"
+              circle
+            />
+          </div>
           <el-table
             :data="fileList"
             :show-overflow-tooltip="true"
@@ -468,6 +439,16 @@
       <!-- 步骤2: 前置质控 -->
       <div v-if="currentStep === 2" class="step-content">
         <h3 class="step-title">前置质控结果</h3>
+        
+        <!-- 总览卡片 -->
+        <StepSummaryCard 
+          :key="`step2-${stepSummaryKey}`"
+          :step-type="2" 
+          :task-id="currentTask.taskId"
+          @refresh="loadStepSummary"
+          @close="handleSummaryClose"
+        />
+        
         <div class="qc-section">
         <!-- 质控统计卡片 -->
         <div class="qc-summary">
@@ -596,6 +577,16 @@
       <!-- 步骤3: 提交上报 -->
       <div v-if="currentStep === 3" class="step-content">
         <h3 class="step-title">提交上报</h3>
+        
+        <!-- 总览卡片 -->
+        <StepSummaryCard 
+          :key="`step3-${stepSummaryKey}`"
+          :step-type="3" 
+          :task-id="currentTask.taskId"
+          @refresh="loadStepSummary"
+          @close="handleSummaryClose"
+        />
+        
         <div class="submit-section">
         <!-- 上报信息 -->
         <div class="submit-info">
@@ -910,7 +901,7 @@
 
 <script setup lang="ts">
 import request from '@/config/axios'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from '@/hooks/web/useMessage'
 import {
@@ -937,11 +928,13 @@ import {
 import { ContentWrap } from '@/components/ContentWrap'
 import DictTag from '@/components/DictTag/src/DictTag.vue'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
+import StepSummaryCard from './components/StepSummaryCard.vue'
 import {
   ReportDataApi
 } from '@/api/drug/reportdata'
 import { ImportTemplateApi } from '@/api/drug/task/template'
 import { TemplateFieldApi } from '@/api/drug/task/template'
+import { ReportStepSummaryApi } from '@/api/drug/reportstepsummary'
 import download from '@/utils/download'
 import { DICT_TYPE } from '@/utils/dict'
 import { getProgressColor } from '@/utils/progressColor'
@@ -976,7 +969,9 @@ const currentTask = ref<any>({
   hospitalName: '',
   description: '',
   taskId: queryData.taskId ? Number(queryData.taskId) : null,
-  reportStatus: 0
+  reportStatus: 0,
+  currentStep: 0,
+  maxCurrentStep: 0
 })
 
 // 文件列表完全从后端获取
@@ -1069,7 +1064,7 @@ const excelDetailTarget = computed(() => {
 })
 
 const handleBackToList = () => {
-  currentTask.value.currentStep = currentTask.value.maxCurrentStep || 0
+  // 返回列表页，不修改任何状态，保持数据库中的值
   router.push({ name: 'DrugReportSubmission' })
 }
 
@@ -1459,7 +1454,7 @@ const getTemplateColor = (tableType: string): string => {
 const startUpload = async () => {
   try {
     loading.value = true
-    await updateReportProgress(1)
+    await updateCurrentStep(1)
     currentTask.value.currentStep = 1
     currentTask.value.maxCurrentStep = 1
   } finally {
@@ -1505,6 +1500,38 @@ const startProgressPolling = (taskId: number) => {
         
         // 检查是否有错误
         const hasError = Object.values(uploadProgress.value).some((p: any) => p.status === 'error')
+        
+        // 完成步骤1的总览
+        try {
+          // 计算总览数据
+          const successFiles = Object.values(uploadProgress.value).filter((p: any) => p.status === 'success').length
+          const totalFiles = Object.keys(uploadProgress.value).length
+          const totalRows = Object.values(uploadProgress.value).reduce((sum: number, p: any) => sum + (p.totalRows || 0), 0)
+          
+          // 先更新总览数据
+          await ReportStepSummaryApi.createOrUpdateStepSummary({
+            taskId: currentTask.value.taskId,
+            stepType: 1,
+            status: hasError ? 2 : 1, // 1=成功, 2=部分失败
+            totalFiles,
+            successFiles,
+            failedFiles: totalFiles - successFiles,
+            totalRecords: totalRows,
+            summaryData: JSON.stringify({
+              totalFiles,
+              successFiles,
+              errorFiles: totalFiles - successFiles,
+              totalRows,
+              hasError
+            })
+          })
+          
+          // 重新加载总览
+          await loadStepSummary()
+        } catch (error) {
+          console.error('完成上传总览失败:', error)
+        }
+        
         if (hasError) {
           message.warning('部分文件处理失败，请查看详情')
         } else {
@@ -1700,12 +1727,24 @@ const updateReportProgress = async (progress: number) => {
   }
 }
 
+const updateCurrentStep = async (step: number) => {
+  if (!currentTask.value.taskId) {
+    console.warn('任务ID不存在，无法更新当前步骤')
+    return
+  }
+  try {
+    await ReportDataApi.updateCurrentStep(currentTask.value.taskId, step)
+  } catch (error) {
+    console.error('更新当前步骤失败:', error)
+  }
+}
+
 const startPreQC = async () => {
   message.info('正在进行前置质控...')
   if (currentTask.value.maxCurrentStep === 1) {
     loading.value = true
     try {
-      await updateReportProgress(2)
+      await updateCurrentStep(2)
       currentTask.value.currentStep = 2
       currentTask.value.maxCurrentStep = 2
       await operateQCResults(currentTask.value.taskId)
@@ -1761,7 +1800,7 @@ const backToUpload = async () => {
 const startSubmitReport = async () => {
   currentTask.value.currentStep = 3
   currentTask.value.maxCurrentStep = 3
-  await updateReportProgress(3)
+  await updateCurrentStep(3)
 
   // 填充提交信息
   submitInfo.value = {
@@ -1811,6 +1850,12 @@ onMounted(() => {
   loadCurrentTask()
 })
 
+onActivated(() => {
+  // 当页面从 keep-alive 缓存中激活时重新加载任务数据
+  // 这样从列表页返回再进入时会刷新数据
+  loadCurrentTask()
+})
+
 onUnmounted(() => {
   // 组件销毁时停止轮询
   stopProgressPolling()
@@ -1826,8 +1871,9 @@ const loadCurrentTask = async () => {
     }
     const task = await ReportDataApi.getCurrentActiveTask(currentTask.value.taskId)
     if (task) {
-      task.maxCurrentStep = task.currentStep || 0
-      task.currentStep = task.currentStep || 0
+      // 确保 maxCurrentStep 和 currentStep 都有值
+      task.maxCurrentStep = task.maxCurrentStep ?? task.currentStep ?? 0
+      task.currentStep = task.currentStep ?? 0
       currentTask.value = task
       if (task.taskId || currentTask.value.taskId) {
         const taskId = task.taskId || currentTask.value.taskId
@@ -1930,6 +1976,29 @@ const loadQCResults = async (taskId: number) => {
     }
   } catch (error) {
     console.error('加载质控结果失败:', error)
+  }
+}
+
+// ==================== 步骤总览相关方法 ====================
+
+const stepSummaryKey = ref(0)
+
+const loadStepSummary = async () => {
+  // 通过改变key强制刷新组件
+  stepSummaryKey.value++
+}
+
+const handleSummaryClose = async () => {
+  try {
+    await ReportStepSummaryApi.closeStepSummary(
+      currentTask.value.taskId,
+      currentTask.value.currentStep
+    )
+    message.success('总览已关闭')
+    stepSummaryKey.value++ // 刷新组件以隐藏总览
+  } catch (error) {
+    console.error('关闭总览失败:', error)
+    message.error('关闭总览失败')
   }
 }
 </script>
@@ -2541,6 +2610,51 @@ const loadQCResults = async (taskId: number) => {
 /* 上传区域样式 */
 .upload-section {
   max-width: 100%;
+}
+
+/* 表格标题栏样式 */
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 20px 0 16px 0;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.header-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 500px;
+}
+
+.header-progress .progress-label {
+  font-size: 14px;
+  color: #606266;
+  white-space: nowrap;
+}
+
+.header-progress .progress-bar {
+  flex: 1;
+  min-width: 200px;
+}
+
+.header-progress .progress-count {
+  font-size: 14px;
+  color: #409eff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .batch-upload {
@@ -3229,5 +3343,264 @@ const loadQCResults = async (taskId: number) => {
 :deep(.upload-dragger.is-disabled) {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 拖拽区域内的进度显示样式 */
+.upload-progress-inline-area {
+  width: 100%;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.progress-header-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.progress-header-inline .header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-header-inline .processing-icon {
+  font-size: 24px;
+  color: #667eea;
+  animation: rotate 1.5s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.progress-header-inline h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.progress-header-inline .header-right .file-count {
+  font-size: 16px;
+  font-weight: 600;
+  color: #667eea;
+  background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 2px solid #667eea;
+}
+
+.progress-bar-wrapper {
+  width: 100%;
+  padding: 0 10px;
+}
+
+.progress-bar-wrapper :deep(.el-progress__text) {
+  font-size: 16px !important;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.current-processing-tips {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.latest-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-radius: 12px;
+  border: 2px solid #d1d5db;
+  min-width: 300px;
+  max-width: 600px;
+  transition: all 0.3s ease;
+  animation: pulse-message 2s ease-in-out infinite;
+}
+
+@keyframes pulse-message {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+  }
+}
+
+.latest-message .message-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.latest-message .message-icon.info {
+  color: #409eff;
+}
+
+.latest-message .message-icon.success {
+  color: #67c23a;
+}
+
+.latest-message .message-icon.warning {
+  color: #e6a23c;
+}
+
+.latest-message .message-icon.error {
+  color: #f56c6c;
+}
+
+.latest-message .message-text {
+  font-size: 14px;
+  color: #303133;
+  font-weight: 500;
+  flex: 1;
+}
+
+/* 上传中时拖拽区域的背景样式 */
+.upload-disabled :deep(.el-upload-dragger) {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-color: #adb5bd;
+  cursor: not-allowed;
+}
+
+/* 拖拽区上传中提示 */
+.upload-processing-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px;
+}
+
+.upload-processing-hint .processing-icon-large {
+  font-size: 64px;
+  color: #909399;
+  animation: spin 2s linear infinite;
+}
+
+.upload-processing-hint .processing-text {
+  font-size: 16px;
+  color: #606266;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 上传进度详情区域（拖拽区下方） */
+.upload-progress-detail {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.upload-progress-detail .progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+.upload-progress-detail .header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-progress-detail .processing-icon {
+  font-size: 20px;
+  color: #0ea5e9;
+  animation: spin 2s linear infinite;
+}
+
+.upload-progress-detail .phase-text {
+  font-size: 16px;
+  color: #0c4a6e;
+  font-weight: 600;
+}
+
+.upload-progress-detail .header-right {
+  display: flex;
+  align-items: center;
+}
+
+.upload-progress-detail .file-count-text {
+  font-size: 14px;
+  color: #0284c7;
+  font-weight: 600;
+  background: rgba(14, 165, 233, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+/* 文件进度列表 */
+.files-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.file-progress-item {
+  background: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e0f2fe;
+  transition: all 0.3s ease;
+}
+
+.file-progress-item:hover {
+  border-color: #7dd3fc;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
+}
+
+.file-progress-item .file-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.file-progress-item .file-name {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+/* 过渡动画 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 </style>

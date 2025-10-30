@@ -33,6 +33,7 @@ export interface ReportTaskRespVO {
   taskName: string
   status: number
   currentStep: number
+  maxCurrentStep?: number
   startDate: string
   endDate: string
   hospitalId: number
@@ -138,11 +139,19 @@ export const ReportDataApi = {
     return request.post({ url: '/drug/report-data/create-report-task', data })
   },
 
-  // 更新上报进度
+  // 更新上报进度百分比
   updateReportProgress: (taskId: number, reportProgress: number): Promise<boolean> => {
     return request.put({
       url: '/drug/report-data/update-report-progress',
       params: { taskId, reportProgress }
+    })
+  },
+
+  // 更新当前步骤
+  updateCurrentStep: (taskId: number, currentStep: number): Promise<boolean> => {
+    return request.put({
+      url: '/drug/report-data/update-current-step',
+      params: { taskId, currentStep }
     })
   },
 

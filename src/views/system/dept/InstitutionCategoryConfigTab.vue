@@ -1,3 +1,4 @@
+<!--委直委管配置页面-->
 <template>
   <!-- 搜索工作栏 -->
   <ContentWrap>
@@ -107,7 +108,6 @@
   <!-- 列表 -->
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="主键ID" align="center" prop="id" width="80" />
       <el-table-column label="机构名称" align="center" prop="institutionName" min-width="200" />
       <el-table-column label="行政归属" align="center" prop="category" width="100">
         <template #default="scope">
