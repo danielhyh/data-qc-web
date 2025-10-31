@@ -534,7 +534,12 @@ ul, ol {
   
   .cell {
     color: #1a202c !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important; /* 提升到600，确保文字和数字都加粗 */
+    
+    /* 确保数字也加粗 */
+    * {
+      font-weight: 600 !important;
+    }
   }
 }
 
@@ -568,13 +573,25 @@ ul, ol {
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* 固定列hover效果 */
+/* 固定列hover效果 - 完全不透明的背景 */
 .el-table__body tr:hover {
   > td.el-table-fixed-column--right,
   > td.is-fixed-column--right,
   > td.el-table-fixed-column--left,
   > td.is-fixed-column--left {
-    background-color: rgba(91, 141, 239, 0.04) !important;
+    /* 使用完全不透明的背景，避免透视问题 */
+    background-color: #f0f7ff !important; /* 淡蓝色不透明背景 */
+    z-index: 3 !important; /* 提升层级 */
+    
+    .cell {
+      color: #1a202c !important;
+      font-weight: 600 !important; /* 固定列也加粗 */
+      
+      /* 确保固定列中的数字也加粗 */
+      * {
+        font-weight: 600 !important;
+      }
+    }
   }
 }
 
@@ -633,11 +650,63 @@ ul, ol {
   flex-wrap: wrap;
 }
 
+/* ============================================
+   操作列溢出处理 - 解决按钮 hover 向上移动被遮盖问题
+   ============================================ */
+
+/* 操作列单元格允许内容溢出（数据行） */
+.el-table__body {
+  td.el-table-fixed-column--right,
+  td.is-fixed-column--right {
+    overflow: visible !important;
+    
+    .cell {
+      overflow: visible !important;
+    }
+  }
+}
+
+/* 操作列表头也允许溢出 */
+.el-table__header {
+  th.el-table-fixed-column--right,
+  th.is-fixed-column--right {
+    overflow: visible !important;
+    
+    .cell {
+      overflow: visible !important;
+    }
+  }
+}
+
+/* 确保操作列在普通列（非固定列）时也能溢出 */
+.el-table__body tr:last-child {
+  td:last-child {
+    overflow: visible !important;
+    
+    .cell {
+      overflow: visible !important;
+    }
+  }
+}
+
 /* 斑马纹表格固定列 */
 .el-table--striped .el-table__body {
   tr.el-table__row--striped td.el-table-fixed-column--right,
-  tr.el-table__row--striped td.is-fixed-column--right {
+  tr.el-table__row--striped td.is-fixed-column--right,
+  tr.el-table__row--striped td.el-table-fixed-column--left,
+  tr.el-table__row--striped td.is-fixed-column--left {
     background-color: #fafafa !important;
+  }
+  
+  /* 斑马纹表格固定列悬停效果 */
+  tr.el-table__row--striped:hover {
+    td.el-table-fixed-column--right,
+    td.is-fixed-column--right,
+    td.el-table-fixed-column--left,
+    td.is-fixed-column--left {
+      background-color: #e8f2ff !important; /* 稍深的不透明蓝色 */
+      z-index: 3 !important;
+    }
   }
 }
 
@@ -703,7 +772,12 @@ ul, ol {
 /* 虚拟表格悬停效果 */
 .el-table-v2__row:hover .el-table-v2__row-cell {
   color: #1a202c !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important; /* 提升到600，确保文字和数字都加粗 */
+  
+  /* 确保数字也加粗 */
+  * {
+    font-weight: 600 !important;
+  }
 }
 
 /* 虚拟表格展开图标 */

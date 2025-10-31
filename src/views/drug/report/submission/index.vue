@@ -63,7 +63,11 @@
       :show-overflow-tooltip="true"
     >
       <el-table-column label="序号" width="80" type="index" align="center" />
-      <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px" />
+      <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px">
+        <template #default="scope">
+          <span class="font-bold">{{ scope.row.taskName }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="年份" align="center" prop="reportYear" width="80px" />
       <el-table-column
         label="开始日期"
@@ -87,9 +91,10 @@
       <!-- 剩余时间 -->
       <el-table-column label="剩余时间" align="center" width="120px">
         <template #default="scope">
-          <span :class="getRemainingTimeClass(scope.row.endDate)">
-            {{ calculateRemainingTime(scope.row.endDate) }}
+          <span v-if="scope.row.status !== 3" :class="getRemainingTimeClass(scope.row.endDate, scope.row.status)">
+            {{ calculateRemainingTime(scope.row.endDate, scope.row.status) }}
           </span>
+          <span v-else class="text-gray-400 font-medium">任务已结束</span>
         </template>
       </el-table-column>
 
@@ -286,9 +291,14 @@ const getCurrentDate = (timestamp) => {
 /**
  * 计算任务剩余时间或逾期时间
  * @param endDate 截止时间戳
+ * @param status 任务状态，已结束直接返回标签文案
  * @returns 剩余/逾期时间描述
  */
-function calculateRemainingTime(endDate?: number): string {
+function calculateRemainingTime(endDate?: number, status?: number): string {
+  if (status === 3) {
+    return '任务已结束'
+  }
+
   if (!endDate) return '-'
   const now = Date.now()
   const diff = endDate - now
@@ -308,9 +318,14 @@ function calculateRemainingTime(endDate?: number): string {
 /**
  * 获取剩余时间样式类
  * @param endDate 截止时间戳
+ * @param status 任务状态，已结束时返回灰色
  * @returns 颜色 class
  */
-function getRemainingTimeClass(endDate?: number): string {
+function getRemainingTimeClass(endDate?: number, status?: number): string {
+  if (status === 3) {
+    return 'text-gray-400 font-medium'
+  }
+
   if (!endDate) return ''
   const diff = endDate - Date.now()
   if (diff <= 0) return 'text-red-500 font-bold' // 逾期

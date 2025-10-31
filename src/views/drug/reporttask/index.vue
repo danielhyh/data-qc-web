@@ -79,7 +79,11 @@
       :show-overflow-tooltip="true"
       :row-class-name="getRowClassName"
     >
-      <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px" />
+      <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px">
+        <template #default="scope">
+          <span class="font-bold">{{ scope.row.taskName }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="年份" align="center" prop="reportYear" width="80px" />
       <el-table-column
         label="上报开始日期"

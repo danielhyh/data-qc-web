@@ -313,8 +313,16 @@
             :show-overflow-tooltip="true"
           >
             <el-table-column label="序号" width="80" type="index" align="center" />
-            <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center" />
-            <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center" />
+            <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center">
+              <template #default="scope">
+                <span class="font-bold">{{ scope.row.standardFileName }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center">
+              <template #default="scope">
+                <span class="font-bold">{{ scope.row.originalFileName }}</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="fileType" label="文件类型" width="150" align="center">
               <template #default="{ row }">
                 <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="row.fileType" />
@@ -327,13 +335,24 @@
             </el-table-column>
             <el-table-column label="上传进度" width="200" align="center">
               <template #default="{ row }">
+                <!-- 正在上传：显示Redis实时进度 -->
                 <div v-if="uploadProgress[row.fileType] && uploadingFiles.includes(row.fileType)" class="progress-wrapper">
                   <el-progress 
                     :percentage="uploadProgress[row.fileType]?.progress || 0"
                     :status="getProgressStatus(uploadProgress[row.fileType]?.status)"
                   />
                   <div class="progress-message">
-                    {{ uploadProgress[row.fileType]?.currentStep || '处理中...' }}
+                    {{ uploadProgress[row.fileType]?.currentStep || uploadProgress[row.fileType]?.phase || '处理中...' }}
+                  </div>
+                </div>
+                <!-- 未上传或已完成：显示数据库中的进度 -->
+                <div v-else-if="row.uploadProgress !== undefined && row.uploadProgress >= 0" class="progress-wrapper">
+                  <el-progress 
+                    :percentage="row.uploadProgress"
+                    :status="row.uploadProgress === 100 ? 'success' : row.uploadProgress === 0 ? undefined : 'warning'"
+                  />
+                  <div class="progress-message text-sm text-gray-500">
+                    {{ row.uploadPhase || '-' }}
                   </div>
                 </div>
                 <span v-else class="record-count">-</span>
@@ -488,8 +507,16 @@
               <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="row.fileType" />
             </template>
           </el-table-column>
-          <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center" />
-          <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center" />
+          <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center">
+            <template #default="scope">
+              <span class="font-bold">{{ scope.row.standardFileName }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center">
+            <template #default="scope">
+              <span class="font-bold">{{ scope.row.originalFileName }}</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="uploadStatus" label="上传状态" width="120" align="center">
             <template #default="{ row }">
               <dict-tag :type="DICT_TYPE.UPLOAD_STATUS" :value="row.uploadStatus" />
@@ -617,8 +644,16 @@
                 <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="row.fileType" />
               </template>
             </el-table-column>
-            <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center" />
-            <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center" />
+            <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center">
+              <template #default="scope">
+                <span class="font-bold">{{ scope.row.standardFileName }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center">
+              <template #default="scope">
+                <span class="font-bold">{{ scope.row.originalFileName }}</span>
+              </template>
+            </el-table-column>
           <el-table-column prop="uploadStatus" label="上传状态" width="120" align="center">
             <template #default="{ row }">
               <dict-tag :type="DICT_TYPE.UPLOAD_STATUS" :value="row.uploadStatus" />
@@ -1020,6 +1055,9 @@ let progressPollingInterval: ReturnType<typeof setInterval> | null = null
 // 上传结果
 const uploadResult = ref<any>(null)
 
+// 总进度信息（从后端获取）
+const overallProgressData = ref<any>(null)
+
 // 当前批次阶段描述
 const currentBatchPhase = ref('正在处理文件...')
 const processedFilesCount = ref(0)
@@ -1082,8 +1120,14 @@ const uploadedFileCount = computed(() => {
   return fileList.value.filter(file => file.uploadStatus === 2).length
 })
 
-// 计算整体上传进度（考虑实时进度）
+// 计算整体上传进度（优先使用后端总进度，降级使用计算值）
 const overallProgress = computed(() => {
+  // 🔥 优先使用后端返回的总进度
+  if (overallProgressData.value && overallProgressData.value.overallProgress !== undefined) {
+    return overallProgressData.value.overallProgress
+  }
+  
+  // 降级：前端计算
   if (uploadingFiles.value.length === 0) {
     // 没有正在上传的文件，使用已完成数量计算
     const total = totalFileCount.value
@@ -1473,13 +1517,17 @@ const startProgressPolling = (taskId: number) => {
 
   progressPollingInterval = setInterval(async () => {
     try {
+      // 🔥 使用新接口：同时获取总进度和子文件进度
       const result = await request.get({
-        url: '/drug/report-data/upload-progress',
+        url: '/drug/report-data/complete-upload-progress',
         params: { taskId }
       })
 
-      // 更新进度
-      uploadProgress.value = result || {}
+      // 🔥 更新总进度数据
+      overallProgressData.value = result?.overall || null
+      
+      // 🔥 更新子文件进度
+      uploadProgress.value = result?.files || {}
 
       // 检查是否全部完成
       const hasUploading = Object.values(uploadProgress.value).some(
@@ -1919,7 +1967,10 @@ const loadFileList = async (taskId: number) => {
       fileFormat: file.fileFormat,
       recordCount: file.recordCount,
       errorCount: file.errorCount,
-      warningCount: file.warningCount
+      warningCount: file.warningCount,
+      // ✅ 新增：上传进度字段
+      uploadProgress: file.uploadProgress || 0,
+      uploadPhase: file.uploadPhase || '等待文件上传'
     }))
   } catch (error) {
     console.error('加载文件列表失败:', error)
