@@ -55,21 +55,9 @@
   }
 }
 
-/* Element Plus 组件科技感覆盖 */
+/* Element Plus 组件科技感覆盖 - 简化版 */
 .el-card {
-  @include tech-card;
-  background: var(--tech-dark-card) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-
-  .el-card__header {
-    background: rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    color: #e2e8f0;
-  }
-
-  .el-card__body {
-    color: #cbd5e1;
-  }
+  /* 移除了默认的样式，由具体组件（如 ContentWrap）控制 */
 }
 
 .el-button--primary {

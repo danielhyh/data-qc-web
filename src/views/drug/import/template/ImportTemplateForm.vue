@@ -1000,11 +1000,6 @@ const refreshPreview = () => {
 }
 
 /* 表单样式优化 */
-:deep(.el-form-item__label) {
-  font-weight: 600;
-  color: #24292f;
-}
-
 :deep(.el-input__wrapper) {
   border-radius: 6px;
 }

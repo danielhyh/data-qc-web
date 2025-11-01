@@ -18,8 +18,13 @@ export const getSimpleDeptList = async (regionId?: number): Promise<DeptVO[]> =>
   return await request.get({ url: '/system/dept/simple-list', params })
 }
 
+export interface DeptPageParam extends PageParam {
+  areaCode?: string
+  [key: string]: any
+}
+
 // 查询部门列表
-export const getDeptPage = async (params: PageParam) => {
+export const getDeptPage = async (params: DeptPageParam) => {
   return await request.get({ url: '/system/dept/list', params })
 }
 

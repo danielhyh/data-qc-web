@@ -9,19 +9,19 @@
       :inline="true"
       label-width="68px"
     >
-      <el-form-item label="区划代码" prop="code">
+      <el-form-item label="地区名称" prop="name">
         <el-input
-          v-model="queryParams.code"
-          placeholder="请输入区划代码"
+          v-model="queryParams.name"
+          placeholder="请输入地区名称"
           clearable
           @keyup.enter="handleQuery"
           class="!w-240px"
         />
       </el-form-item>
-      <el-form-item label="地区名称" prop="name">
+      <el-form-item label="节点编码" prop="code">
         <el-input
-          v-model="queryParams.name"
-          placeholder="请输入地区名称"
+          v-model="queryParams.code"
+          placeholder="请输入节点编码"
           clearable
           @keyup.enter="handleQuery"
           class="!w-240px"
@@ -47,6 +47,9 @@
         >
           <Icon icon="ep:plus" class="mr-5px" /> 新增
         </el-button>
+        <el-button plain type="danger" @click="toggleExpandAll">
+          <Icon icon="ep:sort" class="mr-5px" /> 展开/折叠
+        </el-button>
         <el-button
           type="success"
           @click="handleExport"
@@ -68,11 +71,14 @@
           <!-- Virtualized Table 虚拟化表格：高性能，解决表格在大数据量下的卡顿问题 -->
           <el-table-v2
             v-loading="loading"
+            v-model:expanded-row-keys="expandedRowKeys"
             :columns="columns"
             :data="treeList"
             :width="width"
             :height="height"
             :expand-column-key="expandColumnKey"
+            :row-class="getRowClass"
+            row-key="id"
           />
         </template>
       </el-auto-resizer>
@@ -84,9 +90,10 @@
 </template>
 
 <script setup lang="tsx">
-import { Column } from 'element-plus'
+import { resolveComponent } from 'vue'
+import { Column, ElInputNumber } from 'element-plus'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
-import { defaultProps, handleTree } from '@/utils/tree'
+import { handleTree } from '@/utils/tree'
 import download from '@/utils/download'
 import { RegionsApi, RegionsVO } from '@/api/system/regions'
 import RegionsForm from './RegionsForm.vue'
@@ -97,19 +104,111 @@ defineOptions({ name: 'Regions' })
 const message = useMessage() // 消息弹窗
 const { t } = useI18n() // 国际化
 
+const Icon = resolveComponent('Icon') as any
+
+// 行政区划节点的图标配置，区分不同层级，方便后续扩展更多层级
+const LEVEL_ICON_CONFIG: Record<number, { icon: string; color: string; label: string }> = {
+  1: { icon: 'material-symbols:public', color: '#2563eb', label: '省级节点' },
+  2: { icon: 'mdi:office-building', color: '#16a34a', label: '市级节点' },
+  3: { icon: 'mdi:home-city', color: '#f97316', label: '区县节点' }
+}
+const DEFAULT_NODE_ICON = { icon: 'mdi:map-marker', color: '#2563eb', label: '行政区划' }
+const SPECIAL_NODE_ICON = { icon: 'ep:star-filled', color: '#f59e0b', label: '特殊节点' }
+
+const sortRegions = (data: RegionsVO[]): RegionsVO[] => {
+  return [...data].sort((a, b) => {
+    const orderA = Number(a.sortOrder ?? 0)
+    const orderB = Number(b.sortOrder ?? 0)
+    if (orderA !== orderB) {
+      return orderA - orderB
+    }
+    const levelA = Number(a.level ?? 0)
+    const levelB = Number(b.level ?? 0)
+    if (levelA !== levelB) {
+      return levelA - levelB
+    }
+    return Number(a.id ?? 0) - Number(b.id ?? 0)
+  })
+}
+
+const list = ref<RegionsVO[]>([])
+const treeList = ref<any[]>([])
+const updatingSortId = ref<number | null>(null)
+const editingSortCache = ref<Map<number, number>>(new Map())
+const expandedRowKeys = ref<number[]>([])
+const isExpandAll = ref(false)
+
+/** 获取行的 class，特殊节点使用金色主题 */
+const getRowClass = ({ rowData }: { rowData: RegionsVO }) => {
+  return rowData.nodeType === 'SPECIAL' ? 'special-node-row' : ''
+}
+
+const pickLevelIcon = (level?: number) => LEVEL_ICON_CONFIG[Number(level)] ?? DEFAULT_NODE_ICON
+const getNodeIconMeta = (row: RegionsVO) => (row.nodeType === 'SPECIAL' ? SPECIAL_NODE_ICON : pickLevelIcon(row.level))
+
+const renderNameCell = ({ rowData }: { rowData: RegionsVO }) => {
+  const iconMeta = getNodeIconMeta(rowData)
+  return (
+    <div class="flex items-center gap-6px">
+      <el-tooltip content={iconMeta.label} placement="top">
+        <Icon icon={iconMeta.icon} class="text-16px" style={{ color: iconMeta.color }} />
+      </el-tooltip>
+      <span class="font-bold">{rowData.name}</span>
+    </div>
+  )
+}
+
+const renderNodeTypeCell = ({ rowData }: { rowData: RegionsVO }) => {
+  const isSpecial = rowData.nodeType === 'SPECIAL'
+  return <span>{isSpecial ? '特殊节点' : '行政区划'}</span>
+}
+
+const renderSortOrderCell = ({ rowData }: { rowData: RegionsVO }) => {
+  const isUpdating = updatingSortId.value === rowData.id
+  const currentValue = editingSortCache.value.get(rowData.id) ?? rowData.sortOrder ?? 0
+  
+  return (
+    <div class="sort-order-cell">
+      <ElInputNumber
+        modelValue={currentValue}
+        min={0}
+        max={9999}
+        step={1}
+        controls={false}
+        size="small"
+        class={`sort-order-input ${isUpdating ? 'is-updating' : ''}`}
+        disabled={isUpdating}
+        onUpdate:modelValue={(value) => {
+          editingSortCache.value.set(rowData.id, Number(value ?? 0))
+        }}
+        onBlur={() => handleSortOrderSave(rowData)}
+        onKeydown={(e: KeyboardEvent) => {
+          if (e.key === 'Enter') {
+            ;(e.target as HTMLInputElement)?.blur()
+          }
+        }}
+      />
+      {isUpdating && (
+        <Icon icon="line-md:loading-twotone-loop" class="sort-order-loading" />
+      )}
+    </div>
+  )
+}
+
 // 表格的 column 字段
 const columns: Column[] = [
   {
-    dataKey: 'code',
-    title: '区划代码',
-    width: 150,
-    fixed: true,
-    key: 'id'
-  },
-  {
     dataKey: 'name',
     title: '地区名称',
-    width: 200
+    width: 220,
+    fixed: true,
+    key: 'name',
+    cellRenderer: renderNameCell
+  },
+  {
+    dataKey: 'code',
+    title: '节点编码',
+    width: 160
   },
   {
     dataKey: 'level',
@@ -122,24 +221,30 @@ const columns: Column[] = [
     }
   },
   {
+    dataKey: 'nodeType',
+    title: '节点类型',
+    width: 160,
+    cellRenderer: renderNodeTypeCell
+  },
+  {
+    dataKey: 'sortOrder',
+    title: '排序号',
+    width: 140,
+    cellRenderer: renderSortOrderCell
+  },
+  {
     dataKey: 'actions',
     title: '操作',
-    width: 150,
+    width: 220,
     fixed: 'right',
-    cellRenderer: ({ rowData }: any) => (
-      <div>
-        <el-button
-          link
-          type="primary"
-          onClick={() => openForm('update', rowData.id)}
-        >
+    cellRenderer: ({ rowData }: { rowData: RegionsVO }) => (
+      <div class="action-links">
+        <el-button type="success" size="small" onClick={() => openForm('update', rowData.id)}>
+          <Icon icon="ep:edit" class="mr-1" />
           编辑
         </el-button>
-        <el-button
-          link
-          type="danger"
-          onClick={() => handleDelete(rowData.id)}
-        >
+        <el-button type="danger" size="small" onClick={() => handleDelete(rowData.id)}>
+          <Icon icon="ep:delete" class="mr-1" />
           删除
         </el-button>
       </div>
@@ -148,10 +253,7 @@ const columns: Column[] = [
 ]
 
 const loading = ref(true) // 列表的加载中
-const list = ref<RegionsVO[]>([]) // 列表的数据
-const treeList = ref<Tree[]>([]) // 树形列表数据
-const total = ref(0) // 列表的总页数
-const expandColumnKey = ref('id') // 展开列的key
+const expandColumnKey = ref('name') // 展开列的key
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
@@ -163,19 +265,62 @@ const queryParams = reactive({
 })
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中
+const formRef = ref()
 
 /** 查询列表 */
 const getList = async () => {
   loading.value = true
   try {
-    // 获取树状数据用于虚拟化表格展示
     const { pageNo, pageSize, ...params } = queryParams
     const data = await RegionsApi.getRegionsPage({ ...params, pageNo: 1, pageSize: -1 })
-    list.value = data.list
-    treeList.value = handleTree(data.list)
-    total.value = data.list.length
+    const normalizedList = (data.list ?? []).map(item => ({
+      ...item,
+      nodeType: item.nodeType || 'NORMAL',
+      sortOrder: Number(item.sortOrder ?? 0)
+    }))
+    list.value = sortRegions(normalizedList)
+    treeList.value = handleTree(list.value)
+    // 清空编辑缓存
+    editingSortCache.value.clear()
   } finally {
     loading.value = false
+  }
+}
+
+/** 保存排序号（失焦/回车时触发） */
+async function handleSortOrderSave(rowData: RegionsVO) {
+  const newValue = editingSortCache.value.get(rowData.id)
+  // 没有编辑过或值未变化，不触发保存
+  if (newValue === undefined || newValue === rowData.sortOrder) {
+    editingSortCache.value.delete(rowData.id)
+    return
+  }
+  
+  const sanitized = Math.max(0, Math.floor(newValue))
+  updatingSortId.value = rowData.id
+  
+  try {
+    const payload = { ...rowData, sortOrder: sanitized }
+    await RegionsApi.updateRegions(payload)
+    
+    // 更新本地数据
+    const target = list.value.find(item => item.id === rowData.id)
+    if (target) {
+      target.sortOrder = sanitized
+    }
+    
+    // 重新排序和构建树
+    list.value = sortRegions(list.value)
+    treeList.value = handleTree(list.value)
+    
+    editingSortCache.value.delete(rowData.id)
+    message.success('排序已更新')
+  } catch (error) {
+    message.error('排序更新失败')
+    // 失败时恢复缓存，让用户看到刚才输入的值
+    editingSortCache.value.set(rowData.id, newValue)
+  } finally {
+    updatingSortId.value = null
   }
 }
 
@@ -190,8 +335,29 @@ const resetQuery = () => {
   handleQuery()
 }
 
+/** 展开/折叠操作 */
+const toggleExpandAll = () => {
+  if (!isExpandAll.value) {
+    // 展开所有：收集所有节点 ID
+    const allIds: number[] = []
+    const collectIds = (items: any[]) => {
+      items.forEach(item => {
+        allIds.push(item.id)
+        if (item.children && item.children.length > 0) {
+          collectIds(item.children)
+        }
+      })
+    }
+    collectIds(treeList.value)
+    expandedRowKeys.value = allIds
+  } else {
+    // 折叠所有
+    expandedRowKeys.value = []
+  }
+  isExpandAll.value = !isExpandAll.value
+}
+
 /** 添加/修改操作 */
-const formRef = ref()
 const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
 }
@@ -229,3 +395,56 @@ onMounted(() => {
   getList()
 })
 </script>
+
+<style lang="scss">
+// 特殊节点整行金色主题（不使用 scoped，让样式能应用到虚拟表格）
+.special-node-row {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  border-left: 3px solid #f59e0b !important;
+  
+  // 所有单元格统一样式
+  .el-table-v2__row-cell {
+    background: transparent !important;
+    color: #78350f !important;
+    font-weight: 500 !important;
+  }
+}
+</style>
+
+<style scoped lang="scss">
+.sort-order-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-order-input {
+  width: 110px;
+  transition: all 0.2s ease;
+  
+  &:focus-within {
+    :deep(.el-input__wrapper) {
+      box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+    }
+  }
+  
+  &.is-updating {
+    opacity: 0.6;
+  }
+}
+
+.sort-order-loading {
+  color: var(--el-color-primary);
+  font-size: 16px;
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

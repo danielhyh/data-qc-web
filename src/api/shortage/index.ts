@@ -8,7 +8,7 @@ export interface ReportTimeConfigVO {
 }
 
 export interface ReportZoneVO {
-  id: number
+  id?: number
   zoneName: string
   zoneCode: string
   noticeContent?: string  // 富文本通知内容
@@ -34,6 +34,7 @@ export interface ReportZonePageReqVO {
   pageSize?: number
   zoneName?: string
   status?: number
+  zoneCode?: string
 }
 
 export const ReportZoneApi = {

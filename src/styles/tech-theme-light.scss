@@ -36,38 +36,9 @@
    Element Plus 组件样式覆盖 - 浅色模式
    ============================================ */
 
-/* 卡片组件 */
+/* 卡片组件 - 简化版，具体样式由组件控制 */
 .el-card {
-  @include tech-card-light;
-  
-  .el-card__header {
-    background: var(--tech-gradient-light);
-    border-bottom: 1px solid var(--tech-light-border);
-    color: var(--tech-text-primary);
-    font-size: var(--font-size-md);
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: var(--letter-spacing-wide);
-    padding: 14px 18px !important;
-    position: relative;
-    
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--tech-gradient-primary);
-      opacity: 0.3;
-    }
-  }
-
-  .el-card__body {
-    color: var(--tech-text-secondary);
-    font-size: var(--font-size-base);
-    line-height: var(--line-height-relaxed);
-    padding: 16px 18px !important;
-  }
+  /* 移除了默认的 mixin，由具体组件（如 ContentWrap）控制样式 */
 }
 
 /* 按钮组件 */

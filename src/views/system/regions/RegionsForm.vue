@@ -33,6 +33,16 @@
           />
         </el-select>
       </el-form-item>
+      <el-form-item label="节点类型" prop="nodeType">
+        <el-radio-group v-model="formData.nodeType">
+          <el-radio v-for="item in nodeTypeOptions" :key="item.value" :label="item.value">
+            {{ item.label }}
+          </el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="排序号" prop="sortOrder">
+        <el-input-number v-model="formData.sortOrder" :min="0" :max="9999" controls-position="right" />
+      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="submitForm" type="primary" :disabled="formLoading">确 定</el-button>
@@ -62,13 +72,23 @@ const formData = ref({
   code: undefined,
   name: undefined,
   level: undefined,
+  nodeType: 'NORMAL',
+  sortOrder: 0,
 })
 const formRules = reactive({
   code: [{ required: true, message: '区划代码不能为空', trigger: 'blur' }],
   name: [{ required: true, message: '地区名称不能为空', trigger: 'blur' }],
   level: [{ required: true, message: '地区等级不能为空', trigger: 'blur' }],
+  nodeType: [{ required: true, message: '节点类型不能为空', trigger: 'change' }],
+  sortOrder: [{ required: true, message: '排序号不能为空', trigger: 'change' }],
 })
 const formRef = ref() // 表单 Ref
+
+// 节点类型枚举，用于保持前后端一致语义
+const nodeTypeOptions = [
+  { label: '行政区划', value: 'NORMAL' },
+  { label: '特殊节点', value: 'SPECIAL' }
+]
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
@@ -81,6 +101,10 @@ const open = async (type: string, id?: number) => {
     formLoading.value = true
     try {
       formData.value = await RegionsApi.getRegions(id)
+      // 老数据没有节点类型与排序号时，补齐默认值以避免校验失败
+      formData.value.nodeType = formData.value.nodeType || 'NORMAL'
+      const parsedSort = Number(formData.value.sortOrder)
+      formData.value.sortOrder = Number.isFinite(parsedSort) ? parsedSort : 0
     } finally {
       formLoading.value = false
     }
@@ -122,6 +146,8 @@ const resetForm = () => {
     code: undefined,
     name: undefined,
     level: undefined,
+    nodeType: 'NORMAL',
+    sortOrder: 0,
   }
   formRef.value?.resetFields()
 }

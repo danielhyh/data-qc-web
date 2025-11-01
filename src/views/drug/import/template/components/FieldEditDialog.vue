@@ -614,13 +614,6 @@ const toggleAdvanced = () => {
   margin-bottom: 24px;
 }
 
-:deep(.el-form-item__label) {
-  font-weight: 600;
-  color: #1f2937;
-  font-size: 14px;
-  line-height: 22px;
-}
-
 /* ==================== 输入框样式 ==================== */
 :deep(.el-input__wrapper) {
   border-radius: 8px;

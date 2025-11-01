@@ -1,3 +1,4 @@
+<!--季节性药品监测周报页面-->
 <template>
   <ContentWrap>
     <!-- 搜索工作栏 -->
@@ -52,7 +53,7 @@
           <Icon icon="ep:refresh" class="mr-5px" />
           重置
         </el-button>
-        <el-button
+<!--        <el-button
           type="success"
           plain
           @click="handleExport"
@@ -61,7 +62,7 @@
         >
           <Icon icon="ep:download" class="mr-5px" />
           导出
-        </el-button>
+        </el-button>-->
       </el-form-item>
     </el-form>
   </ContentWrap>

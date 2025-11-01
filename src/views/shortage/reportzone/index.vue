@@ -58,7 +58,11 @@
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
       <el-table-column label="专区编码" align="center" prop="zoneCode" width="120px" />
-      <el-table-column label="专区名称" align="center" prop="zoneName" width="180px" />
+      <el-table-column label="专区名称" align="center" prop="zoneName" width="180px">
+        <template #default="scope">
+          <span class="font-bold">{{ scope.row.zoneName }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" align="center" prop="status" width="100px">
         <template #default="scope">
           <el-switch
@@ -88,32 +92,37 @@
         :formatter="dateFormatter"
         width="180px"
       />
-      <el-table-column label="操作" align="center" width="200px">
+      <el-table-column label="操作" align="center" width="260px" fixed="right">
         <template #default="scope">
-          <el-button
-            link
-            type="primary"
-            @click="handleConfig(scope.row)"
-            v-hasPermi="['shortage:drug-config:query']"
-          >
-            药品配置
-          </el-button>
-          <el-button
-            link
-            type="primary"
-            @click="openForm('update', scope.row.id)"
-            v-hasPermi="['shortage:report-zone:update']"
-          >
-            编辑
-          </el-button>
-          <el-button
-            link
-            type="danger"
-            @click="handleDelete(scope.row.id)"
-            v-hasPermi="['shortage:report-zone:delete']"
-          >
-            删除
-          </el-button>
+          <div class="action-links">
+            <el-button
+              type="primary"
+              size="small"
+              @click="handleConfig(scope.row)"
+              v-hasPermi="['shortage:drug-config:query']"
+            >
+              <Icon icon="ep:setting" class="mr-1" />
+              药品配置
+            </el-button>
+            <el-button
+              type="success"
+              size="small"
+              @click="openForm('update', scope.row.id)"
+              v-hasPermi="['shortage:report-zone:update']"
+            >
+              <Icon icon="ep:edit" class="mr-1" />
+              编辑
+            </el-button>
+            <el-button
+              type="danger"
+              size="small"
+              @click="handleDelete(scope.row.id)"
+              v-hasPermi="['shortage:report-zone:delete']"
+            >
+              <Icon icon="ep:delete" class="mr-1" />
+              删除
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>

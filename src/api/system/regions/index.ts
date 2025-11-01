@@ -8,7 +8,19 @@ export interface RegionsVO {
   name: string // 区域名称
   level: number // 区域等级
   path: string // 路径
+  nodeType: string // 节点类型
+  sortOrder: number // 排序号
   createTime?: string // 创建时间
+}
+
+export interface AreaOrgTreeNode {
+  code: string
+  name: string
+  level?: number
+  nodeType?: string
+  directOrgCount?: number
+  totalOrgCount?: number
+  children?: AreaOrgTreeNode[]
 }
 
 // 区域 API
@@ -50,6 +62,6 @@ export const RegionsApi = {
 
   // 获取区域树(带机构数量)
   getRegionsTreeWithOrgCount: async () => {
-    return await request.get({ url: `/system/area-org/area-tree` })
+    return await request.get<AreaOrgTreeNode[]>({ url: `/system/area-org/area-tree` })
   },
 }

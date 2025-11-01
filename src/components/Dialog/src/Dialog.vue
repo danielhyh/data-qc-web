@@ -178,21 +178,37 @@ const dialogStyle = computed(() => {
   .dialog-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
   }
 
   .dialog-action-icon {
     font-size: 18px;
-    color: #606266;
+    color: #909399;
     cursor: pointer;
-    transition: all 0.3s ease;
-    padding: 4px;
-    border-radius: 4px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 6px;
+    border-radius: 6px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     &:hover {
       color: #409eff;
-      background: rgba(64, 158, 255, 0.1);
+      background: linear-gradient(135deg, rgba(64, 158, 255, 0.12) 0%, rgba(64, 158, 255, 0.08) 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
     }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(64, 158, 255, 0.2);
+    }
+  }
+
+  // 统一设置表单标签加粗样式
+  .#{$elNamespace}-form-item__label {
+    font-weight: 600;
   }
 }
 </style>
