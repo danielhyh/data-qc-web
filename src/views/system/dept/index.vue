@@ -1,21 +1,15 @@
+<!--机构管理页面-->
 <template>
   <div class="flex h-full">
     <!-- 左侧地区树选择器 -->
-    <div
-      ref="selectorPanel"
-      class="selector-panel"
-      :style="{ width: selectorWidth + 'px' }"
-    >
+    <div ref="selectorPanel" class="selector-panel" :style="{ width: selectorWidth + 'px' }">
       <ContentWrap class="h-full selector-card" title="地区">
         <RegionTree @node-click="handleRegionNodeClick" />
       </ContentWrap>
     </div>
 
     <!-- 拖拽分隔条 -->
-    <div
-      class="resize-handle"
-      @mousedown="startResize"
-    ></div>
+    <div class="resize-handle" @mousedown="startResize"></div>
 
     <!-- 右侧机构管理内容区域 -->
     <div class="flex-1 ml-5">
@@ -63,8 +57,12 @@
                 </el-select>
               </el-form-item>
               <el-form-item>
-                <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-                <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+                <el-button @click="handleQuery"
+                  ><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button
+                >
+                <el-button @click="resetQuery"
+                  ><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button
+                >
                 <el-button
                   type="primary"
                   @click="openForm('create')"
@@ -75,10 +73,7 @@
                 <el-button type="danger" @click="toggleExpandAll">
                   <Icon icon="ep:sort" class="mr-5px" /> 展开/折叠
                 </el-button>
-                <el-button
-                  type="success"
-                  @click="openSyncModal"
-                >
+                <el-button type="success" @click="openSyncModal">
                   <Icon icon="ep:download" class="mr-5px" /> 从标准库同步
                 </el-button>
               </el-form-item>
@@ -99,19 +94,39 @@
               row-key="id"
               :default-expand-all="isExpandAll"
             >
-              <el-table-column prop="name" label="机构名称" />
+              <el-table-column prop="name" label="机构名称">
+                <template #default="scope">
+                  <div class="institution-name-cell">
+                    <el-tooltip
+                      :content="getInstitutionCategoryLabel(scope.row.institutionCategory)"
+                      placement="top"
+                    >
+                      <DictIcon
+                        :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
+                        :value="scope.row.institutionCategory ?? ''"
+                        :size="18"
+                        default-color="#5b8def"
+                      />
+                    </el-tooltip>
+                    <span class="institution-name-text">{{ scope.row.name }}</span>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column prop="institutionCategory" label="机构类别" width="120">
                 <template #default="scope">
-                  <dict-tag :type="DICT_TYPE.INSTITUTION_CATEGORY" :value="scope.row.institutionCategory" />
+                  <dict-tag
+                    :type="DICT_TYPE.INSTITUTION_CATEGORY"
+                    :value="scope.row.institutionCategory ?? ''"
+                  />
                 </template>
               </el-table-column>
               <el-table-column prop="hospitalLevel" label="机构等级" width="100">
                 <template #default="scope">
-                  <dict-tag :type="DICT_TYPE.INSTITUTION_LEVEL" :value="scope.row.hospitalLevel" />
+                  <dict-tag :type="DICT_TYPE.INSTITUTION_LEVEL" :value="scope.row.hospitalLevel ?? ''" />
                 </template>
               </el-table-column>
-              <el-table-column prop="contactPerson" label="联络员" width="100"/>
-              <el-table-column prop="contactPhone" label="联络员手机" width="120"/>
+              <el-table-column prop="contactPerson" label="联络员" width="100" />
+              <el-table-column prop="contactPhone" label="联络员手机" width="120" />
               <el-table-column prop="sort" label="排序" />
               <el-table-column prop="status" label="状态">
                 <template #default="scope">
@@ -155,9 +170,9 @@
             <span class="tab-label-wrapper">
               <Icon icon="ep:warning" class="tab-icon" />
               <span>监测内无法上报机构</span>
-              <el-badge 
-                v-if="unableReportCount > 0" 
-                :value="unableReportCount" 
+              <el-badge
+                v-if="unableReportCount > 0"
+                :value="unableReportCount"
                 class="tab-badge tab-badge-danger"
               />
             </span>
@@ -166,7 +181,7 @@
           <MonitoringUnableReportTab
             v-if="selectedRegionId"
             :area-code="selectedRegionCode"
-            :selected-region-id="selectedRegionId"
+            :selected-region-id="selectedRegionIdForMonitor"
             @count-updated="handleUnableReportCountUpdate"
           />
           <div v-else class="empty-state">
@@ -197,12 +212,8 @@
   <InstitutionSyncModal ref="syncModalRef" @success="getList" />
 </template>
 <script lang="ts" setup>
-import { DICT_TYPE, getIntDictOptions ,getDictLabel} from '@/utils/dict'
-
-// 确保字典类型包含机构类别和医院等级
-DICT_TYPE.INSTITUTION_CATEGORY = 'institution_category'
-DICT_TYPE.INSTITUTION_LEVEL = 'institution_level'
-
+import { computed, nextTick, reactive, ref } from 'vue'
+import { DICT_TYPE, getDictObj, getIntDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import { handleTree } from '@/utils/tree'
 import * as DeptApi from '@/api/system/dept'
@@ -212,6 +223,7 @@ import * as UserApi from '@/api/system/user'
 import RegionTree from '../user/RegionTree.vue'
 import MonitoringUnableReportTab from './MonitoringUnableReportTab.vue'
 import InstitutionCategoryConfigTab from './InstitutionCategoryConfigTab.vue'
+import DictIcon from '@/components/DictIcon'
 
 defineOptions({ name: 'SystemDept' })
 
@@ -235,6 +247,18 @@ const selectedRegionId = ref<string | undefined>() // 选中的地区Code
 const selectedRegionCode = ref<string | undefined>() // 选中的地区代码
 const activeTab = ref('dept') // 当前激活的标签页
 const unableReportCount = ref(0) // 无法上报机构数量（用于徽标显示）
+
+const selectedRegionIdForMonitor = computed(() => {
+  if (!selectedRegionId.value) {
+    return undefined
+  }
+  const parsed = Number(selectedRegionId.value)
+  return Number.isNaN(parsed) ? undefined : parsed
+})
+
+const getInstitutionCategoryLabel = (value: string | number | boolean | undefined) => {
+  return getDictObj(DICT_TYPE.INSTITUTION_CATEGORY, value)?.label ?? '机构分类'
+}
 
 // 面板拖拽相关
 const selectorPanel = ref<HTMLElement>()
@@ -289,10 +313,10 @@ const handleRegionNodeClick = async (row) => {
   selectedRegionId.value = row.code
   selectedRegionCode.value = row.code
   queryParams.areaCode = row.code
-  
+
   // 重置无法上报机构数量（切换地区时清零，等待子组件重新加载）
   unableReportCount.value = 0
-  
+
   // 刷新机构列表
   await getList()
 }
@@ -370,16 +394,16 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  
+
   .tab-icon {
     font-size: 16px;
     transition: all 0.3s ease;
   }
-  
+
   .tab-badge {
     margin-left: 4px;
   }
-  
+
   /* 警告徽标 - 红色样式 */
   .tab-badge-danger {
     :deep(.el-badge__content) {
@@ -395,11 +419,11 @@ onMounted(async () => {
 /* Tab 激活状态时图标动画 */
 :deep(.el-tabs__item.is-active) {
   .tab-icon {
-    color: #5B8DEF;
+    color: #5b8def;
     transform: scale(1.1);
     filter: drop-shadow(0 2px 4px rgba(91, 141, 239, 0.3));
   }
-  
+
   /* 激活状态时警告徽标脉动动画 */
   .tab-badge-danger :deep(.el-badge__content) {
     animation: badge-pulse-danger 1.5s ease-in-out infinite;
@@ -415,7 +439,8 @@ onMounted(async () => {
 
 /* 红色徽标脉动动画 */
 @keyframes badge-pulse-danger {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
   }
@@ -485,5 +510,16 @@ onMounted(async () => {
     margin: 0;
     font-size: 14px;
   }
+}
+
+.institution-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.institution-name-text {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 </style>

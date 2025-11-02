@@ -1,0 +1,1251 @@
+<template>
+  <Dialog :title="dialogTitle" v-model="dialogVisible" width="800px">
+    <el-form
+      ref="formRef"
+      :model="formData"
+      :rules="formRules"
+      label-width="100px"
+      v-loading="formLoading"
+    >
+      <el-form-item label="专区编码" prop="zoneCode">
+        <el-input v-model="formData.zoneCode" placeholder="自动生成" :disabled="true" />
+      </el-form-item>
+      <el-form-item label="专区名称" prop="zoneName">
+        <el-input v-model="formData.zoneName" placeholder="请输入专区名称" />
+      </el-form-item>
+      <el-form-item label="状态" prop="status">
+        <el-radio-group v-model="formData.status">
+          <el-radio
+            v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
+            :key="dict.value"
+            :value="dict.value"
+          >
+            {{ dict.label }}
+          </el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <el-form-item label="填报通知" prop="noticeContent">
+        <Editor
+          v-model="formData.noticeContent"
+          height="200px"
+          placeholder="请输入填报通知内容，支持富文本格式..."
+        />
+      </el-form-item>
+      <el-form-item label="备注说明" prop="remark">
+        <el-input
+          v-model="formData.remark"
+          type="textarea"
+          placeholder="请输入备注说明"
+          :rows="3"
+        />
+      </el-form-item>
+    </el-form>
+
+    <!-- 时间配置卡片 -->
+    <el-card shadow="never" class="time-config-card">
+      <template #header>
+        <div class="card-header">
+          <span>填报时间配置</span>
+        </div>
+      </template>
+
+      <el-form ref="timeFormRef" :model="formData" :rules="timeFormRules" label-width="120px">
+        <el-form-item label="时间限制" prop="isTimeRestricted">
+          <el-switch
+            v-model="formData.isTimeRestricted"
+            active-text="启用时间限制"
+            inactive-text="不限制时间"
+            active-color="#13ce66"
+            inactive-color="#ff4949"
+          />
+          <div class="text-xs text-gray-500 mt-1"> 启用后，只有在指定时间段内才能进行填报操作 </div>
+        </el-form-item>
+
+        <div v-if="formData.isTimeRestricted" class="time-config-section">
+          <el-form-item label="填报日期" prop="reportTimeConfig.dayOfWeek">
+            <el-select
+              v-model="formData.reportTimeConfig.dayOfWeek"
+              style="width: 100%"
+              placeholder="请选择填报日期"
+            >
+              <el-option
+                v-for="day in dayOptions"
+                :key="day.value"
+                :label="day.label"
+                :value="day.value"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="填报时间段">
+            <el-row :gutter="12">
+              <el-col :span="11">
+                <el-form-item prop="reportTimeConfig.startTime">
+                  <el-time-picker
+                    v-model="startTimeValue"
+                    format="HH:mm"
+                    value-format="HH:mm"
+                    placeholder="开始时间"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="2" class="text-center">
+                <span class="text-gray-500">至</span>
+              </el-col>
+              <el-col :span="11">
+                <el-form-item prop="reportTimeConfig.endTime">
+                  <el-time-picker
+                    v-model="endTimeValue"
+                    format="HH:mm"
+                    value-format="HH:mm"
+                    placeholder="结束时间"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form-item>
+
+          <el-alert
+            :title="getTimeConfigDisplay()"
+            type="info"
+            :closable="false"
+            class="mb-4"
+            show-icon
+          />
+        </div>
+
+        <el-alert
+          v-else
+          title="不限制填报时间，用户可在任何时间进行数据填报"
+          type="warning"
+          :closable="false"
+          class="mb-4"
+          show-icon
+        />
+      </el-form>
+    </el-card>
+
+    <!-- 可填报机构选择器 -->
+    <el-card shadow="never" class="org-selector-card">
+      <template #header>
+        <div class="card-header">
+          <span>可填报机构</span>
+          <div class="header-actions">
+            <el-button size="small" @click="openOrgSelector">
+              <Icon icon="ep:setting" class="mr-1" />
+              配置机构
+            </el-button>
+            <el-button size="small" @click="clearAllOrgs" :disabled="selectedOrgCount === 0">
+              <Icon icon="ep:delete" class="mr-1" />
+              清空选择
+            </el-button>
+          </div>
+        </div>
+      </template>
+
+      <div class="org-summary">
+        <div v-if="selectedOrgCount === 0" class="empty-org-state">
+          <Icon icon="ep:office-building" class="empty-icon" />
+          <p>暂未选择任何机构</p>
+          <p class="hint">点击"配置机构"按钮选择可填报的医疗机构</p>
+        </div>
+        <div v-else class="selected-orgs-list">
+          <div class="org-summary-header">
+            <el-tag type="success" size="large" class="org-count-tag">
+              已选择 {{ selectedOrgCount }} 个机构
+            </el-tag>
+            <el-link type="primary" @click="openOrgSelector" class="view-detail">
+              重新配置 <Icon icon="ep:edit" />
+            </el-link>
+          </div>
+
+          <!-- 简化的机构列表 -->
+          <div class="org-list-container">
+            <div class="org-grid">
+              <div v-for="org in selectedOrgsDetail.slice(0, 12)" :key="org.id" class="org-card">
+                <div class="org-header">
+                  <span class="org-name" :title="org.name">{{ org.name }}</span>
+                  <dict-tag
+                    :type="DICT_TYPE.INSTITUTION_LEVEL"
+                    :value="org.hospitalLevel"
+                    size="small"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- 如果选中机构超过12个，显示“更多”提示 -->
+            <div v-if="selectedOrgsDetail.length > 12" class="more-orgs-tip">
+              <Icon icon="ep:more" />
+              还有 {{ selectedOrgsDetail.length - 12 }} 个机构，点击“重新配置”查看全部
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <template #footer>
+      <el-button @click="submitForm" type="primary" :disabled="formLoading">确 定</el-button>
+      <el-button @click="dialogVisible = false">取 消</el-button>
+    </template>
+  </Dialog>
+
+  <!-- 机构选择器弹窗 -->
+  <el-dialog
+    v-model="orgSelectorVisible"
+    title="选择可填报机构"
+    width="1200px"
+    :close-on-click-modal="false"
+  >
+    <div class="org-selector-container">
+      <el-row :gutter="12">
+        <!-- 左侧：地区树 -->
+        <el-col :span="10">
+          <el-card shadow="never" class="selector-card">
+            <template #header>
+              <div class="card-header">
+                <span>选择地区</span>
+              </div>
+            </template>
+            <el-tree
+              ref="areaTreeRef"
+              :data="areaTreeData"
+              :props="areaTreeProps"
+              node-key="code"
+              highlight-current
+              default-expand-all
+              @node-click="handleAreaNodeClick"
+            >
+              <template #default="{ node, data }">
+                <span class="tree-node">
+                  <Icon :icon="getAreaIcon(data.level)" class="node-icon" />
+                  <span class="node-label">
+                    {{ node.label }}
+                    <span v-if="data.orgCount !== undefined" class="org-count"
+                      >({{ data.orgCount }})</span
+                    >
+                  </span>
+                </span>
+              </template>
+            </el-tree>
+          </el-card>
+        </el-col>
+
+        <!-- 右侧：机构树 -->
+        <el-col :span="14">
+          <el-card shadow="never" class="selector-card">
+            <template #header>
+              <div class="card-header">
+                <span>选择机构</span>
+                <div class="header-actions">
+                  全选/全不选:
+                  <el-switch
+                    v-model="treeNodeAll"
+                    active-text="是"
+                    inactive-text="否"
+                    inline-prompt
+                    @change="handleCheckedTreeNodeAll()"
+                    :disabled="!selectedArea"
+                  />
+                  全部展开/折叠:
+                  <el-switch
+                    v-model="deptExpand"
+                    active-text="展开"
+                    inactive-text="折叠"
+                    inline-prompt
+                    @change="handleCheckedTreeExpand"
+                    :disabled="!selectedArea"
+                  />
+                  父子联动:
+                  <el-switch
+                    v-model="checkStrictly"
+                    active-text="是"
+                    inactive-text="否"
+                    inline-prompt
+                    :disabled="!selectedArea"
+                  />
+                </div>
+              </div>
+            </template>
+
+            <!-- 机构等级多选框 -->
+            <div v-if="selectedArea" class="institution-level-filter">
+              <span class="filter-label">机构等级筛选：</span>
+              <el-checkbox-group
+                v-model="selectedInstitutionLevels"
+                @change="handleInstitutionLevelChange"
+              >
+                <el-checkbox
+                  v-for="dict in getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL)"
+                  :key="dict.value"
+                  :value="dict.value"
+                  border
+                  size="small"
+                  class="level-checkbox"
+                >
+                  {{ dict.label }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+
+            <div v-if="!selectedArea" class="empty-state">
+              <Icon icon="ep:pointer" class="empty-icon" />
+              <p>请先选择左侧地区</p>
+            </div>
+
+            <el-tree
+              v-else
+              ref="treeRef"
+              :check-strictly="!checkStrictly"
+              :data="filteredDeptOptions"
+              :props="defaultProps"
+              :default-expand-all="deptExpand"
+              empty-text="该地区暂无机构"
+              node-key="id"
+              show-checkbox
+            >
+              <template #default="{ node, data }">
+                <div class="dept-node">
+                  <span>{{ node.label }}</span>
+                  <dict-tag
+                    :type="DICT_TYPE.INSTITUTION_LEVEL"
+                    :value="data.hospitalLevel"
+                    class="ml-2"
+                  />
+                </div>
+              </template>
+            </el-tree>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
+
+    <template #footer>
+      <el-button @click="confirmOrgSelection" type="primary">确定选择</el-button>
+      <el-button @click="orgSelectorVisible = false">取消</el-button>
+    </template>
+  </el-dialog>
+</template>
+
+<script setup lang="ts">
+import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { ReportZoneApi, type ReportZoneVO } from '@/api/shortage'
+import { Editor } from '@/components/Editor'
+import { Icon } from '@/components/Icon'
+import * as DeptApi from '@/api/system/dept'
+import * as RegionsApi from '@/api/system/regions'
+import { defaultProps, handleTree } from '@/utils/tree'
+
+/** 短缺药品填报专区 表单 */
+defineOptions({ name: 'ReportZoneForm' })
+
+const message = useMessage() // 消息弹窗
+
+const dialogVisible = ref(false) // 弹窗的是否展示
+const dialogTitle = ref('') // 弹窗的标题
+const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
+const formType = ref('') // 表单的类型：create - 新增；update - 修改
+const formData = ref({
+  id: undefined,
+  zoneName: '',
+  zoneCode: '',
+  noticeContent: '',
+  status: 0, // 默认开启（启用状态）
+  remark: '',
+  reportableOrgs: '',
+  // 时间配置相关字段
+  isTimeRestricted: true, // 是否启用时间限制
+  reportTimeConfig: {
+    dayOfWeek: 5, // 默认周五
+    startTime: '12:00',
+    endTime: '18:00'
+  }
+})
+
+// 日期选项常量
+const dayOptions = [
+  { value: 1, label: '周一' },
+  { value: 2, label: '周二' },
+  { value: 3, label: '周三' },
+  { value: 4, label: '周四' },
+  { value: 5, label: '周五' },
+  { value: 6, label: '周六' },
+  { value: 7, label: '周日' }
+]
+
+// 时间选择器的双向绑定
+const startTimeValue = computed({
+  get: () => formData.value.reportTimeConfig.startTime,
+  set: (val: string) => {
+    if (val) {
+      formData.value.reportTimeConfig.startTime = val
+    }
+  }
+})
+
+const endTimeValue = computed({
+  get: () => formData.value.reportTimeConfig.endTime,
+  set: (val: string) => {
+    if (val) {
+      formData.value.reportTimeConfig.endTime = val
+    }
+  }
+})
+
+// 获取时间配置显示文本
+const getTimeConfigDisplay = () => {
+  if (!formData.value.isTimeRestricted) return ''
+
+  const dayLabel =
+    dayOptions.find((d) => d.value === formData.value.reportTimeConfig.dayOfWeek)?.label || ''
+  const { startTime, endTime } = formData.value.reportTimeConfig
+
+  return `填报时间设置：每${dayLabel} ${startTime} - ${endTime}`
+}
+
+// 部门树相关
+const deptOptions = ref<any[]>([]) // 原始部门树形结构
+const filteredDeptOptions = ref<any[]>([]) // 过滤后的部门树形结构
+const deptExpand = ref(true) // 展开/折叠
+const treeRef = ref() // 部门树组件 Ref
+const treeNodeAll = ref(false) // 全选/全不选
+const checkStrictly = ref(true) // 是否严格模式，即父子不关联
+
+// 地区树相关
+const areaTreeRef = ref() // 地区树组件 Ref
+const areaTreeData = ref<any[]>([]) // 地区树形结构
+const selectedArea = ref<any>(null) // 选中的地区
+
+const areaTreeProps = {
+  label: 'name',
+  children: 'children'
+}
+
+// 机构等级筛选相关
+const selectedInstitutionLevels = ref<number[]>([]) // 选中的机构等级
+
+// 机构选择器弹窗相关
+const orgSelectorVisible = ref(false) // 机构选择器弹窗是否显示
+const selectedOrgIds = ref<number[]>([]) // 当前选中的机构ID列表
+
+// 计算属性：已选择机构数量
+const selectedOrgCount = computed(() => selectedOrgIds.value.length)
+
+// 用于存储已选中机构的详细信息（用于编辑状态下的回显）
+const selectedOrgsCache = ref<any[]>([])
+
+// 计算属性：选中的机构详情列表
+const selectedOrgsDetail = computed(() => {
+  if (selectedOrgIds.value.length === 0) return []
+
+  // 从树形数据中递归查找选中的机构详情
+  const findOrgInTree = (nodes: any[], targetIds: number[]): any[] => {
+    const result: any[] = []
+
+    for (const node of nodes) {
+      if (targetIds.includes(node.id)) {
+        result.push({
+          id: node.id,
+          name: node.name,
+          hospitalLevel: node.hospitalLevel,
+          address: node.address || '',
+          contactPerson: node.contactPerson || '',
+          contactPhone: node.contactPhone || ''
+        })
+      }
+
+      // 递归查找子节点
+      if (node.children && node.children.length > 0) {
+        const childResults = findOrgInTree(node.children, targetIds)
+        result.push(...childResults)
+      }
+    }
+
+    return result
+  }
+
+  // 优先从deptOptions中查找，如果找不到则使用缓存数据
+  const foundOrgs = findOrgInTree(deptOptions.value, selectedOrgIds.value)
+  if (foundOrgs.length > 0) {
+    return foundOrgs
+  }
+
+  // 如果没有在当前树中找到，使用缓存的机构信息（编辑状态下的回显）
+  return selectedOrgsCache.value.filter((org) => selectedOrgIds.value.includes(org.id))
+})
+
+const formRules = reactive({
+  zoneName: [{ required: true, message: '专区名称不能为空', trigger: 'blur' }],
+  zoneCode: [{ required: true, message: '专区编码不能为空', trigger: 'blur' }],
+  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+})
+
+// 时间配置验证规则
+const timeFormRules = reactive({
+  'reportTimeConfig.dayOfWeek': [{ required: true, message: '请选择填报日期', trigger: 'change' }],
+  'reportTimeConfig.startTime': [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  'reportTimeConfig.endTime': [{ required: true, message: '请选择结束时间', trigger: 'change' }]
+})
+
+const formRef = ref() // 表单 Ref
+const timeFormRef = ref() // 时间配置表单 Ref
+
+// 获取区域图标
+const getAreaIcon = (level: number) => {
+  const icons = {
+    1: 'ep:location', // 省
+    2: 'ep:map-location', // 市
+    3: 'ep:place' // 区
+  }
+  return icons[level] || 'ep:location'
+}
+
+// 处理地区节点点击
+const handleAreaNodeClick = async (data: any) => {
+  selectedArea.value = data
+
+  // 切换地区时，重置相关状态
+  selectedInstitutionLevels.value = []
+  treeNodeAll.value = false
+
+  // 加载该地区的机构数据
+  await loadDeptData(data.code)
+
+  // 在数据加载完成后，设置已选中的机构状态
+  setTimeout(() => {
+    if (selectedOrgIds.value.length > 0 && treeRef.value) {
+      treeRef.value.setCheckedKeys(selectedOrgIds.value)
+    }
+  }, 200)
+}
+
+// 加载机构数据
+const loadDeptData = async (areaCode: string) => {
+  try {
+    // 根据地区代码查询该地区下的机构数据
+    const data = await DeptApi.getDeptPage({ areaCode, pageSize: 1000 })
+    deptOptions.value = handleTree(data.list || data)
+
+    // 应用机构等级筛选
+    applyInstitutionLevelFilter()
+  } catch (error) {
+    console.error('加载机构数据失败:', error)
+    deptOptions.value = []
+    filteredDeptOptions.value = []
+  }
+}
+
+// 处理机构等级变化
+const handleInstitutionLevelChange = () => {
+  applyInstitutionLevelFilter()
+}
+
+// 应用机构等级筛选
+const applyInstitutionLevelFilter = () => {
+  if (selectedInstitutionLevels.value.length === 0) {
+    // 如果没有选择等级，显示所有机构
+    filteredDeptOptions.value = deptOptions.value
+  } else {
+    // 筛选指定等级的机构
+    filteredDeptOptions.value = filterTreeByLevel(
+      deptOptions.value,
+      selectedInstitutionLevels.value
+    )
+  }
+
+  // 筛选后重新设置选中状态
+  nextTick(() => {
+    if (selectedOrgIds.value.length > 0 && treeRef.value) {
+      treeRef.value.setCheckedKeys(selectedOrgIds.value)
+    }
+  })
+}
+
+// 递归筛选树节点
+const filterTreeByLevel = (nodes: any[], levels: number[]): any[] => {
+  const levelStrings = levels.map((l) => l.toString()) // 转换为字符串数组进行比较
+
+  return nodes
+    .filter((node) => {
+      // 如果当前节点匹配等级条件，保留
+      const nodeLevel = node.hospitalLevel
+      if (nodeLevel !== undefined && nodeLevel !== null) {
+        // 支持数字和字符串类型的hospitalLevel比较
+        const nodeLevelStr = nodeLevel.toString()
+        if (levels.includes(nodeLevel) || levelStrings.includes(nodeLevelStr)) {
+          return true
+        }
+      }
+
+      // 如果有子节点，递归筛选子节点
+      if (node.children && node.children.length > 0) {
+        const filteredChildren = filterTreeByLevel(node.children, levels)
+        if (filteredChildren.length > 0) {
+          // 如果有符合条件的子节点，保留当前节点但更新子节点
+          return { ...node, children: filteredChildren }
+        }
+      }
+
+      return false
+    })
+    .map((node) => {
+      if (node.children && node.children.length > 0) {
+        return { ...node, children: filterTreeByLevel(node.children, levels) }
+      }
+      return node
+    })
+}
+
+// 根据机构ID列表获取机构详情（用于编辑状态下的回显）
+const loadOrgDetailsByIds = async (orgIds: number[]) => {
+  if (!orgIds || orgIds.length === 0) {
+    selectedOrgsCache.value = []
+    return
+  }
+
+  try {
+    // 批量查询机构详情
+    const promises = orgIds.map(async (id) => {
+      try {
+        const orgDetail = await DeptApi.getDept(id)
+        return {
+          id: orgDetail.id,
+          name: orgDetail.name,
+          hospitalLevel: orgDetail.hospitalLevel,
+          address: orgDetail.address || '',
+          contactPerson: orgDetail.contactPerson || '',
+          contactPhone: orgDetail.contactPhone || ''
+        }
+      } catch (error) {
+        console.warn(`获取机构 ${id} 详情失败:`, error)
+        return {
+          id,
+          name: `机构ID: ${id}`,
+          hospitalLevel: '',
+          address: '',
+          contactPerson: '',
+          contactPhone: ''
+        }
+      }
+    })
+
+    const orgDetails = await Promise.all(promises)
+    selectedOrgsCache.value = orgDetails.filter((org) => org !== null)
+  } catch (error) {
+    console.error('批量获取机构详情失败:', error)
+    selectedOrgsCache.value = []
+  }
+}
+
+// 初始化地区树数据
+const initAreaTree = async () => {
+  try {
+    // 调用真实的地区树API
+    const data = await RegionsApi.RegionsApi.getRegionsTreeWithOrgCount()
+    areaTreeData.value = data || []
+  } catch (error) {
+    console.error('初始化地区树失败:', error)
+    areaTreeData.value = []
+  }
+}
+
+// 删除旧的示例数据获取方法
+// const getAreaTreeData = async () => { ... }
+
+// 打开机构选择器弹窗
+const openOrgSelector = async () => {
+  orgSelectorVisible.value = true
+
+  // 初始化地区树（如果还没有加载）
+  if (areaTreeData.value.length === 0) {
+    await initAreaTree()
+  }
+
+  // 默认选择顶级节点(610000)并加载所有机构数据
+  if (areaTreeData.value.length > 0) {
+    // 查找陕西省节点 (610000)
+    const findTopLevelNode = (nodes: any[]): any => {
+      for (const node of nodes) {
+        if (node.code === '610000') {
+          return node
+        }
+        if (node.children && node.children.length > 0) {
+          const found = findTopLevelNode(node.children)
+          if (found) return found
+        }
+      }
+      return nodes[0] // 如果找不到610000，使用第一个节点
+    }
+
+    const topLevelNode = findTopLevelNode(areaTreeData.value)
+    if (topLevelNode) {
+      selectedArea.value = topLevelNode
+      // 加载该地区的机构数据
+      await loadDeptData(topLevelNode.code)
+
+      // 在地区树中高亮选中的节点
+      nextTick(() => {
+        if (areaTreeRef.value) {
+          areaTreeRef.value.setCurrentKey(topLevelNode.code)
+        }
+      })
+    }
+  }
+
+  // 如果当前有选中的机构，需要在树组件中设置选中状态
+  // 使用更长的延迟确保树组件完全渲染
+  setTimeout(() => {
+    if (selectedOrgIds.value.length > 0 && treeRef.value) {
+      // 先清除已有的选中状态
+      treeRef.value.setCheckedKeys([])
+      // 再设置新的选中状态
+      treeRef.value.setCheckedKeys(selectedOrgIds.value)
+      console.log('设置选中机构ID:', selectedOrgIds.value)
+    }
+  }, 800) // 增加延迟时间确保数据加载完成
+}
+
+// 清空所有机构选择
+const clearAllOrgs = () => {
+  selectedOrgIds.value = []
+  treeRef.value?.setCheckedNodes([])
+  treeNodeAll.value = false
+}
+
+// 确认机构选择
+const confirmOrgSelection = () => {
+  // 获取当前选中的机构ID列表
+  const checkedKeys = treeRef.value?.getCheckedKeys(false) || []
+  selectedOrgIds.value = [...checkedKeys]
+
+  // 关闭弹窗
+  orgSelectorVisible.value = false
+
+  // 显示选择结果提示
+  if (checkedKeys.length > 0) {
+    message.success(`成功选择 ${checkedKeys.length} 个机构`)
+  }
+}
+const generateZoneCode = async () => {
+  const maxRetries = 5
+  let attempt = 0
+
+  while (attempt < maxRetries) {
+    try {
+      // 获取当前时间信息
+      const now = new Date()
+      const year = now.getFullYear().toString().slice(-2)
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      const hour = String(now.getHours()).padStart(2, '0')
+      const minute = String(now.getMinutes()).padStart(2, '0')
+
+      // 生成随机数（3位）
+      const randomNum = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, '0')
+
+      // 组合编码：ZONE_年月日时分_随机数
+      const baseCode = `ZONE_${year}${month}${day}${hour}${minute}_${randomNum}`
+
+      // 检查编码是否已存在
+      const existingData = await ReportZoneApi.getPage({
+        pageNo: 1,
+        pageSize: 1,
+        zoneCode: baseCode
+      })
+
+      // 如果不存在，返回此编码
+      if (!existingData.list || existingData.list.length === 0) {
+        return baseCode
+      }
+
+      // 如果存在，增加尝试次数继续生成
+      attempt++
+
+      // 添加短暂延时避免连续生成相同时间戳
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    } catch (error) {
+      console.warn(`生成专区编码失败，尝试次数：${attempt + 1}`, error)
+      attempt++
+
+      // 最后一次尝试失败时，使用纯时间戳 + UUID 后4位
+      if (attempt === maxRetries) {
+        const timestamp = Date.now().toString()
+        const uuid = crypto.randomUUID().replace(/-/g, '').slice(-4).toUpperCase()
+        return `ZONE_${timestamp}_${uuid}`
+      }
+    }
+  }
+
+  // 兜底方案：使用完整时间戳
+  return `ZONE_${Date.now()}_${Math.random().toString(36).slice(-4).toUpperCase()}`
+}
+
+/** 打开弹窗 */
+const open = async (type: string, id?: number) => {
+  dialogVisible.value = true
+  dialogTitle.value = type === 'create' ? '新增专区' : '编辑专区'
+  formType.value = type
+  resetForm()
+
+  // 初始化地区树数据
+  await initAreaTree()
+
+  // 修改时，设置数据
+  if (id) {
+    formLoading.value = true
+    try {
+      const data = await ReportZoneApi.get(id)
+      Object.assign(formData.value, data)
+
+      // 回显时间配置数据
+      if (data.reportTimeConfig) {
+        formData.value.reportTimeConfig = {
+          dayOfWeek: data.reportTimeConfig.dayOfWeek,
+          startTime: data.reportTimeConfig.startTime,
+          endTime: data.reportTimeConfig.endTime
+        }
+      } else {
+        // 使用默认配置
+        formData.value.reportTimeConfig = {
+          dayOfWeek: 5,
+          startTime: '12:00',
+          endTime: '18:00'
+        }
+      }
+
+      // 如果有时间限制字段则回显，否则使用默认值
+      formData.value.isTimeRestricted = data.isTimeRestricted ?? true
+
+      // 如果有选择的机构，设置到selectedOrgIds中并加载详情
+      if (data.reportableOrgs) {
+        const deptIds = data.reportableOrgs
+          .split(',')
+          .map((id) => parseInt(id.trim()))
+          .filter((id) => !isNaN(id))
+        selectedOrgIds.value = [...deptIds]
+        // 加载选中机构的详细信息用于回显
+        await loadOrgDetailsByIds(deptIds)
+      }
+    } finally {
+      formLoading.value = false
+    }
+  } else {
+    // 新增时自动生成专区编码
+    formData.value.zoneCode = await generateZoneCode()
+  }
+}
+
+defineExpose({ open }) // 提供 open 方法，用于打开弹窗
+
+/** 提交表单 */
+const emit = defineEmits(['success']) // 定义 success 事件，用于操作成功后的回调
+
+const submitForm = async () => {
+  // 校验主表单
+  if (!formRef.value) return
+  const valid = await formRef.value.validate().catch(() => {})
+  if (!valid) return
+
+  // 如果启用时间限制，需要验证时间配置
+  if (formData.value.isTimeRestricted) {
+    if (!timeFormRef.value) return
+    const timeValid = await timeFormRef.value.validate().catch(() => {})
+    if (!timeValid) return
+
+    // 验证时间范围
+    const start = formData.value.reportTimeConfig.startTime
+    const end = formData.value.reportTimeConfig.endTime
+    if (start >= end) {
+      message.error('开始时间不能晚于或等于结束时间')
+      return
+    }
+  }
+
+  // 提交请求
+  formLoading.value = true
+  try {
+    const data = { ...formData.value } as ReportZoneVO
+
+    // 处理可填报机构ID列表 - 使用selectedOrgIds而不是从树组件获取
+    data.reportableOrgs = selectedOrgIds.value.join(',')
+
+    if (formType.value === 'create') {
+      await ReportZoneApi.create(data)
+      message.success('创建成功')
+    } else {
+      await ReportZoneApi.update(data)
+      message.success('更新成功')
+    }
+    dialogVisible.value = false
+    // 发送操作成功的事件
+    emit('success')
+  } finally {
+    formLoading.value = false
+  }
+}
+
+/** 重置表单 */
+const resetForm = () => {
+  formData.value = {
+    id: undefined,
+    zoneName: '',
+    zoneCode: '',
+    noticeContent: getDefaultNoticeContent(),
+    status: 0, // 默认开启（启用状态）
+    remark: '',
+    reportableOrgs: '',
+    // 重置时间配置相关字段
+    isTimeRestricted: true, // 默认启用时间限制
+    reportTimeConfig: {
+      dayOfWeek: 5, // 默认周五
+      startTime: '12:00',
+      endTime: '18:00'
+    }
+  }
+
+  // 重置地区和机构相关状态
+  selectedArea.value = null
+  selectedInstitutionLevels.value = []
+  selectedOrgIds.value = []
+  selectedOrgsCache.value = [] // 清空缓存
+  deptOptions.value = []
+  filteredDeptOptions.value = []
+
+  // 重置机构选择器弹窗状态
+  orgSelectorVisible.value = false
+
+  // 重置部门树状态
+  treeNodeAll.value = false
+  deptExpand.value = true
+  checkStrictly.value = true
+  treeRef.value?.setCheckedNodes([])
+
+  formRef.value?.resetFields()
+  timeFormRef.value?.resetFields() // 重置时间配置表单验证状态
+}
+
+// 获取默认通知内容模板
+const getDefaultNoticeContent = (): string => {
+  return `<div>
+    <h3>📢 填报通知</h3>
+    <p>各医疗机构请注意：</p>
+    <ol>
+      <li><strong>填报时间</strong>：每周五12:00-18:00</li>
+      <li><strong>填报范围</strong>：本周六至本周五中午12:00的数据</li>
+      <li><strong>数据要求</strong>：按最小剂量单位填写，数据真实准确</li>
+      <li><strong>联系方式</strong>：如有疑问请联系质控中心</li>
+    </ol>
+    <p style="color: #E74C3C;">请务必在规定时间内完成填报，逾期系统将自动关闭。</p>
+  </div>`
+}
+
+/** 全选/全不选 */
+const handleCheckedTreeNodeAll = () => {
+  if (!selectedArea.value) return
+  treeRef.value.setCheckedNodes(treeNodeAll.value ? filteredDeptOptions.value : [])
+}
+
+/** 展开/折叠全部 */
+const handleCheckedTreeExpand = () => {
+  const nodes = treeRef.value?.store.nodesMap
+  for (let node in nodes) {
+    if (nodes[node].expanded === deptExpand.value) {
+      continue
+    }
+    nodes[node].expanded = deptExpand.value
+  }
+}
+</script>
+
+<style scoped lang="scss">
+// 时间配置卡片样式
+.time-config-card {
+  margin-bottom: 20px;
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+  }
+
+  .time-config-section {
+    border-left: 3px solid #409eff;
+    padding-left: 16px;
+    margin-left: 8px;
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+
+  .text-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .text-xs {
+    font-size: 12px;
+  }
+
+  .text-gray-500 {
+    color: #909399;
+  }
+
+  .mt-1 {
+    margin-top: 4px;
+  }
+
+  .mb-4 {
+    margin-bottom: 16px;
+  }
+}
+
+// 机构选择器卡片样式
+.org-selector-card {
+  margin-bottom: 20px;
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+  }
+
+  .org-summary {
+    min-height: 120px;
+
+    .empty-org-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--el-text-color-secondary);
+      padding: 40px 0;
+
+      .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        color: var(--el-border-color-darker);
+      }
+
+      p {
+        margin: 8px 0;
+
+        &.hint {
+          font-size: 14px;
+          color: var(--el-text-color-placeholder);
+        }
+      }
+    }
+
+    .selected-orgs-list {
+      .org-summary-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--el-border-color-lighter);
+
+        .org-count-tag {
+          padding: 12px 16px;
+          font-size: 16px;
+        }
+
+        .view-detail {
+          font-size: 14px;
+          text-decoration: none;
+
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+
+      .org-list-container {
+        max-height: 300px;
+        overflow-y: auto;
+
+        .org-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .org-card {
+          padding: 8px 12px;
+          background: var(--el-bg-color-page);
+          border: 1px solid var(--el-border-color-lighter);
+          border-radius: 4px;
+          transition: all 0.2s ease;
+          min-height: 40px;
+          display: flex;
+          align-items: center;
+
+          &:hover {
+            border-color: var(--el-color-primary-light-5);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+          }
+
+          .org-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+
+            .org-name {
+              font-size: 14px;
+              color: var(--el-text-color-primary);
+              flex: 1;
+              margin-right: 8px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+          }
+        }
+
+        .more-orgs-tip {
+          text-align: center;
+          padding: 12px;
+          color: var(--el-text-color-secondary);
+          font-size: 13px;
+          background: var(--el-bg-color);
+          border: 1px dashed var(--el-border-color);
+          border-radius: 4px;
+
+          .ep-more {
+            margin-right: 4px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// 机构选择器弹窗内的样式
+.org-selector-container {
+  .selector-card {
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+
+    :deep(.el-card__header) {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--el-border-color-lighter);
+    }
+
+    :deep(.el-card__body) {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .header-actions {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      font-size: 14px;
+    }
+  }
+
+  .tree-node {
+    display: flex;
+    align-items: center;
+    flex: 1;
+
+    .node-icon {
+      margin-right: 6px;
+      color: var(--el-color-primary);
+    }
+
+    .node-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .org-count {
+        color: var(--el-text-color-secondary);
+        font-size: 12px;
+        font-weight: normal;
+      }
+    }
+  }
+
+  .institution-level-filter {
+    padding: 12px 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    .filter-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--el-text-color-regular);
+      font-weight: 500;
+    }
+
+    :deep(.el-checkbox-group) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .el-checkbox.is-bordered {
+        margin-right: 0;
+        border-radius: 4px;
+
+        &.is-checked {
+          border-color: var(--el-color-primary);
+          background-color: var(--el-color-primary-light-9);
+        }
+      }
+    }
+  }
+
+  .dept-node {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--el-text-color-secondary);
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      color: var(--el-border-color-darker);
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+}
+</style>

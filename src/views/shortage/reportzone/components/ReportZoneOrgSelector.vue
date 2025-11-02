@@ -3,36 +3,32 @@
     v-model="innerVisible"
     title="配置可填报机构"
     width="1080px"
-    :scroll="true"
-    :append-to-body="true"
-    :fullscreen="true"
     class="report-zone-org-selector"
   >
     <div class="selector-body">
-      <el-row :gutter="16">
-        <el-col :span="10">
-          <ReportZonePanel
-            title="地区选择"
-            icon="material-symbols:public"
-            icon-color="#2563eb"
-            class="selector-card"
-          >
-            <template #header>
-              <el-input
-                v-model="areaKeyword"
-                size="small"
-                placeholder="搜索地区"
-                clearable
-                style="width: 180px"
-                @clear="handleAreaSearch"
-                @keyup.enter="handleAreaSearch"
-              >
-                <template #prefix>
-                  <Icon icon="ep:search" />
-                </template>
-              </el-input>
-            </template>
-
+      <div class="selector-row">
+        <!-- 左侧：地区选择 -->
+        <div class="selector-panel area-panel">
+          <div class="panel-header theme-blue">
+            <div class="panel-title">
+              <Icon icon="material-symbols:public" class="panel-icon" style="color: #2563eb" />
+              <span class="panel-title-text">地区选择</span>
+            </div>
+            <el-input
+              v-model="areaKeyword"
+              size="small"
+              placeholder="搜索地区"
+              clearable
+              style="width: 180px"
+              @clear="handleAreaSearch"
+              @keyup.enter="handleAreaSearch"
+            >
+              <template #prefix>
+                <Icon icon="ep:search" />
+              </template>
+            </el-input>
+          </div>
+          <div class="panel-body">
             <el-skeleton :loading="areaTreeLoading" animated :count="6" v-if="areaTreeLoading" />
             <el-tree
               v-else
@@ -71,54 +67,58 @@
                 </span>
               </template>
             </el-tree>
-          </ReportZonePanel>
-        </el-col>
+          </div>
+        </div>
 
-        <el-col :span="14">
-          <ReportZonePanel
-            title="机构选择"
-            icon="ep:office-building"
-            icon-color="#16a34a"
-            class="selector-card"
-          >
-            <template #header>
-              <div class="org-header">
-                <el-input
-                  v-model="orgKeyword"
-                  size="small"
-                  placeholder="搜索机构名称"
-                  clearable
-                  class="w-1/3 min-w-200px"
-                  @clear="refreshOrgFilter"
-                  @keyup.enter="refreshOrgFilter"
+        <!-- 右侧：机构选择 -->
+        <div class="selector-panel org-panel">
+          <div class="panel-header theme-green">
+            <div class="panel-title">
+              <Icon icon="ep:office-building" class="panel-icon" style="color: #16a34a" />
+              <span class="panel-title-text">机构选择</span>
+            </div>
+            <div class="org-header">
+              <el-input
+                v-model="orgKeyword"
+                size="small"
+                placeholder="搜索机构名称"
+                clearable
+                class="w-1/3 min-w-200px"
+                @clear="refreshOrgFilter"
+                @keyup.enter="refreshOrgFilter"
+              >
+                <template #prefix>
+                  <Icon icon="ep:search" class="text-16px text-gray-500" />
+                </template>
+              </el-input>
+              <el-checkbox-group
+                v-model="selectedLevels"
+                size="small"
+                class="level-checkbox-group"
+                @change="refreshOrgFilter"
+              >
+                <el-checkbox-button
+                  v-for="level in levelOptions"
+                  :key="level.value"
+                  :value="level.value"
                 >
-                  <template #prefix>
-                    <Icon icon="ep:search" class="text-16px text-gray-500" />
-                  </template>
-                </el-input>
-                <el-checkbox-group
-                  v-model="selectedLevels"
-                  size="small"
-                  class="level-checkbox-group"
-                  @change="refreshOrgFilter"
-                >
-                  <el-checkbox-button
-                    v-for="level in levelOptions"
-                    :key="level.value"
-                    :value="level.value"
-                  >
-                    {{ level.label }}
-                  </el-checkbox-button>
-                </el-checkbox-group>
-              </div>
-            </template>
-
+                  {{ level.label }}
+                </el-checkbox-button>
+              </el-checkbox-group>
+            </div>
+          </div>
+          <div class="panel-body">
             <div v-if="!activeAreaCode" class="org-empty-state">
               <Icon icon="ep:pointer" class="empty-icon" />
               <p>请先从左侧选择地区</p>
             </div>
 
-            <el-skeleton :loading="deptTreeLoading" animated :count="6" v-else-if="deptTreeLoading" />
+            <el-skeleton
+              :loading="deptTreeLoading"
+              animated
+              :count="6"
+              v-else-if="deptTreeLoading"
+            />
 
             <el-tree
               v-else
@@ -138,6 +138,7 @@
                 <div class="dept-node">
                   <span class="dept-name" :title="node.label">{{ node.label }}</span>
                   <dict-tag
+                    v-if="data.hospitalLevel != null"
                     :type="DICT_TYPE.INSTITUTION_LEVEL"
                     :value="data.hospitalLevel"
                     class="ml-8px"
@@ -146,9 +147,9 @@
                 </div>
               </template>
             </el-tree>
-          </ReportZonePanel>
-        </el-col>
-      </el-row>
+          </div>
+        </div>
+      </div>
     </div>
 
     <template #footer>
@@ -171,12 +172,12 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
 import { computed, nextTick, ref, watch } from 'vue'
+import { Dialog } from '@/components/Dialog'
 import { Icon } from '../../../../components/Icon'
 import { DICT_TYPE, getIntDictOptions } from '../../../../utils/dict'
 import { defaultProps, handleTree } from '../../../../utils/tree'
 import { RegionsApi } from '../../../../api/system/regions'
 import * as DeptApi from '../../../../api/system/dept'
-import ReportZonePanel from './ReportZonePanel'
 
 defineOptions({ name: 'ReportZoneOrgSelector' })
 
@@ -254,7 +255,7 @@ const loadAreaTree = async () => {
   try {
     const data = await RegionsApi.getRegionsTreeWithOrgCount()
     areaTree.value = Array.isArray(data) ? data : []
-    defaultExpandedAreaCodes.value = areaTree.value.slice(0, 3).map(item => item.code)
+    defaultExpandedAreaCodes.value = areaTree.value.slice(0, 3).map((item) => item.code)
     if (!activeAreaCode.value && areaTree.value.length > 0) {
       const defaultNode = findDefaultArea(areaTree.value)
       if (defaultNode) {
@@ -289,7 +290,7 @@ const filterAreaTree = (nodes: RegionTreeNode[], keyword: string): RegionTreeNod
   const lower = keyword.trim().toLowerCase()
   const traverse = (items: RegionTreeNode[]): RegionTreeNode[] => {
     const result: RegionTreeNode[] = []
-    items.forEach(item => {
+    items.forEach((item) => {
       const nameMatch = item.name?.toLowerCase().includes(lower)
       const children = item.children ? traverse(item.children) : []
       if (nameMatch || children.length > 0) {
@@ -306,23 +307,23 @@ const collectExpandedKeys = (nodes: RegionTreeNode[], keyword: string): string[]
   if (!keyword) return defaultExpandedAreaCodes.value
   const lower = keyword.trim().toLowerCase()
   const keys = new Set<string>()
-  
+
   const traverse = (items: RegionTreeNode[], ancestors: string[] = []): boolean => {
     let hasMatch = false
-    items.forEach(item => {
+    items.forEach((item) => {
       const currentPath = [...ancestors, item.code]
       const nameMatch = item.name?.toLowerCase().includes(lower)
       const childMatch = item.children ? traverse(item.children, currentPath) : false
-      
+
       if (nameMatch || childMatch) {
         // 添加所有祖先节点和当前节点
-        currentPath.forEach(code => keys.add(code))
+        currentPath.forEach((code) => keys.add(code))
         hasMatch = true
       }
     })
     return hasMatch
   }
-  
+
   traverse(nodes)
   return Array.from(keys)
 }
@@ -333,7 +334,7 @@ const handleAreaSearch = () => {
   // 更新展开的节点
   const expandKeys = collectExpandedKeys(areaTree.value, areaKeyword.value)
   defaultExpandedAreaCodes.value = expandKeys
-  
+
   nextTick(() => {
     if (!areaKeyword.value) {
       areaTreeRef.value?.setCurrentKey(activeAreaCode.value)
@@ -355,7 +356,10 @@ const loadDeptTree = async (areaCode: string) => {
   }
   deptTreeLoading.value = true
   try {
-    const response = await DeptApi.getDeptPage({ areaCode, pageSize: 1000 } as DeptApi.DeptPageParam)
+    const response = await DeptApi.getDeptPage({
+      areaCode,
+      pageSize: 1000
+    } as DeptApi.DeptPageParam)
     const list: DeptTreeNode[] = Array.isArray(response?.list) ? response.list : response || []
     const tree = handleTree(list)
     deptTree.value = tree
@@ -376,12 +380,12 @@ const applyDeptFilters = (nodes: DeptTreeNode[]): DeptTreeNode[] => {
   const matchesLevel = (level: any) => {
     if (useAll) return true
     if (level === undefined || level === null || level === '') return false
-    return Array.from(levelFilters).some(item => String(item) === String(level))
+    return Array.from(levelFilters).some((item) => String(item) === String(level))
   }
 
   const traverse = (items: DeptTreeNode[]): DeptTreeNode[] => {
     const result: DeptTreeNode[] = []
-    items.forEach(item => {
+    items.forEach((item) => {
       const nameMatch = keyword ? item.name?.toLowerCase().includes(keyword) : true
       const levelMatch = matchesLevel(item.hospitalLevel)
       const children = item.children ? traverse(item.children) : []
@@ -403,7 +407,7 @@ const normalizeLevelFilters = () => {
 
   const hasAll = levels.includes(ALL_LEVEL)
   if (hasAll && levels.length > 1) {
-    selectedLevels.value = levels.filter(item => item !== ALL_LEVEL)
+    selectedLevels.value = levels.filter((item) => item !== ALL_LEVEL)
   }
 }
 
@@ -420,7 +424,7 @@ const syncCheckedKeys = () => {
 const collectDetailsFromTree = (ids: number[]): any[] => {
   const details: any[] = []
   const traverse = (nodes: DeptTreeNode[]) => {
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       if (ids.includes(node.id)) {
         details.push({
           id: node.id,
@@ -442,17 +446,17 @@ const collectDetailsFromTree = (ids: number[]): any[] => {
 
 const mergeDetails = (ids: number[], source: any[]) => {
   const map = new Map<number, any>()
-  source.forEach(item => {
+  source.forEach((item) => {
     if (item && typeof item.id === 'number') {
       map.set(item.id, item)
     }
   })
-  props.selectedDetails.forEach(item => {
+  props.selectedDetails.forEach((item) => {
     if (item && typeof item.id === 'number' && !map.has(item.id)) {
       map.set(item.id, item)
     }
   })
-  return ids.map(id => map.get(id)).filter(Boolean)
+  return ids.map((id) => map.get(id)).filter(Boolean)
 }
 
 const updateSelection = (ids: number[]) => {
@@ -524,52 +528,137 @@ watch(orgKeyword, () => {
 watch(areaKeyword, () => {
   handleAreaSearch()
 })
-
 </script>
+
+<style lang="scss">
+// 全局样式，确保高度约束生效
+.el-dialog.report-zone-org-selector {
+  height: 85vh !important;
+  min-height: 85vh !important;
+  max-height: 85vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+
+  .el-dialog__header {
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+  }
+
+  .el-dialog__body {
+    flex: 1 1 0% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    padding: 20px;
+  }
+
+  .el-dialog__footer {
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+  }
+}
+</style>
 
 <style scoped lang="scss">
 .report-zone-org-selector {
-  :deep(.el-dialog) {
-    height: 85vh;
-    max-height: 900px;
-    display: flex;
-    flex-direction: column;
-  }
-
-  :deep(.el-dialog__body) {
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
   .selector-body {
-    min-height: 700px;
-    flex: 1;
+    flex: 1 1 0%;
     overflow: hidden;
-  }
-
-  .selector-card {
-    height: 100%;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+  }
 
-    :deep(.panel-body) {
-      flex: 1;
-      min-height: 680px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+  .selector-row {
+    flex: 1 1 0%;
+    display: flex;
+    gap: 16px;
+    overflow: hidden;
+    min-height: 0;
+    max-height: 100%;
+  }
+
+  .selector-panel {
+    flex: 1 1 0%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    max-height: 100%;
+    border: 1px solid rgba(229, 231, 235, 0.8);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    &.area-panel {
+      flex: 0 0 40%;
+      max-height: 100%;
+    }
+
+    &.org-panel {
+      flex: 1 1 0%;
+      max-height: 100%;
     }
   }
 
-  .area-tree,
-  .dept-tree {
-    flex: 1;
-    overflow: auto;
+  .panel-header {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px 12px 0 0;
+
+    &.theme-blue {
+      background: linear-gradient(
+        135deg,
+        rgba(59, 130, 246, 0.08) 0%,
+        rgba(147, 197, 253, 0.06) 50%,
+        rgba(239, 246, 255, 0.04) 100%
+      );
+      box-shadow: 0 1px 0 rgba(37, 99, 235, 0.1);
+    }
+
+    &.theme-green {
+      background: linear-gradient(
+        135deg,
+        rgba(22, 163, 74, 0.08) 0%,
+        rgba(134, 239, 172, 0.06) 50%,
+        rgba(240, 253, 244, 0.04) 100%
+      );
+      box-shadow: 0 1px 0 rgba(22, 163, 74, 0.1);
+    }
+  }
+
+  .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  .panel-icon {
+    font-size: 20px;
+  }
+
+  .panel-title-text {
+    white-space: nowrap;
+  }
+
+  .panel-body {
+    flex: 1 1 0%;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 12px;
-    border-radius: 6px;
-    background: rgba(244, 247, 255, 0.6);
+    min-height: 0;
+    max-height: 100%;
   }
 
   .area-node {
@@ -651,19 +740,24 @@ watch(areaKeyword, () => {
   }
 
   .org-empty-state {
-    height: 100%;
-    min-height: 360px;
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     color: var(--el-text-color-secondary);
+    padding: 40px 20px;
 
     .empty-icon {
       font-size: 42px;
       margin-bottom: 8px;
       color: var(--el-color-primary-light-3);
     }
+  }
+
+  :deep(.el-skeleton) {
+    flex: 1;
+    padding: 0;
   }
 
   .dialog-footer {
@@ -710,5 +804,11 @@ watch(areaKeyword, () => {
   margin: 6px 0;
 }
 
-</style>
+:deep(.el-tree-node) {
+  white-space: nowrap;
+}
 
+:deep(.el-tree-node > .el-tree-node__children) {
+  overflow: hidden;
+}
+</style>

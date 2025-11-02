@@ -91,12 +91,13 @@
 
 <script setup lang="tsx">
 import { resolveComponent } from 'vue'
-import { Column, ElInputNumber } from 'element-plus'
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { Column, ElInputNumber, TableV2FixedDir } from 'element-plus'
+import { DICT_TYPE, getDictObj, getIntDictOptions } from '@/utils/dict'
 import { handleTree } from '@/utils/tree'
 import download from '@/utils/download'
 import { RegionsApi, RegionsVO } from '@/api/system/regions'
 import RegionsForm from './RegionsForm.vue'
+import DictIcon from '@/components/DictIcon'
 
 /** 地区 列表 */
 defineOptions({ name: 'Regions' })
@@ -105,15 +106,6 @@ const message = useMessage() // 消息弹窗
 const { t } = useI18n() // 国际化
 
 const Icon = resolveComponent('Icon') as any
-
-// 行政区划节点的图标配置，区分不同层级，方便后续扩展更多层级
-const LEVEL_ICON_CONFIG: Record<number, { icon: string; color: string; label: string }> = {
-  1: { icon: 'material-symbols:public', color: '#2563eb', label: '省级节点' },
-  2: { icon: 'mdi:office-building', color: '#16a34a', label: '市级节点' },
-  3: { icon: 'mdi:home-city', color: '#f97316', label: '区县节点' }
-}
-const DEFAULT_NODE_ICON = { icon: 'mdi:map-marker', color: '#2563eb', label: '行政区划' }
-const SPECIAL_NODE_ICON = { icon: 'ep:star-filled', color: '#f59e0b', label: '特殊节点' }
 
 const sortRegions = (data: RegionsVO[]): RegionsVO[] => {
   return [...data].sort((a, b) => {
@@ -143,15 +135,14 @@ const getRowClass = ({ rowData }: { rowData: RegionsVO }) => {
   return rowData.nodeType === 'SPECIAL' ? 'special-node-row' : ''
 }
 
-const pickLevelIcon = (level?: number) => LEVEL_ICON_CONFIG[Number(level)] ?? DEFAULT_NODE_ICON
-const getNodeIconMeta = (row: RegionsVO) => (row.nodeType === 'SPECIAL' ? SPECIAL_NODE_ICON : pickLevelIcon(row.level))
-
 const renderNameCell = ({ rowData }: { rowData: RegionsVO }) => {
-  const iconMeta = getNodeIconMeta(rowData)
+  const dict = getDictObj(DICT_TYPE.REGION_LEVEL, rowData.level)
+  const tooltip = dict?.label || (rowData.nodeType === 'SPECIAL' ? '特殊节点' : '行政区划')
+  const defaultColor = rowData.nodeType === 'SPECIAL' ? '#f59e0b' : '#2563eb'
   return (
     <div class="flex items-center gap-6px">
-      <el-tooltip content={iconMeta.label} placement="top">
-        <Icon icon={iconMeta.icon} class="text-16px" style={{ color: iconMeta.color }} />
+      <el-tooltip content={tooltip} placement="top">
+        <DictIcon dictType={DICT_TYPE.REGION_LEVEL} value={rowData.level ?? ''} size={16} defaultColor={defaultColor} />
       </el-tooltip>
       <span class="font-bold">{rowData.name}</span>
     </div>
@@ -236,7 +227,7 @@ const columns: Column[] = [
     dataKey: 'actions',
     title: '操作',
     width: 220,
-    fixed: 'right',
+    fixed: TableV2FixedDir.RIGHT,
     cellRenderer: ({ rowData }: { rowData: RegionsVO }) => (
       <div class="action-links">
         <el-button type="success" size="small" onClick={() => openForm('update', rowData.id)}>
