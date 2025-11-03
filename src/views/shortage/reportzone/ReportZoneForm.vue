@@ -102,7 +102,7 @@
                 <template #label>
                   <Tooltip
                     title="填报时间段"
-                    message="设置当天允许填报的具体时间范围"
+                    message="设置当天允许填报的具体时间范围（最少30分钟）"
                     icon="ep:info-filled"
                   />
                 </template>
@@ -118,6 +118,8 @@
                         style="width: 100%"
                         teleported
                         popper-class="time-picker-fixed-popper"
+                        :disabled-hours="getStartDisabledHours"
+                        :disabled-minutes="getStartDisabledMinutes"
                         @visible-change="handleTimePickerVisibleChange('start', $event)"
                       />
                     </el-form-item>
@@ -136,6 +138,8 @@
                         style="width: 100%"
                         teleported
                         popper-class="time-picker-fixed-popper"
+                        :disabled-hours="getEndDisabledHours"
+                        :disabled-minutes="getEndDisabledMinutes"
                         @visible-change="handleTimePickerVisibleChange('end', $event)"
                       />
                     </el-form-item>
@@ -191,13 +195,26 @@
           </template>
 
           <div class="org-summary">
+            <!-- 搜索栏 -->
+            <div v-if="selectedOrgCount > 0" class="org-search-bar">
+              <el-input
+                v-model="orgSearchKeyword"
+                placeholder="搜索机构名称、地区..."
+                clearable
+                prefix-icon="ep:search"
+                size="default"
+                class="org-search-input"
+              />
+            </div>
+
             <div class="selected-orgs-table-wrapper">
               <el-table
-                :data="selectedOrgDetails"
+                :data="filteredOrgDetails"
                 border
                 size="small"
                 row-key="id"
                 class="selected-orgs-table"
+                height="320"
               >
                 <el-table-column
                   prop="name"
@@ -211,7 +228,7 @@
                 </el-table-column>
                 <el-table-column label="所属地区" min-width="200">
                   <template #default="{ row }">
-                    {{ row.regionName || row.areaName || row.regionPath || '—' }}
+                    {{ row.regionPathName || row.regionName || row.areaName || '—' }}
                   </template>
                 </el-table-column>
                 <el-table-column label="等级" min-width="120" align="center">
@@ -223,7 +240,7 @@
                     />
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" width="100" align="center">
+                <el-table-column label="操作" width="100" align="center" fixed="right">
                   <template #default="{ row }">
                     <el-button type="danger" size="small" @click="handleRemoveOrg(row.id)">
                       <Icon icon="ep:delete" class="mr-1" />
@@ -234,11 +251,21 @@
                 <template #empty>
                   <div class="empty-org-state">
                     <Icon icon="ep:office-building" class="empty-icon" />
-                    <p>暂未选择任何机构</p>
-                    <p class="hint">点击「配置机构」按钮选择可填报的医疗机构</p>
+                    <p v-if="orgSearchKeyword">未找到匹配的机构</p>
+                    <p v-else>暂未选择任何机构</p>
+                    <p v-if="!orgSearchKeyword" class="hint">
+                      点击「配置机构」按钮选择可填报的医疗机构
+                    </p>
                   </div>
                 </template>
               </el-table>
+            </div>
+
+            <!-- 统计信息 -->
+            <div v-if="selectedOrgCount > 0 && orgSearchKeyword" class="org-search-result">
+              <el-tag size="small" type="info">
+                显示 {{ filteredOrgDetails.length }} / {{ selectedOrgCount }} 个机构
+              </el-tag>
             </div>
           </div>
         </ContentWrap>
@@ -340,6 +367,9 @@ const dayOptions = [
   { value: 7, label: '周日' }
 ]
 
+// 最小时间间隔（分钟）
+const MIN_INTERVAL_MINUTES = 30
+
 // 时间选择器的双向绑定
 const startTimeValue = computed({
   get: () => formData.value.reportTimeConfig.startTime,
@@ -359,6 +389,92 @@ const endTimeValue = computed({
   }
 })
 
+// 时间选择器禁用逻辑 - 开始时间
+const getStartDisabledHours = () => {
+  const endTime = formData.value.reportTimeConfig.endTime
+  if (!endTime) return []
+  
+  const [endHour, endMinute] = endTime.split(':').map(Number)
+  const disabledHours: number[] = []
+  
+  // 如果结束时间的分钟数小于30，那么开始时间的小时数不能等于结束时间的小时数
+  // 例如：结束时间 12:20，开始时间最晚只能是 11:50，所以小时12要禁用
+  const minStartHour = endMinute < MIN_INTERVAL_MINUTES ? endHour - 1 : endHour
+  
+  for (let i = minStartHour + 1; i < 24; i++) {
+    disabledHours.push(i)
+  }
+  
+  return disabledHours
+}
+
+const getStartDisabledMinutes = (hour: number) => {
+  const endTime = formData.value.reportTimeConfig.endTime
+  if (!endTime) return []
+  
+  const [endHour, endMinute] = endTime.split(':').map(Number)
+  const disabledMinutes: number[] = []
+  
+  if (hour === endHour) {
+    // 同一小时内，开始分钟必须比结束分钟小至少30分钟
+    for (let i = endMinute - MIN_INTERVAL_MINUTES + 1; i < 60; i++) {
+      disabledMinutes.push(i)
+    }
+  } else if (hour === endHour - 1) {
+    // 前一小时，需要保证间隔至少30分钟
+    // 例如：结束时间 13:20，开始时间如果是 12:xx，那么 xx 必须 <= 50 (60 - 30 + 20)
+    const maxMinute = 60 - MIN_INTERVAL_MINUTES + endMinute
+    for (let i = maxMinute + 1; i < 60; i++) {
+      disabledMinutes.push(i)
+    }
+  }
+  
+  return disabledMinutes
+}
+
+// 时间选择器禁用逻辑 - 结束时间
+const getEndDisabledHours = () => {
+  const startTime = formData.value.reportTimeConfig.startTime
+  if (!startTime) return []
+  
+  const [startHour, startMinute] = startTime.split(':').map(Number)
+  const disabledHours: number[] = []
+  
+  // 如果开始时间的分钟数大于30，那么结束时间的小时数不能等于开始时间的小时数
+  // 例如：开始时间 12:40，结束时间最早只能是 13:10，所以小时12要禁用
+  const minEndHour = startMinute > 60 - MIN_INTERVAL_MINUTES ? startHour + 1 : startHour
+  
+  for (let i = 0; i < minEndHour; i++) {
+    disabledHours.push(i)
+  }
+  
+  return disabledHours
+}
+
+const getEndDisabledMinutes = (hour: number) => {
+  const startTime = formData.value.reportTimeConfig.startTime
+  if (!startTime) return []
+  
+  const [startHour, startMinute] = startTime.split(':').map(Number)
+  const disabledMinutes: number[] = []
+  
+  if (hour === startHour) {
+    // 同一小时内，结束分钟必须比开始分钟大至少30分钟
+    for (let i = 0; i < startMinute + MIN_INTERVAL_MINUTES; i++) {
+      disabledMinutes.push(i)
+    }
+  } else if (hour === startHour + 1) {
+    // 后一小时，需要保证间隔至少30分钟
+    // 例如：开始时间 12:40，结束时间如果是 13:xx，那么 xx 必须 >= 10 (40 + 30 - 60)
+    const minMinute = startMinute + MIN_INTERVAL_MINUTES - 60
+    for (let i = 0; i < minMinute; i++) {
+      disabledMinutes.push(i)
+    }
+  }
+  
+  return disabledMinutes
+}
+
 // 获取时间配置显示文本
 const getTimeConfigDisplay = () => {
   if (!formData.value.isTimeRestricted) return ''
@@ -366,17 +482,58 @@ const getTimeConfigDisplay = () => {
   const dayLabel =
     dayOptions.find((d) => d.value === formData.value.reportTimeConfig.dayOfWeek)?.label || ''
   const { startTime, endTime } = formData.value.reportTimeConfig
+  
+  // 计算时间间隔
+  let intervalText = ''
+  if (startTime && endTime) {
+    const [startHour, startMinute] = startTime.split(':').map(Number)
+    const [endHour, endMinute] = endTime.split(':').map(Number)
+    const minutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    
+    if (hours > 0 && mins > 0) {
+      intervalText = `，时长 ${hours} 小时 ${mins} 分钟`
+    } else if (hours > 0) {
+      intervalText = `，时长 ${hours} 小时`
+    } else {
+      intervalText = `，时长 ${mins} 分钟`
+    }
+  }
 
-  return `填报时间设置：每${dayLabel} ${startTime} - ${endTime}`
+  return `填报时间设置：每${dayLabel} ${startTime} - ${endTime}${intervalText}`
 }
 
 // 机构选择器弹窗相关
 const orgSelectorVisible = ref(false) // 机构选择器是否显示
 const selectedOrgIds = ref<number[]>([]) // 当前选中的机构ID列表
 const selectedOrgDetails = ref<any[]>([]) // 当前选中的机构详情
+const orgSearchKeyword = ref('') // 机构搜索关键字
 
 // 计算属性：已选择机构数量
 const selectedOrgCount = computed(() => selectedOrgIds.value.length)
+
+// 计算属性：根据搜索关键字过滤机构列表
+const filteredOrgDetails = computed(() => {
+  if (!orgSearchKeyword.value) {
+    return selectedOrgDetails.value
+  }
+  const keyword = orgSearchKeyword.value.toLowerCase()
+  return selectedOrgDetails.value.filter((org) => {
+    const name = org.name?.toLowerCase() || ''
+    const regionName = org.regionName?.toLowerCase() || ''
+    const areaName = org.areaName?.toLowerCase() || ''
+    const regionPath = org.regionPath?.toLowerCase() || ''
+    const regionPathName = org.regionPathName?.toLowerCase() || ''
+    return (
+      name.includes(keyword) ||
+      regionName.includes(keyword) ||
+      areaName.includes(keyword) ||
+      regionPath.includes(keyword) ||
+      regionPathName.includes(keyword)
+    )
+  })
+})
 
 const mergeOrgDetails = (ids: number[], details: any[] = []) => {
   const detailMap = new Map<number, any>()
@@ -465,6 +622,7 @@ const loadOrgDetailsByIds = async (orgIds: number[]) => {
           regionName: orgDetail.regionName,
           areaName: orgDetail.areaName,
           regionPath: orgDetail.regionPath,
+          regionPathName: orgDetail.regionPathName || '', // 区域路径中文名称
           address: orgDetail.address || '',
           contactPerson: orgDetail.contactPerson || '',
           contactPhone: orgDetail.contactPhone || ''
@@ -478,6 +636,7 @@ const loadOrgDetailsByIds = async (orgIds: number[]) => {
           regionName: '',
           areaName: '',
           regionPath: '',
+          regionPathName: '',
           address: '',
           contactPerson: '',
           contactPhone: ''
@@ -616,14 +775,6 @@ const submitForm = async () => {
     if (!timeFormRef.value) return
     const timeValid = await timeFormRef.value.validate().catch(() => {})
     if (!timeValid) return
-
-    // 验证时间范围
-    const start = formData.value.reportTimeConfig.startTime
-    const end = formData.value.reportTimeConfig.endTime
-    if (start >= end) {
-      message.error('开始时间不能晚于或等于结束时间')
-      return
-    }
   }
 
   // 提交请求
@@ -656,6 +807,7 @@ const resetForm = () => {
   // 重置地区和机构相关状态
   selectedOrgIds.value = []
   selectedOrgDetails.value = []
+  orgSearchKeyword.value = '' // 重置搜索关键字
 
   // 重置机构选择器弹窗状态
   orgSelectorVisible.value = false
@@ -785,6 +937,29 @@ const handleTimePickerVisibleChange = (type: string, visible: boolean) => {
 .org-summary {
   min-height: 160px;
 
+  // 搜索栏样式
+  .org-search-bar {
+    margin-bottom: 12px;
+
+    .org-search-input {
+      :deep(.el-input__wrapper) {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+
+        &:hover,
+        &.is-focus {
+          box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.3) inset;
+        }
+      }
+    }
+  }
+
+  // 搜索结果统计
+  .org-search-result {
+    margin-top: 8px;
+    text-align: right;
+  }
+
   .empty-org-state {
     display: flex;
     flex-direction: column;
@@ -821,8 +996,28 @@ const handleTimePickerVisibleChange = (type: string, visible: boolean) => {
       background: linear-gradient(135deg, rgba(64, 158, 255, 0.08), rgba(99, 102, 241, 0.08));
     }
 
+    // 表格主体区域 - 固定高度，自动滚动
     :deep(.el-table__body-wrapper) {
-      max-height: 320px;
+      overflow-y: auto !important;
+      
+      // 自定义滚动条样式
+      &::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+        
+        &:hover {
+          background: rgba(0, 0, 0, 0.25);
+        }
+      }
     }
 
     :deep(.el-table__row) {

@@ -14,6 +14,56 @@
       content="病案首页质量控制平台 基于 vue3 + CompositionAPI + typescript + vite3 + element plus 的后台开源免费管理系统！"
     /> -->
     <title>%VITE_APP_TITLE%</title>
+    <!-- 主题预加载脚本：在页面渲染前读取缓存的主题配置，避免白屏闪烁 -->
+    <script>
+      (function() {
+        try {
+          // 从 localStorage 读取缓存的主题数据
+          const themeCache = localStorage.getItem('theme')
+          const isDarkCache = localStorage.getItem('is_dark')
+          
+          // 默认背景色（浅色主题）
+          let bgColor = '#f0f2f5'
+          
+          // 如果启用了深色模式
+          if (isDarkCache === 'true') {
+            bgColor = '#0f172a' // 深邃蓝的深色背景
+            document.documentElement.classList.add('dark')
+          } else {
+            document.documentElement.classList.add('light')
+          }
+          
+          // 如果有缓存的主题配置，尝试读取其背景色
+          if (themeCache) {
+            try {
+              const themeData = JSON.parse(themeCache)
+              const theme = themeData.theme || themeData
+              
+              // 优先使用主题的内容背景色
+              if (theme.appContentBgColor) {
+                // 如果是渐变色，提取第一个颜色值作为纯色背景
+                const gradientMatch = theme.appContentBgColor.match(/#[0-9a-fA-F]{6}/)
+                if (gradientMatch) {
+                  bgColor = gradientMatch[0]
+                }
+              } 
+              // 或使用顶部 header 背景色
+              else if (theme.topHeaderBgColor && theme.topHeaderBgColor.startsWith('#')) {
+                bgColor = theme.topHeaderBgColor
+              }
+            } catch (e) {
+              // JSON 解析失败，使用默认色
+            }
+          }
+          
+          // 立即应用背景色到 html 和 body
+          document.documentElement.style.backgroundColor = bgColor
+          document.body.style.backgroundColor = bgColor
+        } catch (e) {
+          console.warn('主题预加载失败:', e)
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="app">

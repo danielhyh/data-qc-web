@@ -50,20 +50,34 @@
                     'is-active': node.key === activeAreaCode
                   }"
                 >
-                  <Icon
-                    :icon="getAreaIconMeta(data).icon"
+                  <DictIcon
+                    :dict-type="DICT_TYPE.REGION_LEVEL"
+                    :value="data.level ?? ''"
+                    :size="16"
+                    :default-color="data.nodeType === 'SPECIAL' ? '#f59e0b' : '#2563eb'"
                     class="area-icon"
-                    :style="{ color: getAreaIconMeta(data).color }"
                   />
                   <span class="area-label" :title="node.label">{{ node.label }}</span>
-                  <span v-if="hasDirectCount(data)" class="count-chip direct">
-                    <Icon icon="ep:office-building" class="mr-4px" />
-                    {{ data.directOrgCount }}
-                  </span>
-                  <span v-if="hasTotalCount(data)" class="count-chip total">
-                    <Icon icon="ph:tree-structure-bold" class="mr-4px" />
-                    {{ data.totalOrgCount }}
-                  </span>
+                  <el-tooltip
+                    v-if="hasDirectCount(data)"
+                    content="该地区直属机构数量"
+                    placement="top"
+                  >
+                    <span class="count-chip direct">
+                      <Icon icon="ep:office-building" class="mr-4px" />
+                      {{ data.directOrgCount }}
+                    </span>
+                  </el-tooltip>
+                  <el-tooltip
+                    v-if="hasTotalCount(data)"
+                    content="该地区及子地区机构总数"
+                    placement="top"
+                  >
+                    <span class="count-chip total">
+                      <Icon icon="ph:tree-structure-bold" class="mr-4px" />
+                      {{ data.totalOrgCount }}
+                    </span>
+                  </el-tooltip>
                 </span>
               </template>
             </el-tree>
@@ -72,18 +86,18 @@
 
         <!-- 右侧：机构选择 -->
         <div class="selector-panel org-panel">
-          <div class="panel-header theme-green">
-            <div class="panel-title">
-              <Icon icon="ep:office-building" class="panel-icon" style="color: #16a34a" />
-              <span class="panel-title-text">机构选择</span>
-            </div>
-            <div class="org-header">
+          <div class="panel-header panel-header-vertical theme-green">
+            <div class="org-header-row">
+              <div class="panel-title">
+                <Icon icon="ep:office-building" class="panel-icon" style="color: #16a34a" />
+                <span class="panel-title-text">机构选择</span>
+              </div>
               <el-input
                 v-model="orgKeyword"
                 size="small"
                 placeholder="搜索机构名称"
                 clearable
-                class="w-1/3 min-w-200px"
+                style="width: 200px"
                 @clear="refreshOrgFilter"
                 @keyup.enter="refreshOrgFilter"
               >
@@ -91,11 +105,20 @@
                   <Icon icon="ep:search" class="text-16px text-gray-500" />
                 </template>
               </el-input>
+            </div>
+            <div class="org-filter-row">
+              <el-checkbox
+                v-model="selectAll"
+                size="small"
+                @change="handleSelectAllChange"
+              >
+                全选当前机构
+              </el-checkbox>
               <el-checkbox-group
                 v-model="selectedLevels"
                 size="small"
                 class="level-checkbox-group"
-                @change="refreshOrgFilter"
+                @change="handleLevelChange"
               >
                 <el-checkbox-button
                   v-for="level in levelOptions"
@@ -133,9 +156,22 @@
               empty-text="该地区暂无机构"
               class="dept-tree"
               @check="handleOrgCheck"
+              @node-click="handleNodeClick"
             >
               <template #default="{ node, data }">
                 <div class="dept-node">
+                  <el-tooltip
+                    :content="getInstitutionCategoryLabel(data.institutionCategory)"
+                    placement="top"
+                  >
+                    <DictIcon
+                      :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
+                      :value="data.institutionCategory ?? ''"
+                      :size="16"
+                      default-color="#5b8def"
+                      class="dept-icon"
+                    />
+                  </el-tooltip>
                   <span class="dept-name" :title="node.label">{{ node.label }}</span>
                   <dict-tag
                     v-if="data.hospitalLevel != null"
@@ -173,11 +209,12 @@
 import type { PropType } from 'vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { Dialog } from '@/components/Dialog'
-import { Icon } from '../../../../components/Icon'
-import { DICT_TYPE, getIntDictOptions } from '../../../../utils/dict'
-import { defaultProps, handleTree } from '../../../../utils/tree'
-import { RegionsApi } from '../../../../api/system/regions'
-import * as DeptApi from '../../../../api/system/dept'
+import { Icon } from '@/components/Icon'
+import DictIcon from '@/components/DictIcon'
+import { DICT_TYPE, getDictObj, getIntDictOptions } from '@/utils/dict'
+import { defaultProps, handleTree } from '@/utils/tree'
+import { RegionsApi } from '@/api/system/regions'
+import * as DeptApi from '@/api/system/dept'
 
 defineOptions({ name: 'ReportZoneOrgSelector' })
 
@@ -195,6 +232,7 @@ type DeptTreeNode = {
   id: number
   name: string
   hospitalLevel?: number | string
+  institutionCategory?: number | string
   regionName?: string
   areaName?: string
   regionPath?: string
@@ -229,8 +267,8 @@ const deptTreeLoading = ref(false)
 
 const areaKeyword = ref('')
 const orgKeyword = ref('')
-const selectedLevels = ref<(number | string)[]>(['ALL'])
-const ALL_LEVEL = 'ALL'
+const selectedLevels = ref<(number | string)[]>([])
+const selectAll = ref(false)
 
 const areaTree = ref<RegionTreeNode[]>([])
 const activeAreaCode = ref<string>('')
@@ -240,9 +278,13 @@ const filteredDeptTree = ref<DeptTreeNode[]>([])
 const checkedIds = ref<number[]>([])
 
 const levelOptions = computed(() => {
-  const dict = getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL) || []
-  return [{ label: '全部', value: ALL_LEVEL }, ...dict]
+  return getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL) || []
 })
+
+// 获取机构类别标签
+const getInstitutionCategoryLabel = (value: string | number | boolean | undefined) => {
+  return getDictObj(DICT_TYPE.INSTITUTION_CATEGORY, value)?.label ?? '机构分类'
+}
 
 const areaTreeProps = {
   label: 'name',
@@ -352,21 +394,22 @@ const loadDeptTree = async (areaCode: string) => {
   if (!areaCode) {
     deptTree.value = []
     filteredDeptTree.value = []
+    selectAll.value = false
     return
   }
   deptTreeLoading.value = true
   try {
     const response = await DeptApi.getDeptPage({
       areaCode,
-      pageSize: 1000
+      pageSize: -1
     } as DeptApi.DeptPageParam)
     const list: DeptTreeNode[] = Array.isArray(response?.list) ? response.list : response || []
     const tree = handleTree(list)
     deptTree.value = tree
-    normalizeLevelFilters()
     filteredDeptTree.value = applyDeptFilters(tree)
     await nextTick()
     syncCheckedKeys()
+    updateSelectAllState()
   } finally {
     deptTreeLoading.value = false
   }
@@ -375,7 +418,7 @@ const loadDeptTree = async (areaCode: string) => {
 const applyDeptFilters = (nodes: DeptTreeNode[]): DeptTreeNode[] => {
   const keyword = orgKeyword.value.trim().toLowerCase()
   const levelFilters = new Set(selectedLevels.value)
-  const useAll = levelFilters.has(ALL_LEVEL) || levelFilters.size === 0
+  const useAll = levelFilters.size === 0
 
   const matchesLevel = (level: any) => {
     if (useAll) return true
@@ -398,23 +441,62 @@ const applyDeptFilters = (nodes: DeptTreeNode[]): DeptTreeNode[] => {
   return traverse(nodes)
 }
 
-const normalizeLevelFilters = () => {
-  const levels = selectedLevels.value
-  if (levels.length === 0) {
-    selectedLevels.value = [ALL_LEVEL]
+// 收集树中所有节点的ID
+const collectAllDeptIds = (nodes: DeptTreeNode[]): number[] => {
+  const ids: number[] = []
+  const traverse = (items: DeptTreeNode[]) => {
+    items.forEach((item) => {
+      ids.push(item.id)
+      if (item.children && item.children.length > 0) {
+        traverse(item.children)
+      }
+    })
+  }
+  traverse(nodes)
+  return ids
+}
+
+const handleSelectAllChange = (checked: boolean) => {
+  const allIds = collectAllDeptIds(filteredDeptTree.value)
+  if (checked) {
+    // 全选：合并当前所有机构ID
+    const newChecked = new Set([...checkedIds.value, ...allIds])
+    checkedIds.value = Array.from(newChecked)
+  } else {
+    // 取消全选：移除当前所有机构ID
+    const idsToRemove = new Set(allIds)
+    checkedIds.value = checkedIds.value.filter((id) => !idsToRemove.has(id))
+  }
+  nextTick(() => {
+    syncCheckedKeys()
+    // 确保状态同步
+    updateSelectAllState()
+  })
+}
+
+const handleLevelChange = () => {
+  refreshOrgFilter()
+}
+
+// 更新全选框状态
+const updateSelectAllState = () => {
+  const allIds = collectAllDeptIds(filteredDeptTree.value)
+  // 没有机构或选中列表为空时，取消全选
+  if (allIds.length === 0) {
+    selectAll.value = false
     return
   }
-
-  const hasAll = levels.includes(ALL_LEVEL)
-  if (hasAll && levels.length > 1) {
-    selectedLevels.value = levels.filter((item) => item !== ALL_LEVEL)
-  }
+  // 检查当前显示的所有机构是否都被选中
+  const checkedSet = new Set(checkedIds.value)
+  selectAll.value = allIds.length > 0 && allIds.every((id) => checkedSet.has(id))
 }
 
 const refreshOrgFilter = () => {
-  normalizeLevelFilters()
   filteredDeptTree.value = applyDeptFilters(deptTree.value)
-  nextTick(syncCheckedKeys)
+  nextTick(() => {
+    syncCheckedKeys()
+    updateSelectAllState()
+  })
 }
 
 const syncCheckedKeys = () => {
@@ -432,7 +514,8 @@ const collectDetailsFromTree = (ids: number[]): any[] => {
           hospitalLevel: node.hospitalLevel,
           regionName: node.regionName,
           areaName: node.areaName,
-          regionPath: node.regionPath
+          regionPath: node.regionPath,
+          regionPathName: node.regionPathName || '' // 区域路径中文名称
         })
       }
       if (node.children && node.children.length > 0) {
@@ -461,10 +544,26 @@ const mergeDetails = (ids: number[], source: any[]) => {
 
 const updateSelection = (ids: number[]) => {
   checkedIds.value = ids
+  updateSelectAllState()
 }
 
 const handleOrgCheck = (_: any, data: { checkedKeys: number[] }) => {
   updateSelection(data.checkedKeys ?? [])
+}
+
+// 处理节点点击，切换选中状态
+const handleNodeClick = (data: DeptTreeNode) => {
+  const isChecked = checkedIds.value.includes(data.id)
+  if (isChecked) {
+    // 当前已选中，取消选中
+    deptTreeRef.value?.setChecked(data.id, false)
+    checkedIds.value = checkedIds.value.filter(id => id !== data.id)
+  } else {
+    // 当前未选中，选中
+    deptTreeRef.value?.setChecked(data.id, true)
+    checkedIds.value = [...checkedIds.value, data.id]
+  }
+  updateSelectAllState()
 }
 
 const handleCancel = () => {
@@ -488,26 +587,19 @@ const hasTotalCount = (node: RegionTreeNode) => {
   return total > direct
 }
 
-const AREA_ICON_CONFIG: Record<number, { icon: string; color: string }> = {
-  1: { icon: 'material-symbols:public', color: '#2563eb' },
-  2: { icon: 'mdi:office-building', color: '#16a34a' },
-  3: { icon: 'mdi:home-city', color: '#f97316' }
-}
-
-const SPECIAL_NODE_ICON = { icon: 'ep:star-filled', color: '#f59e0b' }
-
-const getAreaIconMeta = (node: RegionTreeNode) => {
-  if (node.nodeType === 'SPECIAL') return SPECIAL_NODE_ICON
-  return AREA_ICON_CONFIG[node.level ?? 0] ?? { icon: 'mdi:map-marker', color: '#2563eb' }
-}
-
 watch(
   () => props.modelValue,
-  (visible) => {
+  async (visible) => {
     if (visible) {
-      loadAreaTree()
+      // 先重置状态
       checkedIds.value = [...(props.selectedIds ?? [])]
-      nextTick(syncCheckedKeys)
+      selectAll.value = false
+      // 加载区域树（内部会自动加载机构树）
+      await loadAreaTree()
+      // 确保选中状态正确同步
+      await nextTick()
+      syncCheckedKeys()
+      updateSelectAllState()
     }
   }
 )
@@ -633,6 +725,25 @@ watch(areaKeyword, () => {
       );
       box-shadow: 0 1px 0 rgba(22, 163, 74, 0.1);
     }
+
+    &.panel-header-vertical {
+      flex-direction: column;
+      gap: 12px;
+      align-items: stretch;
+    }
+  }
+
+  .org-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .org-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   .panel-title {
@@ -642,6 +753,7 @@ watch(areaKeyword, () => {
     font-size: 16px;
     font-weight: 600;
     color: var(--el-text-color-primary);
+    flex-shrink: 0;
   }
 
   .panel-icon {
@@ -665,19 +777,8 @@ watch(areaKeyword, () => {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px;
-    border-radius: 6px;
+    width: 100%;
     transition: all 0.2s ease;
-
-    &.is-active {
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.05));
-      box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
-    }
-
-    &.is-special {
-      background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(254, 243, 199, 0.3));
-      border-left: 3px solid rgba(245, 158, 11, 0.8);
-    }
   }
 
   .area-icon {
@@ -712,17 +813,10 @@ watch(areaKeyword, () => {
     }
   }
 
-  .org-header {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-  }
-
   .level-checkbox-group {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
   }
 
   .dept-node {
@@ -730,6 +824,11 @@ watch(areaKeyword, () => {
     align-items: center;
     justify-content: space-between;
     width: 100%;
+    gap: 6px;
+  }
+
+  .dept-icon {
+    flex-shrink: 0;
   }
 
   .dept-name {
@@ -737,6 +836,7 @@ watch(areaKeyword, () => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: 500;
   }
 
   .org-empty-state {
@@ -810,5 +910,108 @@ watch(areaKeyword, () => {
 
 :deep(.el-tree-node > .el-tree-node__children) {
   overflow: hidden;
+}
+
+// 机构树节点样式
+.dept-tree {
+  :deep(.el-tree-node__content) {
+    border-radius: 6px;
+    margin: 2px 0;
+    padding: 6px 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    
+    &:hover {
+      background: rgba(22, 163, 74, 0.06);
+      transform: translateX(2px);
+    }
+  }
+}
+
+// 地区树节点的选中和特殊节点样式（整行效果）
+.area-tree {
+  :deep(.el-tree-node__content) {
+    border-radius: 8px;
+    margin: 2px 0;
+    padding: 8px 12px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    &:hover {
+      background: rgba(59, 130, 246, 0.06);
+      transform: translateX(2px);
+    }
+    
+    // 选中状态 - 通过 .is-active 类判断
+    .area-node.is-active {
+      // 让父节点有背景
+      & {
+        width: 100%;
+      }
+    }
+  }
+  
+  // 选中节点的整行样式
+  :deep(.el-tree-node__content:has(.area-node.is-active)) {
+    background: linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.15) 0%,
+      rgba(147, 197, 253, 0.1) 50%,
+      rgba(59, 130, 246, 0.08) 100%
+    );
+    box-shadow: 
+      inset 3px 0 0 0 rgba(59, 130, 246, 0.6),
+      0 2px 8px rgba(59, 130, 246, 0.15);
+    transform: translateX(0);
+    
+    &:hover {
+      background: linear-gradient(
+        135deg,
+        rgba(59, 130, 246, 0.18) 0%,
+        rgba(147, 197, 253, 0.13) 50%,
+        rgba(59, 130, 246, 0.1) 100%
+      );
+    }
+  }
+  
+  // 特殊节点的整行样式
+  :deep(.el-tree-node__content:has(.area-node.is-special)) {
+    background: linear-gradient(
+      135deg,
+      rgba(251, 191, 36, 0.18) 0%,
+      rgba(254, 243, 199, 0.25) 50%,
+      rgba(252, 211, 77, 0.15) 100%
+    );
+    box-shadow: 
+      inset 3px 0 0 0 rgba(245, 158, 11, 0.8),
+      0 2px 8px rgba(245, 158, 11, 0.12);
+    
+    &:hover {
+      background: linear-gradient(
+        135deg,
+        rgba(251, 191, 36, 0.22) 0%,
+        rgba(254, 243, 199, 0.3) 50%,
+        rgba(252, 211, 77, 0.18) 100%
+      );
+    }
+    
+    // 特殊节点的文字颜色
+    .area-label {
+      color: #78350f;
+      font-weight: 600;
+    }
+  }
+  
+  // 特殊节点且选中的样式（优先级最高）
+  :deep(.el-tree-node__content:has(.area-node.is-special.is-active)) {
+    background: linear-gradient(
+      135deg,
+      rgba(251, 191, 36, 0.25) 0%,
+      rgba(254, 243, 199, 0.35) 50%,
+      rgba(252, 211, 77, 0.2) 100%
+    );
+    box-shadow: 
+      inset 3px 0 0 0 rgba(245, 158, 11, 1),
+      0 3px 12px rgba(245, 158, 11, 0.25);
+  }
 }
 </style>

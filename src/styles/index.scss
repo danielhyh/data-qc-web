@@ -99,12 +99,13 @@ html {
 }
 
 body {
-  font-family: var(--font-family-base);
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-normal);
-  font-weight: var(--font-weight-normal);
+  /* 注释掉全局字体设置，避免加载页字体闪烁 */
+  /* font-family: var(--font-family-base); */
+  // font-size: var(--font-size-base);
+  // line-height: var(--line-height-normal);
+  /* font-weight: var(--font-weight-normal); */
   color: var(--tech-text-primary);
-  letter-spacing: var(--letter-spacing-normal);
+  /* letter-spacing: var(--letter-spacing-normal); */
 }
 
 /* 标题层级系统 */

@@ -6,10 +6,24 @@ export interface DeptVO {
   parentId: number
   status: number
   sort: number
-  leaderUserId: number
+  leaderUser: number
   phone: string
   email: string
   createTime: Date
+  regionId?: number
+  regionCode?: string
+  regionPath?: string
+  regionPathName?: string // 区域路径中文名称
+  regionName?: string
+  areaName?: string
+  institutionId?: string
+  institutionCategory?: string
+  hospitalLevel?: string
+  contactPerson?: string
+  contactPhone?: string
+  address?: string
+  deptType?: string
+  area?: string
 }
 
 // 查询部门（精简)列表
