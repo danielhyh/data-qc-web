@@ -1,149 +1,173 @@
 <!--季节性药品监测周报页面-->
 <template>
-  <ContentWrap>
-    <!-- 搜索工作栏 -->
-    <el-form
-      class="-mb-15px"
-      :model="queryParams"
-      ref="queryFormRef"
-      :inline="true"
-      label-width="68px"
-    >
-      <el-form-item label="年份" prop="year">
-        <el-select v-model="queryParams.year" placeholder="请选择年份" clearable class="!w-240px">
-          <el-option v-for="year in yearOptions" :key="year" :label="year" :value="year" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="填报专区" prop="zoneId">
-        <el-select
-          v-model="queryParams.zoneId"
-          placeholder="请选择填报专区"
-          clearable
-          class="!w-240px"
-        >
-          <el-option
-            v-for="zone in zoneOptions"
-            :key="zone.id"
-            :label="zone.zoneName"
-            :value="zone.id"
+  <div class="report-list-container">
+    <ContentWrap>
+      <!-- 搜索工作栏 -->
+      <el-form
+        class="-mb-15px"
+        :model="queryParams"
+        ref="queryFormRef"
+        :inline="true"
+        label-width="68px"
+      >
+        <el-form-item label="填报任务" prop="zoneName">
+          <el-input
+            v-model="queryParams.zoneName"
+            placeholder="请输入填报任务名称"
+            clearable
+            class="!w-240px"
           />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="填报状态" prop="reportStatus">
-        <el-select
-          v-model="queryParams.reportStatus"
-          placeholder="请选择填报状态"
-          clearable
-          class="!w-240px"
-        >
-          <el-option
-            v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_REPORT_STATUS)"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button @click="handleQuery">
-          <Icon icon="ep:search" class="mr-5px" />
-          搜索
-        </el-button>
-        <el-button @click="resetQuery">
-          <Icon icon="ep:refresh" class="mr-5px" />
-          重置
-        </el-button>
-<!--        <el-button
-          type="success"
-          plain
-          @click="handleExport"
-          :loading="exportLoading"
-          v-hasPermi="['shortage:report-task:export']"
-        >
-          <Icon icon="ep:download" class="mr-5px" />
-          导出
-        </el-button>-->
-      </el-form-item>
-    </el-form>
-  </ContentWrap>
-
-  <!-- 列表 -->
-  <ContentWrap>
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="年份" align="center" prop="year" />
-      <el-table-column label="填报周期" align="center" prop="reportWeek" />
-      <el-table-column label="填报专区" align="center" prop="zoneName" />
-      <el-table-column label="填报状态" align="center" prop="reportStatus">
-        <template #default="scope">
-          <dict-tag :type="DICT_TYPE.DRUG_REPORT_STATUS" :value="scope.row.reportStatus" />
-        </template>
-      </el-table-column>
-      <el-table-column label="填报完成度" align="center" prop="completionRate" width="200">
-        <template #default="scope">
-          <div class="flex items-center gap-2">
-            <el-progress
-              :percentage="scope.row.completionRate || 0"
-              :color="getProgressColor(scope.row.completionRate)"
-              :stroke-width="8"
-              style="flex: 1"
+        </el-form-item>
+        <el-form-item label="年份" prop="year">
+          <el-select v-model="queryParams.year" placeholder="请选择年份" clearable class="!w-240px">
+            <el-option v-for="year in yearOptions" :key="year" :label="year" :value="year" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="填报状态" prop="reportStatus">
+          <el-select
+            v-model="queryParams.reportStatus"
+            placeholder="请选择填报状态"
+            clearable
+            class="!w-240px"
+          >
+            <el-option
+              v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_REPORT_STATUS)"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
             />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="handleQuery">
+            <Icon icon="ep:search" class="mr-5px" />
+            搜索
+          </el-button>
+          <el-button @click="resetQuery">
+            <Icon icon="ep:refresh" class="mr-5px" />
+            重置
+          </el-button>
+  <!--        <el-button
+            type="success"
+            plain
+            @click="handleExport"
+            :loading="exportLoading"
+            v-hasPermi="['shortage:report-task:export']"
+          >
+            <Icon icon="ep:download" class="mr-5px" />
+            导出
+          </el-button>-->
+        </el-form-item>
+      </el-form>
+    </ContentWrap>
+
+    <!-- 列表 -->
+    <ContentWrap>
+      <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
+        <el-table-column label="序号" width="80" type="index" align="center" />
+        <el-table-column label="填报任务" align="center" prop="zoneName" min-width="120px">
+          <template #default="scope">
+            <span class="font-bold">{{ scope.row.zoneName }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="年份" align="center" prop="year" width="80px" />
+        <el-table-column label="填报周期" align="center" prop="reportWeek" width="100px" />
+        <el-table-column label="截止时间" align="center" width="150px">
+          <template #default="scope">
+            {{ formatDeadlineTime(scope.row.deadlineTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="剩余时间" align="center" width="150px">
+          <template #default="scope">
+            <!-- 已逾期状态直接显示已逾期 -->
+            <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已逾期</span>
+            <span v-else :class="getRemainingTimeClass(scope.row.deadlineTime)">
+              {{ calculateRemainingTime(scope.row.deadlineTime) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="填报完成度" align="center" prop="completionRate" width="200px">
+          <template #default="scope">
+            <div class="flex items-center gap-2">
+              <el-progress
+                :percentage="scope.row.completionRate || 0"
+                :color="getProgressColor(scope.row.completionRate)"
+                :stroke-width="8"
+                style="flex: 1"
+              />
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="填报状态" align="center" prop="reportStatus" width="100px">
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.DRUG_REPORT_STATUS" :value="scope.row.reportStatus" />
+          </template>
+        </el-table-column>
+      <el-table-column label="操作" align="center" width="200px" fixed="right">
+        <template #default="scope">
+          <div class="action-links">
+            <!-- 待填报或草稿状态：显示填报按钮 -->
+            <el-button
+              v-if="scope.row.reportStatus === 0 || scope.row.reportStatus === 1"
+              type="primary"
+              size="small"
+              @click="handleReport(scope.row.id)"
+            >
+              <Icon icon="ep:edit" class="mr-1" />
+              填报
+            </el-button>
+            
+            <!-- 已提交状态：显示查看按钮 -->
+            <el-button
+              v-if="scope.row.reportStatus === 2"
+              type="success"
+              size="small"
+              plain
+              @click="handleView(scope.row.id)"
+            >
+              <Icon icon="ep:document" class="mr-1" />
+              查看
+            </el-button>
+            
+            <!-- 已逾期状态：显示逾期查看按钮 -->
+            <el-button
+              v-if="scope.row.reportStatus === 3"
+              type="warning"
+              size="small"
+              plain
+              @click="handleView(scope.row.id)"
+            >
+              <Icon icon="ep:warning" class="mr-1" />
+              逾期查看
+            </el-button>
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="剩余时间" align="center">
-        <template #default="scope">
-          <span :class="getRemainingTimeClass(scope.row.deadlineTime)">
-            {{ calculateRemainingTime(scope.row.deadlineTime) }}
-          </span>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" align="center" min-width="120px">
-        <template #default="scope">
-          <el-button
-            v-if="scope.row.reportStatus === 0 || scope.row.reportStatus === 1"
-            link
-            type="primary"
-            @click="handleReport(scope.row.id)"
-          >
-            填报
-          </el-button>
-          <el-button
-            v-if="scope.row.reportStatus === 2"
-            link
-            type="info"
-            @click="handleView(scope.row.id)"
-          >
-            查看
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    <!-- 分页 -->
-    <Pagination
-      :total="total"
-      v-model:page="queryParams.pageNo"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-  </ContentWrap>
+      </el-table>
+      <!-- 分页 -->
+      <Pagination
+        :total="total"
+        v-model:page="queryParams.pageNo"
+        v-model:limit="queryParams.pageSize"
+        @pagination="getList"
+      />
+    </ContentWrap>
 
-  <!-- 表单弹窗：添加/修改 -->
-  <!-- <ReportTaskForm ref="formRef" @success="getList" /> -->
+    <!-- 表单弹窗：添加/修改 -->
+    <!-- <ReportTaskForm ref="formRef" @success="getList" /> -->
+  </div>
 </template>
 
 <script setup lang="ts">
 import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
-import download from '@/utils/download'
 import { ReportTaskApi, ReportTaskVO } from '@/api/shortage/reporttask'
 import { ReportZoneApi, ReportZoneOptionVO } from '@/api/shortage/reportzone'
 import { useRouter, useRoute } from 'vue-router'
-// import ReportTaskForm from './ReportTaskForm.vue'
+import dayjs from 'dayjs'
 
 /** 机构填报任务 列表 */
 defineOptions({ name: 'ReportTask' })
 
-const message = useMessage() // 消息弹窗
-const { t } = useI18n() // 国际化
 const router = useRouter() // 路由
 const route = useRoute() // 路由实例
 
@@ -154,11 +178,10 @@ const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
   year: undefined,
-  zoneId: undefined,
+  zoneName: undefined,
   reportStatus: undefined
 })
 const queryFormRef = ref() // 搜索的表单
-const exportLoading = ref(false) // 导出的加载中
 
 // 下拉选项数据
 const yearOptions = ref<number[]>([])
@@ -186,21 +209,6 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryFormRef.value.resetFields()
   handleQuery()
-}
-
-/** 导出按钮操作 */
-const handleExport = async () => {
-  try {
-    // 导出的二次确认
-    await message.exportConfirm()
-    // 发起导出
-    exportLoading.value = true
-    const data = await ReportTaskApi.exportReportTask(queryParams)
-    download.excel(data, '机构填报任务.xls')
-  } catch {
-  } finally {
-    exportLoading.value = false
-  }
 }
 
 /** 初始化 **/
@@ -243,6 +251,12 @@ const loadZoneOptions = async () => {
   }
 }
 
+/** 格式化截止时间 */
+const formatDeadlineTime = (deadlineTime: string) => {
+  if (!deadlineTime) return '-'
+  return dayjs(deadlineTime).format('YYYY-MM-DD HH:mm')
+}
+
 /** 计算剩余时间 */
 const calculateRemainingTime = (deadlineTime: string) => {
   if (!deadlineTime) return '-'
@@ -250,17 +264,23 @@ const calculateRemainingTime = (deadlineTime: string) => {
   const now = new Date()
   const deadline = new Date(deadlineTime)
   const diff = deadline.getTime() - now.getTime()
+  const absDiff = Math.abs(diff)
+  const prefix = diff <= 0 ? '逾期' : '剩余'
 
-  if (diff <= 0) {
-    const overdue = Math.abs(diff)
-    const days = Math.floor(overdue / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((overdue % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    return days > 0 ? `逾期${days}天` : `逾期${hours}小时`
-  } else {
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    return days > 0 ? `剩余${days}天` : `剩余${hours}小时`
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60))
+
+  // 大于等于1天：显示天+小时
+  if (days > 0) {
+    return `${prefix}${days}天${hours}小时`
   }
+  // 大于等于1小时：显示小时+分钟
+  if (hours > 0) {
+    return `${prefix}${hours}小时${minutes}分钟`
+  }
+  // 小于1小时：只显示分钟
+  return `${prefix}${minutes}分钟`
 }
 
 /** 获取剩余时间样式类名 */
@@ -272,9 +292,11 @@ const getRemainingTimeClass = (deadlineTime: string) => {
   const diff = deadline.getTime() - now.getTime()
 
   if (diff <= 0) {
-    return 'text-red-500' // 逾期显示红色
+    return 'text-red-500 font-bold' // 逾期显示红色加粗
   } else if (diff <= 24 * 60 * 60 * 1000) {
-    return 'text-orange-500' // 24小时内显示橙色
+    return 'text-orange-500 font-bold' // 24小时内显示橙色加粗
+  } else if (diff <= 3 * 24 * 60 * 60 * 1000) {
+    return 'text-orange-400' // 3天内显示橙色
   } else {
     return 'text-green-500' // 正常显示绿色
   }
@@ -328,3 +350,24 @@ const handleView = (id: number) => {
   })
 }
 </script>
+
+<style scoped>
+/* 操作按钮区域 */
+.action-links {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+
+  :deep(.el-button) {
+    margin: 0;
+    padding: 4px 0;
+    font-weight: 500;
+
+    .mr-1 {
+      margin-right: 4px;
+    }
+  }
+}
+</style>

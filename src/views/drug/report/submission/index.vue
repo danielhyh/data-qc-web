@@ -89,7 +89,7 @@
       </el-table-column>
 
       <!-- 剩余时间 -->
-      <el-table-column label="剩余时间" align="center" width="120px">
+      <el-table-column label="剩余时间" align="center" width="150px">
         <template #default="scope">
           <span v-if="scope.row.status !== 3" :class="getRemainingTimeClass(scope.row.endDate, scope.row.status)">
             {{ calculateRemainingTime(scope.row.endDate, scope.row.status) }}
@@ -302,17 +302,23 @@ function calculateRemainingTime(endDate?: number, status?: number): string {
   if (!endDate) return '-'
   const now = Date.now()
   const diff = endDate - now
+  const absDiff = Math.abs(diff)
+  const prefix = diff <= 0 ? '逾期' : '剩余'
 
-  if (diff <= 0) {
-    const overdue = Math.abs(diff)
-    const days = Math.floor(overdue / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((overdue % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    return days > 0 ? `逾期${days}天` : `逾期${hours}小时`
-  } else {
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    return days > 0 ? `剩余${days}天` : `剩余${hours}小时`
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60))
+
+  // 大于等于1天：显示天+小时
+  if (days > 0) {
+    return `${prefix}${days}天${hours}小时`
   }
+  // 大于等于1小时：显示小时+分钟
+  if (hours > 0) {
+    return `${prefix}${hours}小时${minutes}分钟`
+  }
+  // 小于1小时：只显示分钟
+  return `${prefix}${minutes}分钟`
 }
 
 /**

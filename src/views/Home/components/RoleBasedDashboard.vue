@@ -97,14 +97,14 @@
     </div>
 
     <!-- 待处理任务和消息提醒 -->
-    <el-row :gutter="20" class="bottom-section">
+<!--    <el-row :gutter="20" class="bottom-section">
       <el-col :xs="24" :lg="16">
         <PendingTasksCard :tasks="recentTasks" @view-all="handleViewAllTasks" />
       </el-col>
       <el-col :xs="24" :lg="8">
         <MessageCenterCard :messages="recentMessages" @view-all="handleViewAllMessages" />
       </el-col>
-    </el-row>
+    </el-row>-->
   </div>
 </template>
 

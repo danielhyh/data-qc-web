@@ -1,15 +1,13 @@
+<!--填报记录管理页面-->
 <template>
   <div class="flex h-full">
     <!-- 左侧地区树选择器 -->
-    <div
-      ref="selectorPanel"
-      class="selector-panel"
-      :style="{ width: selectorWidth + 'px' }"
-    >
-      <ContentWrap class="h-full selector-card" title="地区">
-        <RegionTree @node-click="handleRegionSelect" />
-      </ContentWrap>
-    </div>
+    <RegionTree 
+      ref="regionTreeRef"
+      :style="{ width: selectorWidth + 'px', flexShrink: 0 }"
+      :auto-select-first="false"
+      @node-click="handleRegionSelect" 
+    />
 
     <!-- 拖拽分隔条 -->
     <div
@@ -18,7 +16,7 @@
     ></div>
 
     <!-- 右侧内容区域 -->
-    <div class="flex-1 ml-5">
+    <div class="flex-1 ml-5 main-content">
       <ContentWrap>
         <!-- 搜索工作栏 -->
         <el-form
@@ -51,13 +49,20 @@
               class="!w-200px"
             />
           </el-form-item>
-          <el-form-item label="联系人" prop="contactPerson">
-            <el-input
-              v-model="queryParams.contactPerson"
-              placeholder="请输入联系人"
+          <el-form-item label="填报状态" prop="reportStatus">
+            <el-select
+              v-model="queryParams.reportStatus"
+              placeholder="请选择填报状态"
               clearable
               class="!w-160px"
-            />
+            >
+              <el-option
+                v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_REPORT_STATUS)"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
+              />
+            </el-select>
           </el-form-item>
           <el-form-item>
             <el-button @click="handleQuery">
@@ -72,44 +77,65 @@
         </el-form>
       </ContentWrap>
 
+      <!-- 当前选择的地区信息 -->
+      <div v-if="selectedRegion" class="my-15px">
+        <el-tag type="primary" size="large" class="region-tag" :closable="true" @close="handleClearRegion">
+          <Icon icon="ep:location" class="mr-5px" />
+          当前地区：{{ getRegionDisplayName(selectedRegion) }}
+        </el-tag>
+      </div>
+
       <!-- 列表 -->
       <ContentWrap>
-        <!-- 当前选择的地区信息 -->
-        <div v-if="selectedRegion" class="mb-15px">
-          <el-tag type="info" size="large">
-            <Icon icon="ep:location" class="mr-5px" />
-            当前地区：{{ getRegionDisplayName(selectedRegion) }}
-          </el-tag>
-        </div>
-
-        <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-          <el-table-column label="所属市" align="center" prop="cityName" width="100" />
-          <el-table-column label="所属区县" align="center" prop="districtName" width="120" />
-          <el-table-column label="机构名称" align="center" prop="deptName" min-width="150" />
+        <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
+          <el-table-column label="序号" width="80" type="index" align="center" />
+          <el-table-column label="所属地区" align="center" prop="regionPath" min-width="180">
+            <template #default="scope">
+              <span class="region-path">{{ scope.row.regionPath || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="机构名称" align="center" prop="deptName" min-width="150">
+            <template #default="scope">
+              <span class="font-bold">{{ scope.row.deptName }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="联系人" align="center" prop="contactPerson" width="100" />
           <el-table-column label="联系电话" align="center" prop="contactPhone" width="120" />
-          <el-table-column label="填报时间" align="center" prop="submitTime" width="180" :formatter="dateFormatter"/>
           <el-table-column label="填报周期" align="center" prop="reportWeek" width="100" />
-          <el-table-column label="填报完成度" align="center" prop="completionRate" width="120">
+          <el-table-column label="截止时间" align="center" width="150px">
+            <template #default="scope">
+              {{ formatDeadlineTime(scope.row.deadlineTime) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="剩余时间" align="center" width="150px">
+            <template #default="scope">
+              <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已逾期</span>
+              <span v-else :class="getRemainingTimeClass(scope.row.deadlineTime)">
+                {{ calculateRemainingTime(scope.row.deadlineTime) }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="填报完成度" align="center" prop="completionRate" width="180px">
             <template #default="scope">
               <div class="flex items-center gap-2">
                 <el-progress
                   :percentage="scope.row.completionRate || 0"
+                  :color="getProgressColor(scope.row.completionRate)"
                   :stroke-width="8"
                   style="flex: 1"
                 />
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="备注" align="center" prop="remark" min-width="120" />
-          <el-table-column label="操作" align="center" width="80px" fixed="right">
+          <el-table-column label="填报状态" align="center" prop="reportStatus" width="100px">
             <template #default="scope">
-              <el-button
-                link
-                type="primary"
-                @click="handleView(scope.row.taskId)"
-              >
-                查看
+              <dict-tag :type="DICT_TYPE.DRUG_REPORT_STATUS" :value="scope.row.reportStatus" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" align="center" width="100px" fixed="right">
+            <template #default="scope">
+              <el-button type="primary" size="small" @click="handleDetail(scope.row)">
+                详情
               </el-button>
             </template>
           </el-table-column>
@@ -123,20 +149,166 @@
         />
       </ContentWrap>
     </div>
+
+    <!-- 详情弹窗 -->
+    <Dialog :title="`${detailData.deptName || ''} - 填报详情`" v-model="detailDialogVisible" width="1200px">
+      <div v-loading="detailLoading" class="detail-container">
+        <!-- 基本信息卡片 -->
+        <ContentWrap
+          title="基本信息"
+          header-icon="ep:info-filled"
+          :collapsible="true"
+          :default-collapsed="false"
+          shadow="hover"
+          class="detail-section"
+        >
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="填报专区">{{ detailData.zoneName || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="机构名称">{{ detailData.deptName || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="所属地区">{{ detailData.regionPath || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="填报周期">{{ detailData.reportWeek || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="联系人">{{ detailData.contactPerson || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="联系电话">{{ detailData.contactPhone || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="填报状态">
+              <dict-tag :type="DICT_TYPE.DRUG_REPORT_STATUS" :value="detailData.reportStatus" />
+            </el-descriptions-item>
+            <el-descriptions-item label="填报完成度">
+              <el-progress
+                :percentage="Number(detailData.completionRate) || 0"
+                :color="getProgressColor(detailData.completionRate)"
+                :stroke-width="10"
+                style="width: 200px"
+              />
+            </el-descriptions-item>
+            <el-descriptions-item label="提交时间">
+              {{ formatDeadlineTime(detailData.submitTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="截止时间">
+              {{ formatDeadlineTime(detailData.deadlineTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="备注" :span="2">{{ detailData.remark || '-' }}</el-descriptions-item>
+          </el-descriptions>
+        </ContentWrap>
+
+        <!-- 填报明细卡片 -->
+        <ContentWrap
+          :title="`填报明细（${detailRecords.length} 种药品）`"
+          header-icon="ep:document"
+          :collapsible="true"
+          :default-collapsed="false"
+          shadow="hover"
+          class="detail-section"
+        >
+          <div class="table-wrapper">
+            <el-table
+              :data="detailRecords"
+              border
+              max-height="450"
+              :row-class-name="getDetailRowClassName"
+              class="detail-table"
+            >
+              <el-table-column label="序号" type="index" width="90" align="center" class-name="header-bold" />
+              <el-table-column
+                label="药品名称"
+                prop="drugName"
+                min-width="180"
+                show-overflow-tooltip
+                class-name="header-bold"
+              />
+              <el-table-column
+                label="剂型"
+                prop="dosageCategory"
+                width="100"
+                align="center"
+                class-name="header-bold"
+              />
+              <el-table-column
+                label="最小剂量单位"
+                prop="dosageUnit"
+                width="120"
+                align="center"
+                class-name="header-bold"
+              >
+                <template #default="scope">
+                  <el-tag type="info" size="small" v-if="scope.row.dosageUnit">
+                    {{ scope.row.dosageUnit }}
+                  </el-tag>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="本周累计使用量"
+                prop="weekUsageAmount"
+                width="140"
+                align="right"
+                class-name="header-bold"
+              >
+                <template #default="scope">
+                  <span class="number-value usage">{{ formatNumber(scope.row.weekUsageAmount) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="当日实时库存量"
+                prop="currentStockAmount"
+                width="140"
+                align="right"
+                class-name="header-bold"
+              >
+                <template #default="scope">
+                  <span class="number-value stock">{{ formatNumber(scope.row.currentStockAmount) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="供应情况"
+                prop="supplyStatus"
+                width="100"
+                align="center"
+                class-name="header-bold"
+              >
+                <template #default="scope">
+                  <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="预计可用天数"
+                width="120"
+                align="center"
+                class-name="header-bold"
+              >
+                <template #default="scope">
+                  <div class="stock-days" :class="getAvailableDaysClass(scope.row)">
+                    <Icon :icon="getStockDaysIcon(scope.row)" class="days-icon" />
+                    <span>{{ calculateAvailableDays(scope.row) }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </ContentWrap>
+      </div>
+
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { getIntDictOptions, DICT_TYPE, getDictLabel } from '@/utils/dict'
 import { ReportRecordApi, ReportZoneApi } from '@/api/shortage'
 import RegionTree from '@/views/system/user/RegionTree.vue'
-import { useRouter } from 'vue-router'
-import {dateFormatter} from "@/utils/formatTime";
+import { useMessage } from '@/hooks/web/useMessage'
+import { Dialog } from '@/components/Dialog'
+import { ContentWrap } from '@/components/ContentWrap'
+import { Icon } from '@/components/Icon'
+import dayjs from 'dayjs'
 
 /** 填报记录查询列表 */
 defineOptions({ name: 'ReportRecordList' })
 
 const message = useMessage() // 消息弹窗
-const router = useRouter() // 路由
 
 const loading = ref(true) // 列表的加载中
 const list = ref<any[]>([]) // 列表的数据
@@ -145,8 +317,14 @@ const selectedRegion = ref<any>(null) // 选中的地区节点
 const reportWeekOptions = ref<string[]>([]) // 填报周期选项
 const zoneOptions = ref<any[]>([]) // 填报专区选项
 
+// 详情弹窗相关
+const detailDialogVisible = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<any>({})
+const detailRecords = ref<any[]>([])
+
 // 面板拖拽相关
-const selectorPanel = ref<HTMLElement>()
+const regionTreeRef = ref<InstanceType<typeof RegionTree>>()
 const selectorWidth = ref(250) // 默认宽度设为最小宽度
 const isResizing = ref(false)
 
@@ -157,7 +335,7 @@ const queryParams = reactive({
   zoneId: undefined, // 填报专区ID
   reportWeek: undefined, // 填报周期
   deptName: undefined, // 机构名称
-  contactPerson: undefined // 联系人
+  reportStatus: undefined // 填报状态
 })
 const queryFormRef = ref() // 搜索的表单
 
@@ -209,11 +387,22 @@ const handleRegionSelect = (region: any) => {
   getList()
 }
 
+/** 清除地区选择 */
+const handleClearRegion = () => {
+  selectedRegion.value = null
+  queryParams.regionCode = undefined
+  queryParams.pageNo = 1
+  // 清除树的选中状态
+  regionTreeRef.value?.clearSelection()
+  getList()
+}
+
 /** 获取地区显示名称 */
 const getRegionDisplayName = (region: any) => {
   if (!region) return ''
-  const levelNames = { 1: '省', 2: '市', 3: '区县' }
-  return `${region.name}(${levelNames[region.level] || ''})`
+  // 使用字典获取地区级别的文字
+  const levelLabel = getDictLabel(DICT_TYPE.REGION_LEVEL, region.level)
+  return `${region.name}(${levelLabel || ''})`
 }
 
 /** 搜索按钮操作 */
@@ -228,23 +417,142 @@ const resetQuery = () => {
   handleQuery()
 }
 
-/** 查看按钮操作 */
-const handleView = (taskId: number) => {
-  // 从列表中找到对应的任务记录
-  const record = list.value.find((r) => r.taskId === taskId)
-  if (!record) return
-
-  // 跳转到填报查看页面,传递专区ID、周期和填报状态
-  router.push({
-    name: 'ShortageReportView',
-    params: { taskId: taskId.toString() },
-    query: {
-      zoneId: record.zoneId?.toString(),
-      reportWeek: record.reportWeek,
-      reportStatus: record.reportStatus?.toString()
-    }
-  })
+/** 格式化截止时间 */
+const formatDeadlineTime = (deadlineTime: string) => {
+  if (!deadlineTime) return '-'
+  return dayjs(deadlineTime).format('YYYY-MM-DD HH:mm')
 }
+
+/** 计算剩余时间 */
+const calculateRemainingTime = (deadlineTime: string) => {
+  if (!deadlineTime) return '-'
+
+  const now = new Date()
+  const deadline = new Date(deadlineTime)
+  const diff = deadline.getTime() - now.getTime()
+  const absDiff = Math.abs(diff)
+  const prefix = diff <= 0 ? '逾期' : '剩余'
+
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60))
+
+  // 大于等于1天：显示天+小时
+  if (days > 0) {
+    return `${prefix}${days}天${hours}小时`
+  }
+  // 大于等于1小时：显示小时+分钟
+  if (hours > 0) {
+    return `${prefix}${hours}小时${minutes}分钟`
+  }
+  // 小于1小时：只显示分钟
+  return `${prefix}${minutes}分钟`
+}
+
+/** 获取剩余时间样式类名 */
+const getRemainingTimeClass = (deadlineTime: string) => {
+  if (!deadlineTime) return ''
+
+  const now = new Date()
+  const deadline = new Date(deadlineTime)
+  const diff = deadline.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    return 'text-red-500 font-bold' // 逾期显示红色加粗
+  } else if (diff <= 24 * 60 * 60 * 1000) {
+    return 'text-orange-500 font-bold' // 24小时内显示橙色加粗
+  } else if (diff <= 3 * 24 * 60 * 60 * 1000) {
+    return 'text-orange-400' // 3天内显示橙色
+  } else {
+    return 'text-green-500' // 正常显示绿色
+  }
+}
+
+/** 获取进度条颜色 */
+const getProgressColor = (percentage: number) => {
+  if (percentage >= 100) {
+    return '#67C23A' // 绿色 - 完成
+  } else if (percentage >= 60) {
+    return '#409EFF' // 蓝色 - 良好
+  } else if (percentage >= 30) {
+    return '#E6A23C' // 橙色 - 一般
+  } else {
+    return '#F56C6C' // 红色 - 较低
+  }
+}
+
+/** 详情按钮操作 */
+const handleDetail = async (row: any) => {
+  detailDialogVisible.value = true
+  detailData.value = { ...row }
+  detailLoading.value = true
+  
+  try {
+    // 获取填报明细数据
+    const data = await ReportRecordApi.getReportRecordDetail(row.taskId)
+    detailRecords.value = data || []
+  } catch (error) {
+    console.error('加载填报明细失败:', error)
+    message.error('加载填报明细失败')
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+/** 格式化数字 */
+const formatNumber = (value: number | undefined): string => {
+  if (value === undefined || value === null) return '0.00'
+  return value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** 计算库存可用天数 */
+const calculateAvailableDays = (row: any): string => {
+  const weekUsage = row.weekUsageAmount || 0
+  const currentStock = row.currentStockAmount || 0
+
+  if (weekUsage === 0) return '充足'
+
+  const dailyUsage = weekUsage / 7
+  if (dailyUsage === 0) return '充足'
+
+  const days = Math.floor(currentStock / dailyUsage)
+
+  if (days > 999) return '充足'
+  if (days < 0) return '0天'
+  return `${days}天`
+}
+
+/** 获取库存天数样式类 */
+const getAvailableDaysClass = (row: any): string => {
+  const weekUsage = row.weekUsageAmount || 0
+  const currentStock = row.currentStockAmount || 0
+
+  if (weekUsage === 0) return 'sufficient'
+
+  const dailyUsage = weekUsage / 7
+  const days = Math.floor(currentStock / dailyUsage)
+
+  if (days > 30) return 'sufficient'
+  if (days > 7) return 'warning'
+  return 'danger'
+}
+
+/** 获取库存天数图标 */
+const getStockDaysIcon = (row: any): string => {
+  const className = getAvailableDaysClass(row)
+  if (className === 'sufficient') return 'ep:circle-check-filled'
+  if (className === 'warning') return 'ep:warning-filled'
+  return 'ep:circle-close-filled'
+}
+
+/** 获取详情表格行样式 */
+const getDetailRowClassName = ({ row }: { row: any }): string => {
+  if (row.supplyStatus === 4) return 'severe-shortage-row'
+  if (row.supplyStatus === 3) return 'shortage-row'
+  if (row.supplyStatus === 2) return 'warning-row'
+  return ''
+}
+
 
 /** 加载填报周期选项 */
 const loadReportWeekOptions = async () => {
@@ -270,32 +578,12 @@ const loadZoneOptions = async () => {
 onMounted(() => {
   loadReportWeekOptions()
   loadZoneOptions()
-  // 不自动加载数据，等待用户选择地区
+  // 默认加载所有数据，不限制地区
+  getList()
 })
 </script>
 
 <style scoped lang="scss">
-.selector-panel {
-  flex-shrink: 0;
-  min-width: 250px;
-  max-width: 600px;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.selector-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-
-  :deep(.el-card__body) {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-  }
-}
-
 .resize-handle {
   width: 5px;
   background: var(--el-border-color-light);
@@ -305,6 +593,148 @@ onMounted(() => {
 
   &:hover {
     background: var(--el-color-primary);
+  }
+}
+
+// 右侧内容区域 - 关键：限制宽度避免被表格撑开
+.main-content {
+  min-width: 0; // flex子元素必须设置，否则默认min-width: auto会导致内容溢出
+  overflow-x: auto; // 横向滚动
+}
+
+// 地区标签美化
+.region-tag {
+  padding: 10px 18px;
+  font-size: 14px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.25);
+    transform: translateY(-1px);
+  }
+
+  :deep(.el-icon) {
+    font-size: 16px;
+  }
+}
+
+// 地区路径样式
+.region-path {
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+}
+
+// 详情容器
+.detail-container {
+  max-height: 75vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 4px;
+
+  // 自定义滚动条样式
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+// 详情区块样式
+.detail-section {
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// 表格容器
+.table-wrapper {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+// 详情表格样式
+.detail-table {
+  font-size: 14px;
+
+  :deep(.el-table__header) {
+    background: linear-gradient(180deg, #f8f9fb 0%, #f5f7fa 100%);
+  }
+
+  :deep(.header-bold .cell) {
+    font-weight: 600;
+    color: #303133;
+  }
+
+  // 行样式
+  :deep(.warning-row) {
+    background-color: #fdf6ec;
+  }
+
+  :deep(.shortage-row) {
+    background-color: #fef0f0;
+  }
+
+  :deep(.severe-shortage-row) {
+    background-color: #fee;
+  }
+}
+
+// 数值样式
+.number-value {
+  font-weight: 600;
+  font-size: 14px;
+
+  &.usage {
+    color: #409eff;
+  }
+
+  &.stock {
+    color: #67c23a;
+  }
+}
+
+// 库存天数样式
+.stock-days {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+
+  &.sufficient {
+    color: #67c23a;
+    background: #67c23a10;
+  }
+
+  &.warning {
+    color: #e6a23c;
+    background: #e6a23c10;
+  }
+
+  &.danger {
+    color: #f56c6c;
+    background: #f56c6c10;
+  }
+
+  .days-icon {
+    font-size: 16px;
   }
 }
 </style>

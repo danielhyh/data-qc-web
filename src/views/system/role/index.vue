@@ -83,7 +83,6 @@
     <el-table
       v-loading="loading"
       :data="list"
-      border
       :show-overflow-tooltip="true"
     >
       <el-table-column align="center" label="角色编号" prop="id" width="100" />
@@ -108,69 +107,65 @@
         prop="createTime"
         width="180"
       />
-      <el-table-column align="center" label="操作" width="280" fixed="right">
+      <el-table-column align="center" label="操作" width="240" fixed="right">
         <template #default="scope">
-          <div class="action-links">
-            <!-- 编辑按钮 - 内置角色不显示 -->
-            <el-button
-              v-if="scope.row.type !== 1"
-              v-hasPermi="['system:role:update']"
-              link
-              type="primary"
-              size="small"
-              @click="openForm('update', scope.row.id)"
-            >
-              <Icon icon="ep:edit" class="mr-1" />
-              编辑
-            </el-button>
+          <!-- 菜单权限按钮 -->
+          <el-button
+            v-hasPermi="['system:permission:assign-role-menu']"
+            size="small"
+            type="primary"
+            @click="openAssignMenuForm(scope.row)"
+          >
+            <Icon icon="ep:menu" />
+            菜单权限
+          </el-button>
 
-            <!-- 菜单权限按钮 -->
-            <el-button
-              v-hasPermi="['system:permission:assign-role-menu']"
-              link
-              type="primary"
-              size="small"
-              @click="openAssignMenuForm(scope.row)"
-            >
-              <Icon icon="ep:menu" class="mr-1" />
-              菜单权限
+          <!-- 更多操作下拉菜单 - 内置角色不显示 -->
+          <el-dropdown
+            v-if="scope.row.type !== 1"
+            @command="(command) => handleCommand(command, scope.row)"
+            @visible-change="(visible) => handleDropdownVisibleChange(scope.row.id, visible)"
+            trigger="click"
+          >
+            <el-button size="small" type="info" class="more-btn">
+              <Icon :icon="dropdownStates[scope.row.id] ? 'ep:arrow-up' : 'ep:arrow-down'" />
+              更多
             </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  command="edit"
+                  v-if="checkPermi(['system:role:update'])"
+                >
+                  <Icon icon="ep:edit" class="mr-5px" />
+                  编辑
+                </el-dropdown-item>
+                <el-dropdown-item
+                  command="dataPermission"
+                  v-if="checkPermi(['system:permission:assign-role-data-scope'])"
+                >
+                  <Icon icon="ep:coin" class="mr-5px" />
+                  数据权限
+                </el-dropdown-item>
+                <el-dropdown-item
+                  command="delete"
+                  v-if="checkPermi(['system:role:delete'])"
+                >
+                  <Icon icon="ep:delete" class="mr-5px" />
+                  删除
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
 
-            <!-- 数据权限按钮 - 内置角色不显示 -->
-            <el-button
-              v-if="scope.row.type !== 1"
-              v-hasPermi="['system:permission:assign-role-data-scope']"
-              link
-              type="warning"
-              size="small"
-              @click="openDataPermissionForm(scope.row)"
-            >
-              <Icon icon="ep:coin" class="mr-1" />
-              数据权限
-            </el-button>
-
-            <!-- 删除按钮 - 内置角色不显示 -->
-            <el-button
-              v-if="scope.row.type !== 1"
-              v-hasPermi="['system:role:delete']"
-              link
-              type="danger"
-              size="small"
-              @click="handleDelete(scope.row.id)"
-            >
-              <Icon icon="ep:delete" class="mr-1" />
-              删除
-            </el-button>
-
-            <!-- 内置角色提示标签 -->
-            <el-tag
-              v-if="scope.row.type === 1"
-              type="info"
-              size="small"
-            >
-              系统内置
-            </el-tag>
-          </div>
+          <!-- 内置角色提示标签 -->
+          <el-tag
+            v-if="scope.row.type === 1"
+            type="info"
+            size="small"
+          >
+            系统内置
+          </el-tag>
         </template>
       </el-table-column>
     </el-table>
@@ -195,6 +190,7 @@
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
+import { checkPermi } from '@/utils/permission'
 import * as RoleApi from '@/api/system/role'
 import RoleForm from './RoleForm.vue'
 import RoleAssignMenuForm from './RoleAssignMenuForm.vue'
@@ -218,6 +214,7 @@ const queryParams = reactive({
 })
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中
+const dropdownStates = ref<Record<number, boolean>>({}) // 下拉菜单展开状态
 
 /** 查询角色列表 */
 const getList = async () => {
@@ -289,39 +286,28 @@ const handleExport = async () => {
   }
 }
 
+/** 处理下拉菜单可见性变化 */
+const handleDropdownVisibleChange = (rowId: number, visible: boolean) => {
+  dropdownStates.value[rowId] = visible
+}
+
+/** 处理下拉菜单命令 */
+const handleCommand = (command: string, row: RoleApi.RoleVO) => {
+  switch (command) {
+    case 'edit':
+      openForm('update', row.id)
+      break
+    case 'dataPermission':
+      openDataPermissionForm(row)
+      break
+    case 'delete':
+      handleDelete(row.id)
+      break
+  }
+}
+
 /** 初始化 **/
 onMounted(() => {
   getList()
 })
 </script>
-
-<style scoped>
-/* 表头可读性美化 */
-:deep(.el-table__header) th {
-  background: #f4f6fa !important;
-  color: #2d3a4b !important;
-  font-weight: bold !important;
-  font-size: 15px;
-  border-bottom: 2px solid #e0e6ed !important;
-  letter-spacing: 0.5px;
-}
-
-/* 操作按钮区域 */
-.action-links {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-
-  :deep(.el-button) {
-    margin: 0;
-    padding: 4px 0;
-    font-weight: 500;
-
-    .mr-1 {
-      margin-right: 4px;
-    }
-  }
-}
-</style>

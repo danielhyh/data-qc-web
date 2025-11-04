@@ -1,3 +1,4 @@
+<!--数据管理页面-->
 <template>
   <div class="flex h-full">
     <!-- 左侧地区树选择器 -->
@@ -18,7 +19,7 @@
     ></div>
 
     <!-- 右侧内容区域 -->
-    <div class="flex-1 ml-5">
+    <div class="flex-1 ml-5 main-content">
       <ContentWrap>
         <!-- 搜索工作栏 -->
         <el-form
@@ -147,7 +148,11 @@
         >
           <el-table-column type="selection" width="55" />
           <el-table-column label="任务编号" align="center" prop="taskNo" width="180" />
-          <el-table-column label="任务名称" align="center" prop="taskName" width="150" />
+          <el-table-column label="任务名称" align="center" prop="taskName" width="150">
+            <template #default="scope">
+              <span class="font-bold">{{ scope.row.taskName }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="所属市" align="center" prop="cityName" width="100" />
           <el-table-column label="所属区县" align="center" prop="districtName" width="100" />
           <el-table-column label="机构名称" align="center" prop="deptName" width="150" />
@@ -161,70 +166,72 @@
             </template>
           </el-table-column>
           <el-table-column label="备注说明" align="center" prop="description" min-width="120" />
-          <el-table-column label="操作" align="center" min-width="400px" fixed="right">
+          <el-table-column label="操作" align="center" min-width="520px" fixed="right">
             <template #default="scope">
               <el-button
-                  link
                   type="primary"
                   @click="handleViewData(scope.row)"
                   size="small"
               >
+                <Icon icon="ep:view" class="mr-5px" />
                 查看数据
               </el-button>
               <el-button
-                  link
                   type="info"
                   @click="handleViewLog(scope.row)"
                   size="small"
               >
+                <Icon icon="ep:document" class="mr-5px" />
                 上报日志
               </el-button>
               <!-- 后置质控按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
               <el-button
                   v-if="canShowPostQcButton(scope.row.reportStatus)"
-                  link
                   type="warning"
                   @click="handlePostQc(scope.row)"
                   size="small"
               >
+                <Icon icon="ep:check" class="mr-5px" />
                 后置质控
               </el-button>
               <!-- 驳回按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
               <el-button
                   v-if="canShowRejectButton(scope.row.reportStatus)"
-                  link
                   type="danger"
                   @click="handleReject(scope.row)"
                   size="small"
               >
+                <Icon icon="ep:close" class="mr-5px" />
                 驳回
               </el-button>
               <!-- 通过按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
               <el-button
                   v-if="canShowApproveButton(scope.row.reportStatus)"
-                  link
                   type="success"
                   @click="handleApprove(scope.row)"
                   size="small"
               >
+                <Icon icon="ep:circle-check" class="mr-5px" />
                 通过
               </el-button>
               <el-button
-                  link
                   type="primary"
+                  plain
                   @click="openForm('update', scope.row.id)"
                   v-hasPermi="['drug:import-task:update']"
                   size="small"
               >
+                <Icon icon="ep:edit" class="mr-5px" />
                 编辑
               </el-button>
               <el-button
-                  link
                   type="danger"
+                  plain
                   @click="handleDelete(scope.row.id)"
                   v-hasPermi="['drug:import-task:delete']"
                   size="small"
               >
+                <Icon icon="ep:delete" class="mr-5px" />
                 删除
               </el-button>
             </template>
@@ -561,5 +568,11 @@ onMounted(async () => {
   &:hover {
     background: var(--el-color-primary);
   }
+}
+
+// 右侧内容区域 - 关键：限制宽度避免被表格撑开
+.main-content {
+  min-width: 0; // flex子元素必须设置，否则默认min-width: auto会导致内容溢出
+  overflow-x: auto; // 横向滚动
 }
 </style>

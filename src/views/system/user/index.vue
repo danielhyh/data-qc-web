@@ -84,7 +84,7 @@
     ></div>
 
     <!-- 右侧内容区域 -->
-    <div class="flex-1 ml-5">
+    <div class="flex-1 ml-5 main-content">
       <!-- 搜索 -->
       <ContentWrap>
         <el-form
@@ -173,7 +173,11 @@
             align="center"
             prop="username"
             :show-overflow-tooltip="true"
-          />
+          >
+            <template #default="scope">
+              <span class="font-bold">{{ scope.row.username }}</span>
+            </template>
+          </el-table-column>
           <el-table-column
             label="用户昵称"
             align="center"
@@ -206,16 +210,18 @@
             :formatter="dateFormatter"
             width="180"
           />
-          <el-table-column label="操作" align="center" width="160">
+          <el-table-column label="操作" align="center" width="200" fixed="right">
             <template #default="scope">
-              <div class="flex items-center justify-center">
+              <div class="flex items-center justify-center gap-2">
                 <el-button
                   type="primary"
-                  link
+                  plain
+                  size="small"
                   @click="openForm('update', scope.row.id)"
                   v-hasPermi="['system:user:update']"
                 >
-                  <Icon icon="ep:edit" />修改
+                  <Icon icon="ep:edit" class="mr-5px" />
+                  修改
                 </el-button>
                 <el-dropdown
                   @command="(command) => handleCommand(command, scope.row)"
@@ -225,26 +231,32 @@
                     'system:permission:assign-user-role'
                   ]"
                 >
-                  <el-button type="primary" link><Icon icon="ep:d-arrow-right" /> 更多</el-button>
+                  <el-button type="info" size="small">
+                    <Icon icon="ep:arrow-down" class="mr-5px" />
+                    更多
+                  </el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item
                         command="handleDelete"
                         v-if="checkPermi(['system:user:delete'])"
                       >
-                        <Icon icon="ep:delete" />删除
+                        <Icon icon="ep:delete" class="mr-5px" />
+                        删除
                       </el-dropdown-item>
                       <el-dropdown-item
                         command="handleResetPwd"
                         v-if="checkPermi(['system:user:update-password'])"
                       >
-                        <Icon icon="ep:key" />重置密码
+                        <Icon icon="ep:key" class="mr-5px" />
+                        重置密码
                       </el-dropdown-item>
                       <el-dropdown-item
                         command="handleRole"
                         v-if="checkPermi(['system:permission:assign-user-role'])"
                       >
-                        <Icon icon="ep:circle-check" />分配角色
+                        <Icon icon="ep:circle-check" class="mr-5px" />
+                        分配角色
                       </el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
@@ -699,5 +711,11 @@ onMounted(() => {
     margin: 0;
     font-size: 14px;
   }
+}
+
+// 右侧内容区域 - 关键：限制宽度避免被表格撑开
+.main-content {
+  min-width: 0; // flex子元素必须设置，否则默认min-width: auto会导致内容溢出
+  overflow-x: auto; // 横向滚动
 }
 </style>

@@ -1,55 +1,75 @@
 <template>
-  <!-- 页面头部 -->
-  <PageHeader
-    title="药品短缺填报"
-    :show-back-button="true"
-    back-button-text="返回列表"
-    :dict-tag="{ type: DICT_TYPE.DRUG_REPORT_STATUS, value: reportStatus }"
-    :meta="reportMeta"
-    @back-click="handleBack"
-  >
-    <template #extra>
-      <el-form :inline="true" class="header-form">
-        <el-form-item label="填报专区">
-          <el-select
-            v-model="selectedZoneId"
-            @change="loadDrugList"
-            placeholder="请选择专区"
-            :disabled="isZoneDisabled"
-            style="width: 240px"
-          >
-            <el-option
-              v-for="zone in zoneList"
-              :key="zone.id"
-              :label="zone.zoneName"
-              :value="zone.id"
+  <div class="report-container">
+    <!-- 固定头部卡片 -->
+    <ContentWrap class="header-card">
+      <div class="header-content">
+        <div class="header-left">
+          <el-button class="back-button" @click="handleBack" text>
+            <el-icon class="back-icon">
+              <ArrowLeft />
+            </el-icon>
+            <span>返回</span>
+          </el-button>
+          <div class="header-divider"></div>
+          <div class="header-info">
+            <h2 class="page-title">{{ zoneInfo?.zoneName || '药品短缺填报' }}</h2>
+            <p class="page-subtitle">{{ displayWeek }} 填报周期</p>
+          </div>
+        </div>
+        <div class="header-right">
+          <!-- 填报状态 -->
+          <div class="meta-item">
+            <span class="meta-label">状态：</span>
+            <dict-tag :type="DICT_TYPE.DRUG_REPORT_STATUS" :value="reportStatus" />
+          </div>
+          <div class="meta-divider"></div>
+          
+          <!-- 进度信息 - 所有状态都显示 -->
+          <div class="meta-item progress-info">
+            <span class="meta-label">已完成：</span>
+            <span class="meta-value-primary">{{ completedCount }}</span>
+            <span class="meta-text">/</span>
+            <span class="meta-value">{{ totalCount }}</span>
+            <span class="meta-text">项</span>
+          </div>
+          <div class="meta-divider"></div>
+          <div class="meta-item progress-info">
+            <span class="meta-label">完成度：</span>
+            <span class="meta-value-primary">{{ completionRate }}%</span>
+            <el-progress
+              :percentage="completionRate"
+              :color="getProgressColor(completionRate)"
+              :stroke-width="6"
+              :show-text="false"
+              class="mini-progress"
             />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="当前周期">
-          <el-tag type="info">{{ displayWeek }}</el-tag>
-        </el-form-item>
-      </el-form>
-    </template>
-  </PageHeader>
+          </div>
+          
+          <!-- 提交时间（仅已提交状态且有提交时间时显示） -->
+          <template v-if="reportStatus === 2 && taskDetail?.submitTime">
+            <div class="meta-divider"></div>
+            <div class="meta-item">
+              <span class="meta-label">提交时间：</span>
+              <span class="meta-value">{{ dayjs(taskDetail.submitTime).format('YYYY-MM-DD HH:mm') }}</span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </ContentWrap>
 
-  <!-- 时间提醒组件 -->
-  <TimeAlert
-    v-if="!isReadOnly"
-    :is-time-restricted="isTimeRestricted"
-    :is-in-report-time="isInReportTime"
-    :remaining-time="remainingTime"
-    :time-config-display="timeConfigDisplay"
-    :closable="true"
-  />
-
-  <!-- 通知区域 -->
+  <!-- 通知区域（包含剩余时间提示） -->
   <ContentWrap
-    v-if="zoneNotice && selectedZoneId"
-    title="填报通知"
+    v-if="!noticeClosedByUser && zoneNotice && selectedZoneId"
+    :title="noticeTitle"
     header-icon="ep:bell"
     headerIconColor="orange"
+    class="notice-card"
   >
+    <template #header>
+      <el-button text @click="handleCloseNotice" class="close-notice-btn">
+        <el-icon><Close /></el-icon>
+      </el-button>
+    </template>
     <div v-html="zoneNotice" class="notice-content"></div>
   </ContentWrap>
 
@@ -60,37 +80,20 @@
     message="请检查填报数据，确保准确无误后提交"
     header-icon="ep:edit"
   >
-    <!-- 完成度统计 -->
-    <div class="completion-stats">
-      <el-alert type="info" :closable="false" class="stats-alert">
-        <template #title>
-          <div class="stats-content">
-            <span class="stats-text">
-              已完成 <strong>{{ completedCount }}</strong> / {{ totalCount }} 项
-            </span>
-            <span class="stats-separator">|</span>
-            <span class="stats-text">
-              完成度: <strong>{{ completionRate }}%</strong>
-            </span>
-            <el-progress
-              :percentage="completionRate"
-              :color="getProgressColor(completionRate)"
-              :stroke-width="8"
-              class="stats-progress"
-            />
-          </div>
-        </template>
-      </el-alert>
-    </div>
 
     <!-- 药品分类Tab -->
-    <el-tabs v-model="activeDrugCategory" class="drug-category-tabs" @tab-change="handleTabChange">
+    <el-tabs v-model="activeDrugCategory" type="border-card" class="drug-category-tabs" @tab-change="handleTabChange">
       <el-tab-pane
         v-for="category in drugCategories"
         :key="category"
-        :label="`${category} (${getCategoryCount(category)})`"
         :name="category"
       >
+        <template #label>
+          <span class="tab-label">
+            {{ category ?? '' }}
+            <el-badge :value="getCategoryCount(category ?? '')" class="tab-badge" />
+          </span>
+        </template>
         <el-table
           v-loading="loading"
           :data="filteredReportList"
@@ -98,7 +101,7 @@
           class="report-table"
           :row-class-name="getRowClassName"
         >
-          <el-table-column label="序号" type="index" width="60" fixed class-name="header-bold" />
+          <el-table-column label="序号" type="index" width="80" fixed class-name="header-bold" />
           <el-table-column
             label="药品分类"
             prop="drugCategory"
@@ -139,7 +142,7 @@
 
           <el-table-column
             label="本周累计使用量（最小剂量单位）"
-            width="240"
+            width="280"
             align="center"
             class-name="header-bold"
           >
@@ -160,7 +163,7 @@
 
           <el-table-column
             label="当日实时库存量（最小剂量单位）"
-            width="240"
+            width="280"
             align="center"
             class-name="header-bold"
           >
@@ -216,59 +219,80 @@
     </el-tabs>
 
     <!-- 提交区域 -->
-    <div class="submit-area" v-if="selectedZoneId && reportList.length > 0 && !isReadOnly">
+    <div class="submit-area" v-if="selectedZoneId && reportList.length > 0">
       <div class="flex items-center justify-between">
         <div class="submit-buttons">
-          <el-button @click="handlePreview" :disabled="!isInReportTime"> 预览数据</el-button>
-          <el-button type="info" @click="handleSaveDraft" :loading="savingDraft">
-            <Icon icon="ep:document-add" class="mr-1" />
-            保存草稿
-          </el-button>
-          <el-button
-            type="primary"
-            @click="handleSubmit"
-            :loading="submitting"
-            :disabled="!isInReportTime || !isDataValid"
+          <!-- 预览按钮 - 所有状态都显示 -->
+          <el-tooltip 
+            :content="reportList.length === 0 ? '暂无数据可预览' : '预览已填写的数据'"
+            placement="top"
           >
-            <Icon icon="ep:upload" class="mr-1" />
-            提交填报
-          </el-button>
+            <el-button @click="handlePreview" :disabled="reportList.length === 0">
+              <Icon icon="ep:view" class="mr-1" />
+              预览数据
+            </el-button>
+          </el-tooltip>
+          
+          <!-- 草稿和提交按钮 - 仅非只读模式显示 -->
+          <template v-if="!isReadOnly">
+            <el-tooltip 
+              :content="getSaveDraftTooltip"
+              placement="top"
+            >
+              <span>
+                <el-button 
+                  type="info" 
+                  @click="handleSaveDraft" 
+                  :loading="savingDraft"
+                  :disabled="hasNoFilledData"
+                >
+                  <Icon icon="ep:document-add" class="mr-1" />
+                  保存草稿
+                </el-button>
+              </span>
+            </el-tooltip>
+            <el-tooltip 
+              :content="getSubmitTooltip"
+              placement="top"
+            >
+              <span>
+                <el-button
+                  type="primary"
+                  @click="handleSubmit"
+                  :loading="submitting"
+                  :disabled="!isInReportTime"
+                >
+                  <Icon icon="ep:upload" class="mr-1" />
+                  提交填报
+                </el-button>
+              </span>
+            </el-tooltip>
+          </template>
         </div>
       </div>
     </div>
   </ContentWrap>
 
-  <!-- 空状态 -->
-  <el-empty v-if="!selectedZoneId" description="请选择填报专区开始填报" :image-size="100" />
-
   <!-- 预览对话框 -->
   <PreviewDialog ref="previewDialogRef" />
+  </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import dayjs from 'dayjs'
 import {
   ReportZoneApi,
   ReportRecordApi,
   type ReportZoneVO,
-  type ReportRecordVO,
-  getSupplyStatusLabel,
-  SupplyStatusEnum
+  type ReportRecordVO
 } from '@/api/shortage'
-import { Clock } from '@element-plus/icons-vue'
+import { ArrowLeft, Close } from '@element-plus/icons-vue'
 import { ReportTaskApi, type ReportTaskVO } from '@/api/shortage/reporttask'
-import { formatDate } from '@/utils/formatTime'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { useMessage } from '@/hooks/web/useMessage'
 import PreviewDialog from './PreviewDialog.vue'
-import TimeAlert from './TimeAlert.vue'
-import PageHeader from '@/components/PageHeader/index.vue'
-import { useRoute, useRouter } from 'vue-router'
-
-/** 元数据项接口 */
-interface MetaItem {
-  label: string
-  value: string | number
-  icon?: any
-}
 
 /** 短缺药品数据填报页面 */
 defineOptions({ name: 'ShortageReport' })
@@ -284,6 +308,8 @@ const zoneList = ref<ReportZoneVO[]>([])
 const reportList = ref<ReportRecordVO[]>([])
 const zoneNotice = ref('')
 const taskDetail = ref<ReportTaskVO>()
+const zoneInfo = ref<ReportZoneVO>()
+const noticeClosedByUser = ref(false) // 用户是否手动关闭通知
 
 // 从路由获取参数
 const taskId = ref<string>(route.params.taskId as string)
@@ -291,24 +317,8 @@ const routeZoneId = ref<string | undefined>(route.query.zoneId as string | undef
 const routeReportWeek = ref<string | undefined>(route.query.reportWeek as string | undefined)
 const reportStatus = ref<number>(route.query.reportStatus ? Number(route.query.reportStatus) : 0)
 
-// 根据填报状态判断是否为只读模式: 2-已提交为只读
-const isReadOnly = computed(() => reportStatus.value === 2)
-
-// 页面头部元数据
-const reportMeta = computed<MetaItem[]>(() => {
-  const meta: MetaItem[] = []
-
-  // 如果是已提交状态且有提交时间，显示提交时间
-  if (reportStatus.value === 2 && taskDetail.value?.submitTime) {
-    meta.push({
-      label: '提交时间',
-      value: formatDate(taskDetail.value.submitTime),
-      icon: Clock
-    })
-  }
-
-  return meta
-})
+// 根据填报状态判断是否为只读模式: 2-已提交/3-已逾期为只读
+const isReadOnly = computed(() => reportStatus.value === 2 || reportStatus.value === 3)
 
 // 药品分类Tab
 const activeDrugCategory = ref<string>('')
@@ -334,9 +344,6 @@ const getCategoryCount = (category: string) => {
 const handleTabChange = (tabName: string) => {
   activeDrugCategory.value = tabName
 }
-
-// 专区选择框是否禁用(当从列表页传入专区ID时禁用)
-const isZoneDisabled = computed(() => !!routeZoneId.value)
 
 // 返回列表
 const handleBack = () => {
@@ -369,6 +376,83 @@ const isTimeRestricted = ref(false) // 是否有时间限制
 const isInReportTime = ref(false)
 const remainingTime = ref('')
 const timeConfigDisplay = ref('加载中...')
+
+// 通知标题（包含剩余时间信息）
+const noticeTitle = computed(() => {
+  if (!isReadOnly.value && isTimeRestricted.value && remainingTime.value) {
+    if (isInReportTime.value) {
+      return `填报通知（剩余时间：${remainingTime.value}）`
+    } else {
+      return `填报通知（${timeConfigDisplay.value}）`
+    }
+  }
+  return '填报通知'
+})
+
+// 关闭通知
+const handleCloseNotice = () => {
+  noticeClosedByUser.value = true
+}
+
+// 是否有填写的数据
+const hasNoFilledData = computed(() => {
+  return reportList.value.every((item) => {
+    return (
+      (!item.weekUsageAmount || item.weekUsageAmount === 0) &&
+      (!item.currentStockAmount || item.currentStockAmount === 0) &&
+      (!item.supplyStatus || item.supplyStatus === 0)
+    )
+  })
+})
+
+// 保存草稿按钮提示
+const getSaveDraftTooltip = computed(() => {
+  if (hasNoFilledData.value) {
+    return '请至少填写一项数据后再保存草稿'
+  }
+  return '保存当前填写的数据为草稿'
+})
+
+// 提交按钮提示
+const getSubmitTooltip = computed(() => {
+  if (!isInReportTime.value) {
+    if (isTimeRestricted.value) {
+      return `当前不在填报时间内，填报时间：${timeConfigDisplay.value}`
+    }
+    return '当前不在填报时间内'
+  }
+  return '提交填报数据（提交后将无法修改）'
+})
+
+// 验证数据完整性
+const validateData = (): { valid: boolean; message: string; incompleteItems: any[] } => {
+  const incompleteItems: any[] = []
+  
+  reportList.value.forEach((item, index) => {
+    // 使用相同的逻辑检查是否需要必填
+    const isRequired = getIsSupplyStatusRequired(item)
+    
+    // 如果需要必填，供应情况必须填写
+    if (isRequired && (!item.supplyStatus || item.supplyStatus === 0)) {
+      incompleteItems.push({
+        index: index + 1,
+        drugName: item.drugName,
+        category: item.drugCategory
+      })
+    }
+  })
+  
+  if (incompleteItems.length > 0) {
+    const firstItem = incompleteItems[0]
+    return {
+      valid: false,
+      message: `请完善供应情况信息！第 ${firstItem.index} 项「${firstItem.drugName}」需要填写供应情况`,
+      incompleteItems
+    }
+  }
+  
+  return { valid: true, message: '', incompleteItems: [] }
+}
 
 // 判断供应情况是否必填 - 使用计算属性确保响应式更新
 const getIsSupplyStatusRequired = (row: ReportRecordVO): boolean => {
@@ -404,7 +488,8 @@ const checkAndClearSupplyStatus = (row: ReportRecordVO) => {
   const stockAmount = row.currentStockAmount || 0
 
   if (weekUsage === 0 && stockAmount === 0) {
-    row.supplyStatus = null
+    // @ts-ignore - 清空供应情况
+    row.supplyStatus = undefined
   }
 }
 
@@ -438,24 +523,6 @@ const getProgressColor = (percentage: number) => {
     return '#F56C6C' // 红色 - 较低
   }
 }
-
-// 数据有效性检查
-const isDataValid = computed(() => {
-  if (!reportList.value.length) return false
-
-  return reportList.value.every((item) => {
-    // 使用相同的逻辑检查是否需要必填
-    const isRequired = getIsSupplyStatusRequired(item)
-
-    // 如果需要必填，供应情况必须填写
-    if (isRequired) {
-      return item.supplyStatus !== undefined && item.supplyStatus !== null
-    }
-
-    // 如果不需要必填，则通过验证
-    return true
-  })
-})
 const checkReportTime = async () => {
   if (!selectedZoneId.value) {
     timeConfigDisplay.value = '请先选择填报专区'
@@ -466,8 +533,9 @@ const checkReportTime = async () => {
   try {
     const result = await ReportZoneApi.checkReportTime(selectedZoneId.value)
     isInReportTime.value = result.isInTime
-    timeConfigDisplay.value = result.message
-    isTimeRestricted.value = result.hasTimeRestriction !== false // 如果有时间限制则显示组件
+    timeConfigDisplay.value = result.message || ''
+    // @ts-ignore - 使用 isTimeRestricted 字段
+    isTimeRestricted.value = result.isTimeRestricted !== false // 如果有时间限制则显示组件
 
     if (result.isInTime && result.remainingMinutes) {
       const hours = Math.floor(result.remainingMinutes / 60)
@@ -502,14 +570,8 @@ const checkReportTimeFixed = () => {
   timeConfigDisplay.value = '填报时间：每周五 12:00-18:00'
 }
 
-// 获取周数
-const getWeekNumber = (date: Date): number => {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayNum = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
+// 使用统一的周期工具函数
+import { getWeekNumber } from '@/utils/reportWeek'
 
 // 加载专区列表
 const loadZoneList = async () => {
@@ -540,20 +602,27 @@ const loadDrugList = async () => {
 
     // 初始化第一个tab
     if (drugCategories.value.length > 0) {
-      activeDrugCategory.value = drugCategories.value[0]
+      activeDrugCategory.value = drugCategories.value[0] ?? ''
     }
 
-    // 获取通知内容
+    // 获取专区信息
     const zone = zoneList.value.find((z) => z.id === selectedZoneId.value)
-    zoneNotice.value = zone?.noticeContent || ''
+    if (zone) {
+      zoneInfo.value = zone
+      zoneNotice.value = zone.noticeContent ?? ''
+    } else {
+      // 如果从列表中找不到，尝试单独获取
+      try {
+        const zoneData = await ReportZoneApi.get(selectedZoneId.value)
+        zoneInfo.value = zoneData
+        zoneNotice.value = zoneData?.noticeContent ?? ''
+      } catch (error) {
+        console.error('获取专区信息失败:', error)
+      }
+    }
 
     // 检查填报时间
     await checkReportTime()
-
-    // 切换专区时重置时间提醒的关闭状态
-    // if (timeAlertRef.value) {
-    //   timeAlertRef.value.reset()
-    // }
   } catch (error) {
     console.error('加载药品列表失败:', error)
     message.error('加载药品列表失败')
@@ -582,8 +651,10 @@ const handleSubmit = async () => {
     return
   }
 
-  if (!isDataValid.value) {
-    message.warning('请完整填写所有必填字段')
+  // 验证数据完整性
+  const validation = validateData()
+  if (!validation.valid) {
+    message.warning(validation.message)
     return
   }
 
@@ -600,11 +671,12 @@ const handleSubmit = async () => {
         dosageUnit: item.dosageUnit // 确保包含 dosageUnit 字段
       }))
 
-    // 调用提交接口,传递taskId和reportWeek
+    // 调用提交接口,传递taskId、reportWeek和completionRate
     await ReportRecordApi.submitReport({
       taskId: Number(taskId.value),
       reportWeek: displayWeek.value, // 传入当前显示的周期
-      data: submitData
+      data: submitData,
+      completionRate: completionRate.value // 传递前端计算的完成度
     })
     message.success('填报成功')
 
@@ -619,6 +691,12 @@ const handleSubmit = async () => {
 
 // 保存草稿
 const handleSaveDraft = async () => {
+  // 检查是否有数据
+  if (hasNoFilledData.value) {
+    message.warning('请至少填写一项数据后再保存草稿')
+    return
+  }
+
   try {
     savingDraft.value = true
 
@@ -626,25 +704,34 @@ const handleSaveDraft = async () => {
     const draftData = reportList.value
       .filter(
         (item) =>
-          (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null) ||
-          (item.currentStockAmount !== undefined && item.currentStockAmount !== null) ||
-          (item.supplyStatus !== undefined && item.supplyStatus !== null)
+          (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null && item.weekUsageAmount > 0) ||
+          (item.currentStockAmount !== undefined && item.currentStockAmount !== null && item.currentStockAmount > 0) ||
+          (item.supplyStatus !== undefined && item.supplyStatus !== null && item.supplyStatus > 0)
       )
       .map((item) => ({
         ...item,
         dosageUnit: item.dosageUnit
       }))
 
-    if (draftData.length === 0) {
-      message.warning('请至少填写一项数据再保存草稿')
-      return
+    // 验证数据完整性，给出提示但允许保存
+    const validation = validateData()
+    if (!validation.valid) {
+      const incompleteCount = validation.incompleteItems.length
+      const confirmMsg = `当前有 ${incompleteCount} 项数据的供应情况未填写，是否继续保存草稿？\n提示：填写了使用量或库存的药品需要填写供应情况`
+      
+      try {
+        await message.confirm(confirmMsg)
+      } catch {
+        return // 用户取消
+      }
     }
 
-    // 调用保存草稿API,传递taskId和reportWeek
+    // 调用保存草稿API,传递taskId、reportWeek和completionRate
     await ReportRecordApi.saveDraft({
       taskId: Number(taskId.value),
       reportWeek: displayWeek.value, // 传入当前显示的周期
-      data: draftData
+      data: draftData,
+      completionRate: completionRate.value // 传递前端计算的完成度
     })
 
     message.success('草稿保存成功')
@@ -693,59 +780,156 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 页面头部表单样式 */
-.header-form {
+.report-container {
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  min-height: 100vh;
+}
+
+/* 固定头部卡片样式 */
+.header-card {
+  margin-bottom: 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 20px;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  gap: 24px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  min-width: 0;
+}
+
+.back-button {
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
+  margin: -4px 0 0 -4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.back-button:hover {
+  color: #667eea;
+  background: #f3f4f6;
+  border-color: #667eea;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.back-icon {
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.back-button:hover .back-icon {
+  transform: translateX(-2px);
+}
+
+.header-divider {
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(to bottom, transparent, #d1d5db, transparent);
+  flex-shrink: 0;
+}
+
+.header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: #6b7280;
   margin: 0;
+  line-height: 1.5;
 }
 
-.header-form :deep(.el-form-item) {
-  margin-bottom: 0;
-  margin-right: 20px;
-}
-
-.header-form :deep(.el-form-item:last-child) {
-  margin-right: 0;
-}
-
-/* 完成度统计样式 */
-.completion-stats {
-  margin-bottom: 16px;
-}
-
-.stats-alert {
-  border-radius: 6px;
-}
-
-.stats-content {
+.header-right {
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 14px;
+  flex-shrink: 0;
 }
 
-.stats-text {
-  color: #606266;
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.stats-text strong {
+.meta-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.meta-value {
+  font-size: 13px;
+  color: #1a202c;
+  font-weight: 600;
+  background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.meta-value-primary {
+  font-size: 15px;
   color: #409eff;
-  font-size: 16px;
-  margin: 0 4px;
+  font-weight: 700;
 }
 
-.stats-separator {
-  color: #dcdfe6;
-  font-weight: 300;
+.meta-text {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0 2px;
 }
 
-.stats-progress {
-  flex: 1;
-  max-width: 200px;
-  min-width: 120px;
+.meta-divider {
+  width: 1px;
+  height: 20px;
+  background: #e5e7eb;
 }
 
-.stats-progress :deep(.el-progress__text) {
-  min-width: 40px;
+.progress-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-progress {
+  width: 100px;
+  margin-left: 8px;
 }
 
 /* 药品分类Tab样式 */
@@ -764,6 +948,38 @@ onMounted(async () => {
 
 .drug-category-tabs :deep(.el-tabs__item.is-active) {
   color: #409eff;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-badge :deep(.el-badge__content) {
+  background-color: #409eff;
+  border: none;
+  font-weight: 600;
+}
+
+/* 通知卡片样式 */
+.notice-card {
+  transition: all 0.3s ease;
+}
+
+.notice-card :deep(.content-wrap__header) {
+  position: relative;
+}
+
+.close-notice-btn {
+  color: #909399;
+  transition: all 0.3s ease;
+  padding: 4px;
+}
+
+.close-notice-btn:hover {
+  color: #f56c6c;
+  background-color: rgba(245, 108, 108, 0.1);
 }
 
 .notice-content {
@@ -814,6 +1030,12 @@ onMounted(async () => {
 .submit-buttons {
   display: flex;
   gap: 12px;
+  align-items: center;
+}
+
+/* Tooltip 包裹的 span，确保disabled按钮也能显示tooltip */
+.submit-buttons :deep(span) {
+  display: inline-block;
 }
 
 .report-table :deep(.header-bold .cell) {
@@ -857,5 +1079,64 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   gap: 4px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .header-content {
+    flex-wrap: wrap;
+  }
+  
+  .header-right {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+  }
+}
+
+@media (max-width: 768px) {
+  .report-container {
+    padding: 16px;
+  }
+
+  .header-card {
+    top: 16px;
+  }
+
+  .header-content {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-left {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .back-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .page-title {
+    font-size: 16px;
+  }
+
+  .page-subtitle {
+    font-size: 12px;
+  }
+
+  .header-right {
+    width: 100%;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+  }
+
+  .mini-progress {
+    width: 80px;
+  }
 }
 </style>

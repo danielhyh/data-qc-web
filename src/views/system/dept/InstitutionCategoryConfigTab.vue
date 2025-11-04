@@ -108,7 +108,14 @@
   <!-- 列表 -->
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="机构名称" align="center" prop="institutionName" min-width="200" />
+      <el-table-column label="机构名称" align="center" prop="institutionName" min-width="250">
+        <template #default="scope">
+          <div class="institution-name-cell">
+            <Icon icon="ep:office-building" class="institution-icon" />
+            <span class="institution-name-text font-bold">{{ scope.row.institutionName }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column label="行政归属" align="center" prop="category" width="100">
         <template #default="scope">
           <dict-tag :type="DICT_TYPE.ADMINISTRATIVE_AFFILIATION" :value="scope.row.category" />
@@ -129,22 +136,26 @@
         :formatter="dateFormatter"
         width="180px"
       />
-      <el-table-column label="操作" align="center" width="150" fixed="right">
+      <el-table-column label="操作" align="center" width="180px" fixed="right">
         <template #default="scope">
           <el-button
-            link
             type="primary"
+            plain
+            size="small"
             @click="openForm('update', scope.row.id)"
             v-hasPermi="['system:institution-category-config:update']"
           >
-            编辑
+            <Icon icon="ep:edit" class="mr-5px" />
+            修改
           </el-button>
           <el-button
-            link
             type="danger"
+            plain
+            size="small"
             @click="handleDelete(scope.row.id)"
             v-hasPermi="['system:institution-category-config:delete']"
           >
+            <Icon icon="ep:delete" class="mr-5px" />
             删除
           </el-button>
         </template>
@@ -169,6 +180,7 @@ import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { InstitutionCategoryConfigApi, InstitutionCategoryConfigVO } from '@/api/system/institutioncategoryconfig'
 import InstitutionCategoryConfigForm from '../institutioncategoryconfig/InstitutionCategoryConfigForm.vue'
+import { Icon } from '@/components/Icon'
 
 /** 机构行政归属配置 Tab */
 defineOptions({ name: 'InstitutionCategoryConfigTab' })
@@ -283,4 +295,22 @@ onMounted(() => {
   getList()
 })
 </script>
+
+<style scoped lang="scss">
+.institution-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.institution-icon {
+  font-size: 18px;
+  color: #5b8def;
+}
+
+.institution-name-text {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+</style>
 

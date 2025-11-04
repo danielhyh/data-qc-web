@@ -48,5 +48,15 @@ export const ReportRecordApi = {
   // 获取填报周期列表
   getReportWeeks: async () => {
     return await request.get({ url: `/shortage/report-record/report-weeks` })
+  },
+
+  // 查询填报记录列表（管理端）
+  getReportRecordList: async (params: any) => {
+    return await request.get({ url: `/shortage/report-record/list-by-region`, params })
+  },
+
+  // 获取填报详情（含药品明细）
+  getReportRecordDetail: async (taskId: number) => {
+    return await request.get({ url: `/shortage/report-record/detail?taskId=` + taskId })
   }
-}
+}

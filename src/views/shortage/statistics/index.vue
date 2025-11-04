@@ -1,87 +1,103 @@
 <template>
   <div class="statistics-container">
-    <!-- 页面头部 -->
-    <PageHeader
-      title="短缺药品统计分析"
-      content="全面监控和分析药品短缺情况，提供多维度统计报表"
-      :actions="headerActions"
-      @action-click="handleHeaderAction"
-    >
-      <template #extra>
-        <el-form :model="queryParams" :inline="true" class="search-form">
-          <el-form-item label="专区">
-            <el-select
-              v-model="queryParams.zoneId"
-              placeholder="全部"
-              clearable
-              style="width: 160px"
-              @change="loadAllData"
-            >
-              <el-option label="全部" :value="null" />
-              <el-option
-                v-for="zone in zoneList"
-                :key="zone.id"
-                :label="zone.zoneName"
-                :value="zone.id"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="时间">
-            <el-select
-              v-model="queryParams.reportWeek"
-              placeholder="选择周期"
-              style="width: 160px"
-              @change="loadAllData"
-            >
-              <el-option
-                v-for="week in weekOptions"
-                :key="week.value"
-                :label="week.label"
-                :value="week.value"
-              />
-            </el-select>
-          </el-form-item>
-          <!-- 区域机构选择 -->
-          <el-form-item label="地区/机构">
-            <el-button
-              type="primary"
-              @click="showAreaOrgDialog = true"
-            >
-              <el-icon><Location /></el-icon>
-              {{ areaOrgButtonText }}
-            </el-button>
-          </el-form-item>
-          <el-form-item>
-            <el-button
-              type="primary"
-              @click="loadAllData"
-            >
-              <el-icon v-if="!loading"><Refresh /></el-icon>
-              <el-icon v-else><Loading /></el-icon>
-              刷新
-            </el-button>
-            <el-button
-              type="success"
-              @click="handleExportWeeklyReport"
-              :loading="exportLoading"
-              :disabled="!queryParams.zoneId"
-            >
-              <el-icon><Download /></el-icon>
-              导出周报
-            </el-button>
-            <el-button
-              type="warning"
-              @click="handleExportDrugs"
-              :loading="exportDrugsLoading"
-              :disabled="!queryParams.zoneId"
-            >
-              <el-icon><Download /></el-icon>
-              导出药品
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </template>
-    </PageHeader>
+    <!-- 固定头部栏 -->
+    <div class="fixed-header">
+      <div class="header-content">
+        <div class="header-title">
+          <Icon icon="ep:data-analysis" class="title-icon" />
+          <h1 class="title-text">短缺药品统计分析</h1>
+        </div>
+        
+        <div class="header-actions">
+          <el-form :model="queryParams" :inline="true" class="search-form">
+            <el-form-item label="专区">
+              <el-select
+                v-model="queryParams.zoneId"
+                placeholder="全部"
+                clearable
+                style="width: 160px"
+                @change="loadAllData"
+              >
+                <el-option label="全部" :value="null" />
+                <el-option
+                  v-for="zone in zoneList"
+                  :key="zone.id"
+                  :label="zone.zoneName"
+                  :value="zone.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="时间">
+              <el-select
+                v-model="queryParams.reportWeek"
+                placeholder="选择周期"
+                style="width: 160px"
+                @change="loadAllData"
+              >
+                <el-option
+                  v-for="week in weekOptions"
+                  :key="week.value"
+                  :label="week.label"
+                  :value="week.value"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="地区/机构">
+              <el-button
+                type="primary"
+                @click="showAreaOrgDialog = true"
+              >
+                <el-icon><Location /></el-icon>
+                {{ areaOrgButtonText }}
+              </el-button>
+            </el-form-item>
+            <el-form-item>
+              <el-button
+                type="primary"
+                @click="loadAllData"
+              >
+                <el-icon v-if="!loading"><Refresh /></el-icon>
+                <el-icon v-else><Loading /></el-icon>
+                刷新
+              </el-button>
+              <el-tooltip
+                :disabled="!!queryParams.zoneId"
+                content="请先选择专区"
+                placement="top"
+              >
+                <el-button
+                  type="success"
+                  @click="handleExportWeeklyReport"
+                  :loading="exportLoading"
+                  :disabled="!queryParams.zoneId"
+                >
+                  <el-icon><Download /></el-icon>
+                  导出周报
+                </el-button>
+              </el-tooltip>
+              <el-tooltip
+                :disabled="!!queryParams.zoneId"
+                content="请先选择专区"
+                placement="top"
+              >
+                <el-button
+                  type="warning"
+                  @click="handleExportDrugs"
+                  :loading="exportDrugsLoading"
+                  :disabled="!queryParams.zoneId"
+                >
+                  <el-icon><Download /></el-icon>
+                  导出药品
+                </el-button>
+              </el-tooltip>
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 内容区域 - 添加顶部padding -->
+    <div class="content-area">
 
     <!-- 核心指标卡片 - 包含趋势对比 -->
     <div class="core-stats-cards">
@@ -89,7 +105,7 @@
         <!-- 填报机构数 -->
         <el-col :xs="24" :sm="12" :md="6">
           <div class="core-stat-card">
-            <div class="stat-icon-wrapper" style="background: rgba(64, 158, 255, 0.1)">
+            <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(64, 158, 255, 0.15) 0%, rgba(64, 158, 255, 0.05) 100%)">
               <Icon icon="ep:office-building" class="stat-icon" style="color: #409eff" />
             </div>
             <div class="stat-content">
@@ -131,8 +147,8 @@
         <!-- 填报药品数 -->
         <el-col :xs="24" :sm="12" :md="6">
           <div class="core-stat-card">
-            <div class="stat-icon-wrapper" style="background: rgba(103, 194, 58, 0.1)">
-              <Icon icon="ep:medicine-box" class="stat-icon" style="color: #67c23a" />
+            <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(103, 194, 58, 0.15) 0%, rgba(103, 194, 58, 0.05) 100%)">
+              <Icon icon="ep:shopping-bag" class="stat-icon" style="color: #67c23a" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
@@ -161,7 +177,7 @@
         <!-- 短缺药品数 -->
         <el-col :xs="24" :sm="12" :md="6">
           <div class="core-stat-card">
-            <div class="stat-icon-wrapper" style="background: rgba(245, 108, 108, 0.1)">
+            <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(245, 108, 108, 0.15) 0%, rgba(245, 108, 108, 0.05) 100%)">
               <Icon icon="ep:warning-filled" class="stat-icon" style="color: #f56c6c" />
             </div>
             <div class="stat-content">
@@ -191,7 +207,7 @@
         <!-- 填报完成率 -->
         <el-col :xs="24" :sm="12" :md="6">
           <div class="core-stat-card">
-            <div class="stat-icon-wrapper" style="background: rgba(230, 162, 60, 0.1)">
+            <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(230, 162, 60, 0.15) 0%, rgba(230, 162, 60, 0.05) 100%)">
               <Icon icon="ep:circle-check-filled" class="stat-icon" style="color: #e6a23c" />
             </div>
             <div class="stat-content">
@@ -232,8 +248,8 @@
     <div class="other-stats-cards" v-if="overview">
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="6">
-          <div class="core-stat-card">
-            <div class="stat-icon-wrapper" style="background: rgba(230, 162, 60, 0.1)">
+          <div class="core-stat-card other-stat-card">
+            <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(230, 162, 60, 0.15) 0%, rgba(230, 162, 60, 0.05) 100%)">
               <Icon icon="ep:grid" class="stat-icon" style="color: #e6a23c" />
             </div>
             <div class="stat-content">
@@ -250,8 +266,8 @@
           </div>
         </el-col>
         <el-col :xs="24" :sm="12" :md="6">
-          <div class="core-stat-card">
-            <div class="stat-icon-wrapper" style="background: rgba(144, 147, 153, 0.1)">
+          <div class="core-stat-card other-stat-card">
+            <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(144, 147, 153, 0.15) 0%, rgba(144, 147, 153, 0.05) 100%)">
               <Icon icon="ep:trend-charts" class="stat-icon" style="color: #909399" />
             </div>
             <div class="stat-content">
@@ -267,8 +283,8 @@
           </div>
         </el-col>
         <el-col :xs="24" :sm="12" :md="6">
-          <div class="core-stat-card">
-            <div class="stat-icon-wrapper" style="background: rgba(64, 158, 255, 0.1)">
+          <div class="core-stat-card other-stat-card">
+            <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(64, 158, 255, 0.15) 0%, rgba(64, 158, 255, 0.05) 100%)">
               <Icon icon="ep:goods" class="stat-icon" style="color: #409eff" />
             </div>
             <div class="stat-content">
@@ -284,8 +300,8 @@
           </div>
         </el-col>
         <el-col :xs="24" :sm="12" :md="6">
-          <div class="core-stat-card">
-            <div class="stat-icon-wrapper" style="background: rgba(245, 108, 108, 0.1)">
+          <div class="core-stat-card other-stat-card">
+            <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(245, 108, 108, 0.15) 0%, rgba(245, 108, 108, 0.05) 100%)">
               <Icon icon="ep:bell" class="stat-icon" style="color: #f56c6c" />
             </div>
             <div class="stat-content">
@@ -460,6 +476,7 @@ v-for="item in supplyDistribution" :key="item.supplyStatus"
       headerIcon="ep:warning"
       headerIconColor="#f56c6c"
       :headerBackground="true"
+      class="detail-table-wrap"
     >
       <template #header>
         <el-button
@@ -485,17 +502,17 @@ v-for="item in supplyDistribution" :key="item.supplyStatus"
           </template>
         </el-table-column>
         <el-table-column label="剂型" prop="dosageForm" width="100" />
-        <el-table-column label="短缺机构" prop="shortageOrgCount" width="90" align="center">
+        <el-table-column label="短缺机构" prop="shortageOrgCount" width="100" align="center">
           <template #default="scope">
             <el-tag size="small" type="warning">{{ scope.row.shortageOrgCount }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="严重短缺" prop="severeShortageOrgCount" width="90" align="center">
+        <el-table-column label="严重短缺" prop="severeShortageOrgCount" width="110" align="center">
           <template #default="scope">
             <el-tag size="small" type="danger">{{ scope.row.severeShortageOrgCount }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="平均库存(天)" prop="avgStockDays" width="110" align="center">
+        <el-table-column label="平均库存(天)" prop="avgStockDays" width="130" align="center">
           <template #default="scope">
             <el-progress
               :percentage="Math.min(scope.row.avgStockDays * 10, 100)"
@@ -510,7 +527,7 @@ class="stock-days-text"
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="风险等级" width="90" align="center">
+        <el-table-column label="风险等级" width="120" align="center">
           <template #default="scope">
             <el-tag size="small" :type="getRiskLevelType(scope.row.riskLevel)">
               {{ scope.row.riskLevelName }}
@@ -519,7 +536,8 @@ class="stock-days-text"
         </el-table-column>
         <el-table-column label="操作" width="100" align="center" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" size="small" @click="viewDetail(scope.row)">
+            <el-button type="primary" size="small" @click="viewDetail(scope.row)">
+              <el-icon><View /></el-icon>
               详情
             </el-button>
           </template>
@@ -529,14 +547,14 @@ class="stock-days-text"
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
-          v-model:current-page="tablePageNo"
-          v-model:page-size="tablePageSize"
+          :current-page="tablePageNo"
+          :page-size="tablePageSize"
           :page-sizes="[10, 20, 50, 100]"
           :total="shortageTotal"
           layout="total, sizes, prev, pager, next, jumper"
           size="small"
-          @size-change="loadShortageDetails"
-          @current-change="loadShortageDetails"
+          @size-change="(size) => { tablePageSize = size; loadShortageDetails(); }"
+          @current-change="(page) => { tablePageNo = page; loadShortageDetails(); }"
         />
       </div>
     </ContentWrap>
@@ -547,10 +565,11 @@ class="stock-days-text"
       headerIcon="ep:trophy"
       headerIconColor="#ffd700"
       :headerBackground="true"
+      class="ranking-table-wrap"
     >
 
       <el-table :data="orgRanking" size="small" max-height="300">
-        <el-table-column label="排名" prop="rank" width="60" align="center">
+        <el-table-column label="排名" prop="rank" width="90" align="center">
           <template #default="scope">
             <div class="rank-badge" :class="'rank-' + scope.row.rank">
               {{ scope.row.rank }}
@@ -558,7 +577,7 @@ class="stock-days-text"
           </template>
         </el-table-column>
         <el-table-column label="机构名称" prop="orgName" min-width="200" />
-        <el-table-column label="完成率" prop="completionRate" width="100" align="center">
+        <el-table-column label="完成率" prop="completionRate" width="120" align="center">
           <template #default="scope">
             <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
               <el-progress
@@ -574,8 +593,8 @@ class="stock-days-text"
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="填报药品" prop="reportDrugCount" width="90" align="center" />
-        <el-table-column label="短缺药品" prop="shortageDrugCount" width="90" align="center">
+        <el-table-column label="填报药品" prop="reportDrugCount" width="120" align="center" />
+        <el-table-column label="短缺药品" prop="shortageDrugCount" width="120" align="center">
           <template #default="scope">
             <el-tag size="small" v-if="scope.row.shortageDrugCount > 0" type="warning">
               {{ scope.row.shortageDrugCount }}
@@ -583,45 +602,37 @@ class="stock-days-text"
             <span v-else>0</span>
           </template>
         </el-table-column>
-        <el-table-column label="及时率" prop="timelyRate" width="80" align="center">
+        <el-table-column label="及时率" prop="timelyRate" width="120" align="center">
           <template #default="scope">
             {{ scope.row.timelyRate }}%
           </template>
         </el-table-column>
       </el-table>
     </ContentWrap>
-  </div>
+    </div>
+    <!-- 结束 content-area -->
 
-  <!-- 详情对话框 -->
-  <DetailDialog ref="detailDialogRef" />
+    <!-- 详情对话框 -->
+    <DetailDialog ref="detailDialogRef" />
 
-  <!-- 区域机构选择对话框 -->
-  <el-dialog
-    v-model="showAreaOrgDialog"
-    title="选择区域和机构"
-    width="900px"
-    destroy-on-close
-    @open="handleDialogOpen"
-  >
-    <AreaOrgSelector
-      v-model="selectedAreaOrg"
-      :fetch-area-tree="fetchAreaTree"
-      :fetch-org-list="fetchOrgList"
-      :default-area-code="'610000'"
-      @change="handleAreaOrgChange"
+    <!-- 区域机构选择对话框 -->
+    <StatisticsAreaOrgSelector
+      v-model="showAreaOrgDialog"
+      :default-mode="currentSelectMode"
+      :default-area-code="queryParams.areaCode || '610000'"
+      :default-org-ids="queryParams.orgIds || []"
+      @confirm="handleAreaOrgConfirm"
     />
-    <template #footer>
-      <el-button @click="showAreaOrgDialog = false">取消</el-button>
-      <el-button type="primary" @click="confirmAreaOrgSelection">确定</el-button>
-    </template>
-  </el-dialog>
+  </div>
+  <!-- 结束 statistics-container -->
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, onBeforeUnmount, nextTick } from 'vue'
-import {Refresh, Loading, Download, Location} from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import {Refresh, Loading, Download, Location, View} from '@element-plus/icons-vue'
 import { CountTo } from '@/components/CountTo'
 import { Icon } from '@/components/Icon'
+import { ContentWrap } from '@/components/ContentWrap'
 import { useMessage } from '@/hooks/web/useMessage'
 import download from '@/utils/download'
 import {
@@ -648,14 +659,12 @@ import {
 } from '@/api/shortage/statistics'
 import * as echarts from 'echarts'
 import DetailDialog from './components/DetailDialog.vue'
-import PageHeader from '@/components/PageHeader/index.vue'
 // 导入新的图表组件
 import StockWeeksChart from './components/StockWeeksChart.vue'
 import UsageChangeChart from './components/UsageChangeChart.vue'
 import TrendAnalysisChart from './components/TrendAnalysisChart.vue'
 import RegionStatisticsChart from './components/RegionStatisticsChart.vue'
-import AreaOrgSelector from '@/components/AreaOrgSelector/index.vue'
-import { getAreaTree, getOrgListByArea } from '@/api/system/areaOrg'
+import StatisticsAreaOrgSelector from './components/StatisticsAreaOrgSelector.vue'
 
 defineOptions({ name: 'ShortageStatisticsEnhanced' })
 
@@ -674,12 +683,12 @@ const queryParams = reactive<StatisticsQueryVO>({
 
 // 区域机构选择相关
 const showAreaOrgDialog = ref(false)
-const selectedAreaOrg = ref<{ areaCode?: string; orgIds?: number[] }>({})
-const selectedAreaName = ref<string>('') // 存储区域名称
+const currentSelectMode = ref<'area' | 'org'>('area') // 当前选择模式
+const selectedAreaName = ref<string>('陕西省') // 存储区域名称
 
 const areaOrgButtonText = computed(() => {
-  if (selectedAreaOrg.value.orgIds && selectedAreaOrg.value.orgIds.length > 0) {
-    return `${selectedAreaOrg.value.orgIds.length}个机构`
+  if (currentSelectMode.value === 'org' && queryParams.orgIds && queryParams.orgIds.length > 0) {
+    return `${queryParams.orgIds.length}个机构`
   }
   if (selectedAreaName.value) {
     return selectedAreaName.value
@@ -717,33 +726,6 @@ let stockAnalysisChart: echarts.ECharts | null = null
 let usageTrendChart: echarts.ECharts | null = null
 let shortageTrendChart: echarts.ECharts | null = null
 
-// 头部操作按钮
-const headerActions = computed(() => [
-  {
-    key: 'search',
-    text: '查询',
-    type: 'primary' as const,
-    icon: 'Search',
-    loading: loading.value,
-    handler: () => loadAllData()
-  },
-  {
-    key: 'reset',
-    text: '重置',
-    type: 'default' as const,
-    icon: 'Refresh',
-    handler: () => resetQuery()
-  },
-  {
-    key: 'export',
-    text: '导出',
-    type: 'success' as const,
-    icon: 'Download',
-    loading: exportLoading.value,
-    handler: () => handleExport()
-  }
-])
-
 // 周期选项
 const weekOptions = computed(() => {
   if (reportWeeks.value.length === 0) {
@@ -764,14 +746,8 @@ function getCurrentWeek(): string {
   return `${year}-${week.toString().padStart(2, '0')}`
 }
 
-// 获取周数
-function getWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayNum = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
+// 使用统一的周期工具函数
+import { getWeekNumber } from '@/utils/reportWeek'
 
 // 计算药品分类列表
 const drugCategories = computed(() => {
@@ -855,12 +831,6 @@ const handleExportDrugs = async () => {
     message.error('导出药品清单失败')
   } finally {
     exportDrugsLoading.value = false
-  }
-}
-// 处理头部操作
-const handleHeaderAction = (action: any) => {
-  if (action.handler) {
-    action.handler()
   }
 }
 
@@ -1051,7 +1021,7 @@ const resetQuery = () => {
   // 重置时使用第一个可用周期，如果没有则使用当前周期
   queryParams.reportWeek = reportWeeks.value.length > 0 ? reportWeeks.value[0] : getCurrentWeek()
   // 重置区域和机构选择为陕西省
-  selectedAreaOrg.value = { areaCode: '610000' }
+  currentSelectMode.value = 'area'
   selectedAreaName.value = '陕西省'
   queryParams.areaCode = '610000'
   queryParams.orgIds = []
@@ -1446,7 +1416,7 @@ onMounted(() => {
   loadZoneList()
   loadReportWeeks().then(() => {
     // 设置默认区域为陕西省
-    selectedAreaOrg.value = { areaCode: '610000' }
+    currentSelectMode.value = 'area'
     selectedAreaName.value = '陕西省'
     queryParams.areaCode = '610000'
     // 填报周期加载完成后再加载数据
@@ -1473,51 +1443,104 @@ onBeforeUnmount(() => {
 })
 
 // 区域机构选择相关方法
-const fetchAreaTree = async () => {
-  return await getAreaTree()
-}
-
-const fetchOrgList = async (areaCode: string) => {
-  return await getOrgListByArea(areaCode)
-}
-
-const handleAreaOrgChange = (value: { areaCode?: string; orgIds?: number[]; areaName?: string }) => {
-  selectedAreaOrg.value = value
-  selectedAreaName.value = value.areaName || ''
-}
-
-const confirmAreaOrgSelection = () => {
-  // 如果选择了机构，只传机构列表，不传区域
-  if (selectedAreaOrg.value.orgIds && selectedAreaOrg.value.orgIds.length > 0) {
-    queryParams.areaCode = null // 清空区域
-    queryParams.orgIds = selectedAreaOrg.value.orgIds
-  } else if (selectedAreaOrg.value.areaCode) {
-    // 只选择了区域
-    queryParams.areaCode = selectedAreaOrg.value.areaCode
-    queryParams.orgIds = [] // 清空机构
-  } else {
-    // 都没选择，清空
-    queryParams.areaCode = null
+const handleAreaOrgConfirm = (payload: {
+  mode: 'area' | 'org'
+  areaCode?: string
+  areaName?: string
+  orgIds?: number[]
+}) => {
+  currentSelectMode.value = payload.mode
+  
+  if (payload.mode === 'area') {
+    // 地区模式：设置地区代码，清空机构
+    queryParams.areaCode = payload.areaCode || null
     queryParams.orgIds = []
+    selectedAreaName.value = payload.areaName || ''
+  } else {
+    // 机构模式：设置机构列表，清空地区
+    queryParams.areaCode = null
+    queryParams.orgIds = payload.orgIds || []
+    selectedAreaName.value = ''
   }
-  showAreaOrgDialog.value = false
+  
   loadAllData()
-}
-
-// 处理对话框打开时的回显
-const handleDialogOpen = () => {
-  // 对话框打开时，确保传入当前选择的数据用于回显
-  if (selectedAreaOrg.value.areaCode || selectedAreaOrg.value.orgIds?.length) {
-    // 数据已经在 selectedAreaOrg 中，组件会自动回显
-  }
 }
 </script>
 
 <style scoped lang="scss">
 .statistics-container {
-  padding: 8px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%);
-  min-height: calc(100vh - 84px);
+  min-height: 100vh;
+  background: #f5f7fa;
+  position: relative;
+}
+
+// 固定头部栏样式
+.fixed-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 20px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.header-content {
+  padding: 20px 24px;
+  max-width: 1920px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  
+  .title-icon {
+    font-size: 24px;
+    color: #409eff;
+  }
+  
+  .title-text {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #303133;
+  }
+}
+
+.header-actions {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  
+  .search-form {
+    margin: 0;
+    
+    .el-form-item {
+      margin-bottom: 0;
+      margin-right: 12px;
+      
+      :deep(.el-form-item__label) {
+        font-weight: 500;
+        color: #606266;
+      }
+      
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+  }
+}
+
+// 内容区域
+.content-area {
+  padding: 0 24px 24px;
+  max-width: 1920px;
+  margin: 0 auto;
 }
 
 .search-form {
@@ -1530,38 +1553,37 @@ const handleDialogOpen = () => {
 
 // 核心指标卡片样式
 .core-stats-cards {
-  margin: 20px 0;
+  margin: 0 0 20px;
 }
 
 .core-stat-card {
-  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+  background: #ffffff;
   border-radius: 12px;
-  padding: 20px;
+  padding: 24px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 140px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  position: relative;
+  border: 1px solid #ebeef5;
+  transition: all 0.3s ease;
+  cursor: default;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    border-color: transparent;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: #d9ecff;
   }
 
   .stat-icon-wrapper {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 16px;
+    margin-right: 20px;
     flex-shrink: 0;
-    backdrop-filter: blur(10px);
 
     .stat-icon {
       font-size: 28px;
@@ -1573,34 +1595,30 @@ const handleDialogOpen = () => {
     min-width: 0;
 
     .stat-value {
-      font-size: 28px;
+      font-size: 30px;
       font-weight: 700;
       color: #303133;
       line-height: 1.2;
       display: flex;
       align-items: baseline;
-      background: linear-gradient(135deg, #303133 0%, #606266 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
 
       .stat-suffix {
-        font-size: 14px;
-        font-weight: 400;
+        font-size: 16px;
+        font-weight: 500;
         color: #909399;
-        margin-left: 4px;
-        -webkit-text-fill-color: #909399;
+        margin-left: 6px;
       }
     }
 
     .stat-label {
       font-size: 14px;
       color: #606266;
-      margin-top: 6px;
       font-weight: 500;
     }
 
     .stat-progress {
-      margin-top: 8px;
+      margin-top: 10px;
     }
   }
 
@@ -1609,13 +1627,13 @@ const handleDialogOpen = () => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0 12px;
-    border-left: 1px solid rgba(0, 0, 0, 0.06);
-    min-width: 70px;
+    padding: 0 16px;
+    border-left: 1px solid #ebeef5;
+    min-width: 80px;
+    gap: 4px;
 
     .trend-icon {
       font-size: 20px;
-      margin-bottom: 4px;
     }
 
     .trend-value {
@@ -1626,9 +1644,35 @@ const handleDialogOpen = () => {
   }
 }
 
+// 其他指标卡片 - 稍微小一点
+.other-stat-card {
+  height: 110px;
+  padding: 20px;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: #d9ecff;
+  }
+  
+  .stat-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    
+    .stat-icon {
+      font-size: 24px;
+    }
+  }
+  
+  .stat-content .stat-value {
+    font-size: 26px;
+  }
+}
+
 // 其他指标
 .other-stats-cards {
-  margin: 20px 0;
+  margin: 0 0 20px;
 }
 
 .chart-row {
@@ -1637,7 +1681,13 @@ const handleDialogOpen = () => {
 
 .chart-card {
   height: 100%;
-  overflow: visible !important;  // 允许内容溢出
+  overflow: visible !important;
+  border-radius: 12px !important;
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  }
 
   :deep(.el-card__body) {
     padding: 16px !important;
@@ -1884,28 +1934,59 @@ const handleDialogOpen = () => {
   }
 }
 
+// 表格样式优化
+.detail-table-wrap,
+.ranking-table-wrap {
+  border-radius: 12px !important;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+  
+  :deep(.el-table) {
+    th {
+      background: #fafafa;
+      font-weight: 600;
+      color: #303133;
+    }
+    
+    tr:hover > td {
+      background: #f5f7fa !important;
+    }
+  }
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .rank-badge {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 13px;
+  margin: 0 auto;
 
   &.rank-1 {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    background: #ffd700;
     color: #fff;
   }
 
   &.rank-2 {
-    background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+    background: #c0c0c0;
     color: #fff;
   }
 
   &.rank-3 {
-    background: linear-gradient(135deg, #cd7f32, #e6a865);
+    background: #cd7f32;
     color: #fff;
   }
 }

@@ -9,7 +9,7 @@
             <el-icon class="back-icon">
               <ArrowLeft />
             </el-icon>
-            <span>返回列表</span>
+            <span>返回</span>
           </el-button>
           <div class="header-divider"></div>
           <h2 class="page-title">数据上报流程</h2>

@@ -502,14 +502,8 @@ const checkReportTimeFixed = () => {
   timeConfigDisplay.value = '填报时间：每周五 12:00-18:00'
 }
 
-// 获取周数
-const getWeekNumber = (date: Date): number => {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayNum = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-}
+// 使用统一的周期工具函数
+import { getWeekNumber } from '@/utils/reportWeek'
 
 // 加载专区列表
 const loadZoneList = async () => {

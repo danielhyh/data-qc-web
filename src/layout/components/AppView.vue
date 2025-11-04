@@ -42,9 +42,6 @@ provide('reload', reload)
           footer
       }
     ]"
-    :style="{
-      background: 'var(--app-content-bg-color)'
-    }"
   >
     <router-view v-if="routerAlive">
       <template #default="{ Component, route }">

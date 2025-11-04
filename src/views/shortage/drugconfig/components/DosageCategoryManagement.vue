@@ -1,99 +1,114 @@
 <template>
   <!-- 搜索工作栏 -->
-  <el-form
-    class="-mb-15px"
-    :model="queryParams"
-    ref="queryFormRef"
-    :inline="true"
-    label-width="68px"
-  >
-    <el-form-item label="分类名称" prop="categoryName">
-      <el-input
-        v-model="queryParams.categoryName"
-        placeholder="请输入分类名称"
-        clearable
-        @keyup.enter="handleQuery"
-        class="!w-240px"
-      />
-    </el-form-item>
-    <el-form-item label="剂型单位" prop="dosageUnit">
-      <el-input
-        v-model="queryParams.dosageUnit"
-        placeholder="请输入剂型单位"
-        clearable
-        @keyup.enter="handleQuery"
-        class="!w-240px"
-      />
-    </el-form-item>
-    <el-form-item label="状态" prop="status">
-      <el-select v-model="queryParams.status" placeholder="请选择状态" clearable class="!w-240px">
-        <el-option
-          v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-          :key="dict.value"
-          :label="dict.label"
-          :value="dict.value"
+  <ContentWrap>
+    <el-form
+      class="-mb-15px"
+      :model="queryParams"
+      ref="queryFormRef"
+      :inline="true"
+      label-width="68px"
+    >
+      <el-form-item label="分类名称" prop="categoryName">
+        <el-input
+          v-model="queryParams.categoryName"
+          placeholder="请输入分类名称"
+          clearable
+          @keyup.enter="handleQuery"
+          class="!w-240px"
         />
-      </el-select>
-    </el-form-item>
-    <el-form-item>
-      <el-button @click="handleQuery">
-        <Icon icon="ep:search" class="mr-5px" />
-        搜索
-      </el-button>
-      <el-button @click="resetQuery">
-        <Icon icon="ep:refresh" class="mr-5px" />
-        重置
-      </el-button>
-      <el-button type="primary" @click="openForm('create')">
-        <Icon icon="ep:plus" class="mr-5px" />
-        新增分类
-      </el-button>
-    </el-form-item>
-  </el-form>
+      </el-form-item>
+      <el-form-item label="剂型单位" prop="dosageUnit">
+        <el-input
+          v-model="queryParams.dosageUnit"
+          placeholder="请输入剂型单位"
+          clearable
+          @keyup.enter="handleQuery"
+          class="!w-240px"
+        />
+      </el-form-item>
+      <el-form-item label="状态" prop="status">
+        <el-select v-model="queryParams.status" placeholder="请选择状态" clearable class="!w-240px">
+          <el-option
+            v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button @click="handleQuery">
+          <Icon icon="ep:search" class="mr-5px" />
+          搜索
+        </el-button>
+        <el-button @click="resetQuery">
+          <Icon icon="ep:refresh" class="mr-5px" />
+          重置
+        </el-button>
+        <el-button type="primary" @click="openForm('create')">
+          <Icon icon="ep:plus" class="mr-5px" />
+          新增分类
+        </el-button>
+      </el-form-item>
+    </el-form>
+  </ContentWrap>
+
   <!-- 列表 -->
-  <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
-    <el-table-column label="序号" type="index" width="60" align="center" />
-    <el-table-column
-      label="剂型分类"
-      align="center"
-      prop="categoryName"
-      min-width="150"
-      show-overflow-tooltip
+  <ContentWrap>
+    <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
+      <el-table-column label="序号" type="index" width="80" align="center" />
+      <el-table-column
+        label="剂型分类"
+        align="center"
+        prop="categoryName"
+        min-width="150"
+        show-overflow-tooltip
+      >
+        <template #default="scope">
+          <span class="font-bold">{{ scope.row.categoryName }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        label="剂型单位"
+        align="center"
+        prop="dosageUnit"
+        min-width="200"
+        show-overflow-tooltip
+      />
+      <el-table-column label="状态" align="center" prop="status" width="80">
+        <template #default="scope">
+          <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />
+        </template>
+      </el-table-column>
+      <el-table-column label="排序" align="center" prop="sortOrder" width="80" />
+      <el-table-column
+        label="创建时间"
+        align="center"
+        prop="createTime"
+        :formatter="dateFormatter"
+        width="180px"
+      />
+      <el-table-column label="操作" align="center" width="180px">
+        <template #default="scope">
+          <el-button type="primary" size="small" @click="openForm('update', scope.row.id)">
+            <Icon icon="ep:edit" class="mr-1" />
+            编辑
+          </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">
+            <Icon icon="ep:delete" class="mr-1" />
+            删除
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <!-- 分页 -->
+    <Pagination
+      :total="total"
+      v-model:page="queryParams.pageNo"
+      v-model:limit="queryParams.pageSize"
+      @pagination="getList"
     />
-    <el-table-column
-      label="剂型单位"
-      align="center"
-      prop="dosageUnit"
-      min-width="200"
-      show-overflow-tooltip
-    />
-    <el-table-column label="状态" align="center" prop="status" width="80">
-      <template #default="scope">
-        <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />
-      </template>
-    </el-table-column>
-    <el-table-column label="排序" align="center" prop="sortOrder" width="80" />
-    <el-table-column
-      label="创建时间"
-      align="center"
-      prop="createTime"
-      :formatter="dateFormatter"
-      width="180px"
-    />
-    <el-table-column label="操作" align="center" width="150px">
-      <template #default="scope">
-        <el-button link type="primary" @click="openForm('update', scope.row.id)"> 编辑 </el-button>
-        <el-button link type="danger" @click="handleDelete(scope.row.id)"> 删除 </el-button>
-      </template>
-    </el-table-column>
-  </el-table>
-  <!-- 分页 -->
-  <Pagination
-    :total="total"
-    v-model:page="queryParams.pageNo"
-    v-model:limit="queryParams.pageSize"
-    @pagination="getList"
-  />
+  </ContentWrap>
 
   <!-- 表单弹窗：添加/修改 -->
   <DosageCategoryForm ref="formRef" @success="getList" />

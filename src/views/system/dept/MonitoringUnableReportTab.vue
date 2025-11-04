@@ -58,7 +58,14 @@
     <!-- 列表 -->
     <ContentWrap>
       <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-        <el-table-column label="机构名称" align="center" prop="deptName" min-width="150" />
+        <el-table-column label="机构名称" align="center" prop="deptName" min-width="200">
+          <template #default="scope">
+            <div class="institution-name-cell">
+              <Icon icon="ep:office-building" class="institution-icon" />
+              <span class="institution-name-text font-bold">{{ scope.row.deptName }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="无法上报原因" align="center" prop="unableReportReason" min-width="200" />
         <el-table-column label="备注说明" align="center" prop="remark" min-width="150" />
         <el-table-column label="状态" align="center" prop="status" width="100">
@@ -73,22 +80,26 @@
           :formatter="dateFormatter"
           width="180px"
         />
-        <el-table-column label="操作" align="center" min-width="120px">
+        <el-table-column label="操作" align="center" width="180px" fixed="right">
           <template #default="scope">
             <el-button
-              link
               type="primary"
+              plain
+              size="small"
               @click="openForm('update', scope.row.id)"
               v-hasPermi="['system:monitoring-unable-report:update']"
             >
-              编辑
+              <Icon icon="ep:edit" class="mr-5px" />
+              修改
             </el-button>
             <el-button
-              link
               type="danger"
+              plain
+              size="small"
               @click="handleDelete(scope.row.id)"
               v-hasPermi="['system:monitoring-unable-report:delete']"
             >
+              <Icon icon="ep:delete" class="mr-5px" />
               删除
             </el-button>
           </template>
@@ -114,6 +125,7 @@ import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { MonitoringUnableReportApi, MonitoringUnableReportVO } from '@/api/system/monitoringunablereport'
 import MonitoringUnableReportForm from '../monitoringunablereport/MonitoringUnableReportForm.vue'
+import { Icon } from '@/components/Icon'
 
 interface Props {
   areaCode?: string
@@ -130,7 +142,7 @@ const emit = defineEmits<{
 const message = useMessage()
 const { t } = useI18n()
 
-const loading = ref(true)
+const loading = ref(false) // 初始不加载，等待数据请求
 const list = ref<MonitoringUnableReportVO[]>([])
 const total = ref(0)
 const queryParams = reactive({
@@ -209,16 +221,27 @@ const handleExport = async () => {
 }
 
 /** 监听地区变化 */
-watch(() => props.areaCode, (newAreaCode) => {
-  if (newAreaCode) {
-    getList()
-  }
-}, { immediate: true })
-
-/** 初始化 **/
-onMounted(() => {
-  if (props.areaCode) {
-    getList()
-  }
-})
+watch(() => props.areaCode, () => {
+  // 无论 areaCode 是否为空都调用 getList
+  // 为空时查询所有数据，有值时查询对应地区数据
+  getList()
+}, { immediate: true }) // immediate: true 会在组件初始化时立即执行一次
 </script>
+
+<style scoped lang="scss">
+.institution-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.institution-icon {
+  font-size: 18px;
+  color: #5b8def;
+}
+
+.institution-name-text {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+</style>

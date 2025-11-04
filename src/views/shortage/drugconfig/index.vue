@@ -1,20 +1,37 @@
 <template>
-  <!-- 专区信息头部 -->
-  <PageHeader
-    :title="zoneInfo?.zoneName || '药品配置管理'"
-    content="配置专区内的药品信息，包括药品名称、剂型分类、最小剂量单位等"
-    :show-back-button="true"
-    back-button-text="返回专区管理"
-    :meta="zoneMeta"
-    :tabs="headerTabs"
-    :default-tab="activeTab"
-    @back-click="handleBackToZone"
-    @tab-change="handleTabChange"
-  />
-  <ContentWrap>
-    <!-- 药品配置管理 -->
-    <div v-show="activeTab === 'drugConfig'">
-      <!-- 搜索工作栏 -->
+  <div class="app-container">
+    <!-- 固定头部卡片（含返回按钮） -->
+    <ContentWrap class="header-card">
+      <div class="header-content">
+        <div class="header-left">
+          <el-button class="back-button" @click="handleBackToZone" text>
+            <el-icon class="back-icon">
+              <ArrowLeft />
+            </el-icon>
+            <span>返回</span>
+          </el-button>
+          <div class="header-divider"></div>
+          <div class="header-info">
+            <h2 class="page-title">{{ zoneInfo?.zoneName || '药品配置管理' }}</h2>
+            <p class="page-subtitle">配置专区内的药品信息</p>
+          </div>
+        </div>
+        <div class="header-right" v-if="zoneInfo">
+          <div class="meta-item">
+            <span class="meta-label">专区编码：</span>
+            <span class="meta-value">{{ zoneInfo.zoneCode || `ZONE_${zoneInfo.id}` }}</span>
+          </div>
+          <div class="meta-divider"></div>
+          <div class="meta-item">
+            <span class="meta-label">状态：</span>
+            <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="zoneInfo.status" />
+          </div>
+        </div>
+      </div>
+    </ContentWrap>
+
+    <!-- 搜索工作栏 -->
+    <ContentWrap>
       <el-form
         class="-mb-15px"
         :model="queryParams"
@@ -91,10 +108,12 @@
           </el-button>
         </el-form-item>
       </el-form>
+    </ContentWrap>
 
-      <!-- 列表 -->
+    <!-- 列表 -->
+    <ContentWrap>
       <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
-        <el-table-column label="序号" type="index" width="60" align="center" />
+        <el-table-column label="序号" type="index" width="80" align="center" />
         <el-table-column
           label="药品名称"
           align="center"
@@ -103,7 +122,7 @@
           show-overflow-tooltip
         >
           <template #default="scope">
-            {{ scope.row.drugName }}
+            <span class="font-bold">{{ scope.row.drugName }}</span>
           </template>
         </el-table-column>
         <el-table-column label="药品分类" align="center" prop="drugCategory" width="140">
@@ -129,22 +148,24 @@
           :formatter="dateFormatter"
           width="180px"
         />
-        <el-table-column label="操作" align="center" width="150px">
+        <el-table-column label="操作" align="center" width="180px">
           <template #default="scope">
             <el-button
-              link
               type="primary"
+              size="small"
               @click="openForm('update', scope.row.id)"
               v-hasPermi="['shortage:drug-config:update']"
             >
+              <Icon icon="ep:edit" class="mr-1" />
               编辑
             </el-button>
             <el-button
-              link
               type="danger"
+              size="small"
               @click="handleDelete(scope.row.id)"
               v-hasPermi="['shortage:drug-config:delete']"
             >
+              <Icon icon="ep:delete" class="mr-1" />
               删除
             </el-button>
           </template>
@@ -157,24 +178,14 @@
         v-model:limit="queryParams.pageSize"
         @pagination="getList"
       />
-    </div>
+    </ContentWrap>
 
-    <!-- 药品分类管理 -->
-    <div v-show="activeTab === 'drugCategory'">
-      <DrugCategoryManagement />
-    </div>
+    <!-- 表单弹窗：添加/修改 -->
+    <DrugConfigForm ref="formRef" @success="getList" :zone-id="currentZoneId" />
 
-    <!-- 剂型分类管理 -->
-    <div v-show="activeTab === 'dosageCategory'">
-      <DosageCategoryManagement />
-    </div>
-  </ContentWrap>
-
-  <!-- 表单弹窗：添加/修改 -->
-  <DrugConfigForm ref="formRef" @success="getList" :zone-id="currentZoneId" />
-
-  <!-- 批量导入弹窗 -->
-  <BatchImportDialog ref="batchImportRef" @success="getList" :zone-id="currentZoneId" />
+    <!-- 批量导入弹窗 -->
+    <BatchImportDialog ref="batchImportRef" @success="getList" :zone-id="currentZoneId" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -183,10 +194,7 @@ import { DrugConfigApi, ReportZoneApi, type DrugConfigVO, type ReportZoneVO } fr
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import DrugConfigForm from './DrugConfigForm.vue'
 import BatchImportDialog from './BatchImportDialog.vue'
-import PageHeader from '@/components/PageHeader/index.vue'
-import DrugCategoryManagement from './components/DrugCategoryManagement.vue'
-import DosageCategoryManagement from './components/DosageCategoryManagement.vue'
-import { DataBoard, List, Grid } from '@element-plus/icons-vue'
+import { ArrowLeft } from '@element-plus/icons-vue'
 
 /** 专区药品配置 列表 */
 defineOptions({ name: 'ShortageDrugConfig' })
@@ -201,49 +209,22 @@ const total = ref(0) // 列表的总页数
 const zoneInfo = ref<ReportZoneVO>()
 const currentZoneId = ref<number>()
 
-// Tab相关
-const activeTab = ref('drugConfig')
-const headerTabs = ref([
-  { key: 'drugConfig', label: '药品配置', icon: DataBoard },
-  { key: 'drugCategory', label: '药品分类', icon: List },
-  { key: 'dosageCategory', label: '剂型分类', icon: Grid }
-])
-
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
-  zoneId: undefined,
+  zoneId: undefined as number | undefined,
   drugName: '',
   drugCategory: '',
   dosageCategory: '',
   dosageForm: '',
-  status: undefined
+  status: undefined as number | undefined
 })
 
 const queryFormRef = ref() // 搜索的表单
 
-// 页面头部元数据
-const zoneMeta = computed(() => {
-  if (!zoneInfo.value) return []
-  return [
-    { label: '专区编码', value: zoneInfo.value.zoneCode || `ZONE_${zoneInfo.value.id}` },
-    { label: '状态', value: zoneInfo.value.status === 0 ? '启用' : '停用' }
-  ]
-})
-
 // 返回专区管理页面
 const handleBackToZone = () => {
   router.push('/shortage/report-zone')
-}
-
-// Tab切换处理
-const handleTabChange = (tabKey: string) => {
-  activeTab.value = tabKey
-  console.log('Tab changed to:', tabKey)
-  // 切换到药品配置tab时重新加载数据
-  if (tabKey === 'drugConfig') {
-    getList()
-  }
 }
 
 // 从路由参数获取专区信息
@@ -278,9 +259,6 @@ const initZoneInfo = async () => {
 
 /** 查询列表 */
 const getList = async () => {
-  // 只在药品配置tab时才查询药品列表
-  if (activeTab.value !== 'drugConfig') return
-
   if (!currentZoneId.value) return
 
   loading.value = true
@@ -337,3 +315,189 @@ onMounted(async () => {
   getList()
 })
 </script>
+
+<style scoped>
+.app-container {
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  min-height: 100vh;
+}
+
+/* 固定头部卡片样式 */
+.header-card {
+  margin-bottom: 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 20px;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  gap: 24px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  min-width: 0;
+}
+
+.back-button {
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
+  margin: -4px 0 0 -4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.back-button:hover {
+  color: #667eea;
+  background: #f3f4f6;
+  border-color: #667eea;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.back-icon {
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.back-button:hover .back-icon {
+  transform: translateX(-2px);
+}
+
+.header-divider {
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(to bottom, transparent, #d1d5db, transparent);
+  flex-shrink: 0;
+}
+
+.header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.meta-value {
+  font-size: 13px;
+  color: #1a202c;
+  font-weight: 600;
+  background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.meta-divider {
+  width: 1px;
+  height: 20px;
+  background: #e5e7eb;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .header-content {
+    flex-wrap: wrap;
+  }
+  
+  .header-right {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 16px;
+  }
+
+  .header-card {
+    top: 16px;
+  }
+
+  .header-content {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-left {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .back-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .page-title {
+    font-size: 16px;
+  }
+
+  .page-subtitle {
+    font-size: 12px;
+  }
+
+  .header-right {
+    width: 100%;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+  }
+}
+</style>

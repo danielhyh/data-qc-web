@@ -2,17 +2,27 @@
 <template>
   <div class="flex h-full">
     <!-- 左侧地区树选择器 -->
-    <div ref="selectorPanel" class="selector-panel" :style="{ width: selectorWidth + 'px' }">
-      <ContentWrap class="h-full selector-card" title="地区">
-        <RegionTree @node-click="handleRegionNodeClick" />
-      </ContentWrap>
-    </div>
+    <RegionTree 
+      ref="regionTreeRef"
+      :style="{ width: selectorWidth + 'px', flexShrink: 0 }"
+      :auto-select-first="false"
+      :show-org-count="true"
+      @node-click="handleRegionNodeClick" 
+    />
 
     <!-- 拖拽分隔条 -->
     <div class="resize-handle" @mousedown="startResize"></div>
 
     <!-- 右侧机构管理内容区域 -->
-    <div class="flex-1 ml-5">
+    <div class="flex-1 ml-5 main-content">
+      <!-- 当前选择的地区信息 - 在所有Tab外层显示 -->
+      <div v-if="selectedRegion" class="mb-15px">
+        <el-tag type="primary" size="large" class="region-tag" :closable="true" @close="handleClearRegion">
+          <Icon icon="ep:location" class="mr-5px" />
+          当前地区：{{ getRegionDisplayName(selectedRegion) }}
+        </el-tag>
+      </div>
+
       <!-- Tab 标签页 -->
       <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
         <!-- 机构管理 Tab -->
@@ -77,24 +87,19 @@
                   <Icon icon="ep:download" class="mr-5px" /> 从标准库同步
                 </el-button>
               </el-form-item>
-            </el-form>
-          </ContentWrap>
+          </el-form>
+        </ContentWrap>
 
-          <!-- 机构列表 -->
-          <ContentWrap>
-            <div v-if="!selectedRegionId" class="empty-state">
-              <Icon icon="ep:pointer" class="empty-icon" />
-              <p>请先选择左侧地区查看机构列表</p>
-            </div>
-
-            <el-table
-              v-else-if="refreshTable && selectedRegionId"
-              v-loading="loading"
-              :data="list"
-              row-key="id"
-              :default-expand-all="isExpandAll"
-            >
-              <el-table-column prop="name" label="机构名称">
+        <!-- 机构列表 -->
+        <ContentWrap>
+          <el-table
+            v-if="refreshTable"
+            v-loading="loading"
+            :data="list"
+            row-key="id"
+            :default-expand-all="isExpandAll"
+          >
+              <el-table-column prop="name" label="机构名称" min-width="230">
                 <template #default="scope">
                   <div class="institution-name-cell">
                     <el-tooltip
@@ -108,7 +113,7 @@
                         default-color="#5b8def"
                       />
                     </el-tooltip>
-                    <span class="institution-name-text">{{ scope.row.name }}</span>
+                    <span class="institution-name-text font-bold">{{ scope.row.name }}</span>
                   </div>
                 </template>
               </el-table-column>
@@ -140,28 +145,32 @@
                 width="180"
                 :formatter="dateFormatter"
               />
-              <el-table-column label="操作" align="center" fixed="right">
+              <el-table-column label="操作" align="center" width="180px" fixed="right">
                 <template #default="scope">
                   <el-button
-                    link
                     type="primary"
+                    plain
+                    size="small"
                     @click="openForm('update', scope.row.id)"
                     v-hasPermi="['system:dept:update']"
                   >
+                    <Icon icon="ep:edit" class="mr-5px" />
                     修改
                   </el-button>
                   <el-button
-                    link
                     type="danger"
+                    plain
+                    size="small"
                     @click="handleDelete(scope.row.id)"
                     v-hasPermi="['system:dept:delete']"
                   >
+                    <Icon icon="ep:delete" class="mr-5px" />
                     删除
                   </el-button>
                 </template>
               </el-table-column>
             </el-table>
-          </ContentWrap>
+        </ContentWrap>
         </el-tab-pane>
 
         <!-- 监测内无法上报机构 Tab -->
@@ -177,17 +186,12 @@
               />
             </span>
           </template>
-          <!-- 监测内无法上报机构组件 -->
+          <!-- 监测内无法上报机构组件 - 始终渲染以便初始化加载数据 -->
           <MonitoringUnableReportTab
-            v-if="selectedRegionId"
             :area-code="selectedRegionCode"
             :selected-region-id="selectedRegionIdForMonitor"
             @count-updated="handleUnableReportCountUpdate"
           />
-          <div v-else class="empty-state">
-            <Icon icon="ep:pointer" class="empty-icon" />
-            <p>请先选择左侧地区查看监测内无法上报机构</p>
-          </div>
         </el-tab-pane>
 
         <!-- 委直委管配置 Tab -->
@@ -213,7 +217,7 @@
 </template>
 <script lang="ts" setup>
 import { computed, nextTick, reactive, ref } from 'vue'
-import { DICT_TYPE, getDictObj, getIntDictOptions } from '@/utils/dict'
+import { DICT_TYPE, getDictObj, getIntDictOptions, getDictLabel } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import { handleTree } from '@/utils/tree'
 import * as DeptApi from '@/api/system/dept'
@@ -224,6 +228,7 @@ import RegionTree from '../user/RegionTree.vue'
 import MonitoringUnableReportTab from './MonitoringUnableReportTab.vue'
 import InstitutionCategoryConfigTab from './InstitutionCategoryConfigTab.vue'
 import DictIcon from '@/components/DictIcon'
+import { Icon } from '@/components/Icon'
 
 defineOptions({ name: 'SystemDept' })
 
@@ -231,7 +236,7 @@ const message = useMessage() // 消息弹窗
 const { t } = useI18n() // 国际化
 
 const loading = ref(true) // 列表的加载中
-const list = ref() // 列表的数据
+const list = ref<any[]>([]) // 列表的数据
 const queryParams = reactive({
   pageNo: 1,
   pageSize: -1,
@@ -245,6 +250,7 @@ const refreshTable = ref(true) // 重新渲染表格状态
 const userList = ref<UserApi.UserVO[]>([]) // 用户列表
 const selectedRegionId = ref<string | undefined>() // 选中的地区Code
 const selectedRegionCode = ref<string | undefined>() // 选中的地区代码
+const selectedRegion = ref<any>(null) // 选中的地区节点（用于显示标签）
 const activeTab = ref('dept') // 当前激活的标签页
 const unableReportCount = ref(0) // 无法上报机构数量（用于徽标显示）
 
@@ -261,8 +267,8 @@ const getInstitutionCategoryLabel = (value: string | number | boolean | undefine
 }
 
 // 面板拖拽相关
-const selectorPanel = ref<HTMLElement>()
-const selectorWidth = ref(250) // 默认宽度
+const regionTreeRef = ref<InstanceType<typeof RegionTree>>()
+const selectorWidth = ref(250) // 默认宽度设为最小宽度
 const isResizing = ref(false)
 
 /** 开始拖拽调整大小 */
@@ -312,6 +318,7 @@ const handleRegionNodeClick = async (row) => {
   // 使用 code 作为 selectedRegionId，因为新的地区树API返回的是code
   selectedRegionId.value = row.code
   selectedRegionCode.value = row.code
+  selectedRegion.value = row
   queryParams.areaCode = row.code
 
   // 重置无法上报机构数量（切换地区时清零，等待子组件重新加载）
@@ -319,6 +326,29 @@ const handleRegionNodeClick = async (row) => {
 
   // 刷新机构列表
   await getList()
+}
+
+/** 清除地区选择 */
+const handleClearRegion = () => {
+  selectedRegion.value = null
+  selectedRegionId.value = undefined
+  selectedRegionCode.value = undefined
+  queryParams.areaCode = undefined
+  queryParams.pageNo = 1
+  // 清除树的选中状态
+  regionTreeRef.value?.clearSelection()
+  // 重置无法上报机构数量
+  unableReportCount.value = 0
+  // 刷新机构列表（查询所有机构）
+  getList()
+}
+
+/** 获取地区显示名称 */
+const getRegionDisplayName = (region: any) => {
+  if (!region) return ''
+  // 使用字典获取地区级别的文字
+  const levelLabel = getDictLabel(DICT_TYPE.REGION_LEVEL, region.level)
+  return `${region.name}(${levelLabel || ''})`
 }
 
 /** 处理无法上报机构数量更新 */
@@ -347,11 +377,8 @@ const handleQuery = () => {
 
 /** 重置按钮操作 */
 const resetQuery = () => {
-  queryParams.pageNo = 1
-  queryParams.areaCode = undefined
-  selectedRegionId.value = undefined
-  selectedRegionCode.value = undefined
   queryFormRef.value.resetFields()
+  // 重置不清除地区选择，保持地区筛选条件
   handleQuery()
 }
 
@@ -384,7 +411,8 @@ const handleDelete = async (id: number) => {
 onMounted(async () => {
   // 获取用户列表
   userList.value = await UserApi.getSimpleUserList()
-  // 不再默认加载机构列表，等待地区选择
+  // 默认加载所有机构
+  getList()
 })
 </script>
 
@@ -450,27 +478,6 @@ onMounted(async () => {
   }
 }
 
-.selector-panel {
-  flex-shrink: 0;
-  min-width: 250px;
-  max-width: 600px;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.selector-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-
-  :deep(.el-card__body) {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-  }
-}
-
 .resize-handle {
   width: 5px;
   background: var(--el-border-color-light);
@@ -490,6 +497,24 @@ onMounted(async () => {
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+// 地区标签美化
+.region-tag {
+  padding: 10px 18px;
+  font-size: 14px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.25);
+    transform: translateY(-1px);
+  }
+
+  :deep(.el-icon) {
+    font-size: 16px;
+  }
 }
 
 .empty-state {
@@ -521,5 +546,11 @@ onMounted(async () => {
 .institution-name-text {
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+// 右侧内容区域 - 关键：限制宽度避免被表格撑开
+.main-content {
+  min-width: 0; // flex子元素必须设置，否则默认min-width: auto会导致内容溢出
+  overflow-x: auto; // 横向滚动
 }
 </style>

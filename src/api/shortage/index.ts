@@ -216,11 +216,11 @@ export const ReportRecordApi = {
     request.post({ url: '/shortage/report-record/batch-save', data }),
 
   // 保存草稿
-  saveDraft: (params: { taskId: number; reportWeek: string; data: ReportRecordVO[] }) =>
+  saveDraft: (params: { taskId: number; reportWeek: string; data: ReportRecordVO[]; completionRate?: number }) =>
     request.post({ url: '/shortage/report-record/save-draft', data: params }),
 
   // 提交填报
-  submitReport: (params: { taskId: number; reportWeek: string; data: ReportRecordVO[] }) =>
+  submitReport: (params: { taskId: number; reportWeek: string; data: ReportRecordVO[]; completionRate?: number }) =>
     request.post({ url: '/shortage/report-record/submit-report', data: params }),
 
   // 获取统计分析数据
@@ -237,7 +237,11 @@ export const ReportRecordApi = {
 
   // 获取填报记录查询列表（按地区查询）
   getReportRecordList: (params: any) =>
-    request.get({ url: '/shortage/report-record/list-by-region', params })
+    request.get({ url: '/shortage/report-record/list-by-region', params }),
+
+  // 获取填报详情（含药品明细）
+  getReportRecordDetail: (taskId: number) =>
+    request.get({ url: `/shortage/report-record/detail?taskId=${taskId}` })
 }
 
 // ========== 供应状态枚举 ==========

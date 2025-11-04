@@ -1,3 +1,4 @@
+<!--数据档案页面-->
 <template>
   <div class="flex h-full">
     <!-- 左侧地区和机构选择器 -->
@@ -142,7 +143,11 @@
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
       <el-table-column label="任务ID" align="center" prop="taskId" width="100" />
       <el-table-column label="任务编号" align="center" prop="taskNo" width="180" />
-      <el-table-column label="部门名称" align="center" prop="deptName" width="200" :show-overflow-tooltip="true" />
+      <el-table-column label="部门名称" align="center" prop="deptName" width="200" :show-overflow-tooltip="true">
+        <template #default="scope">
+          <span class="font-bold">{{ scope.row.deptName }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="所属市" align="center" prop="cityName" width="100" />
       <el-table-column label="所属区县" align="center" prop="districtName" width="120" />
       <el-table-column label="文件类型" align="center" prop="fileType" width="120">
@@ -160,30 +165,35 @@
         :formatter="dateFormatter"
         width="180px"
       />
-      <el-table-column label="操作" align="center" min-width="320px">
+      <el-table-column label="操作" align="center" min-width="280px" fixed="right">
         <template #default="scope">
           <el-button
-            link
             type="primary"
+            plain
+            size="small"
             @click="openForm('update', scope.row.id)"
             v-hasPermi="['drug:import-task-detail:update']"
           >
+            <Icon icon="ep:edit" class="mr-5px" />
             编辑
           </el-button>
           <el-button
-            link
             type="success"
+            size="small"
             @click="handleDownload(scope.row.id)"
             v-hasPermi="['drug:import-task-detail:export']"
           >
+            <Icon icon="ep:download" class="mr-5px" />
             下载
           </el-button>
           <el-button
-            link
             type="danger"
+            plain
+            size="small"
             @click="handleDelete(scope.row.id)"
             v-hasPermi="['drug:import-task-detail:delete']"
           >
+            <Icon icon="ep:delete" class="mr-5px" />
             删除
           </el-button>
         </template>
@@ -577,5 +587,11 @@ onMounted(async () => {
     margin: 0;
     font-size: 14px;
   }
+}
+
+// 右侧内容区域 - 关键：限制宽度避免被表格撑开
+.main-content {
+  min-width: 0; // flex子元素必须设置，否则默认min-width: auto会导致内容溢出
+  overflow-x: auto; // 横向滚动
 }
 </style>

@@ -1,18 +1,37 @@
 <template>
   <Dialog
     v-model="innerVisible"
-    title="配置可填报机构"
+    title="选择区域和机构"
     width="1080px"
-    class="report-zone-org-selector"
+    class="statistics-area-org-selector"
   >
     <div class="selector-body">
+      <!-- 选择模式切换 -->
+      <div class="mode-switch">
+        <el-radio-group v-model="selectMode" size="default" @change="handleModeChange">
+          <el-radio-button value="area">
+            <Icon icon="material-symbols:public" class="mr-4px" />
+            按地区查询
+          </el-radio-button>
+          <el-radio-button value="org">
+            <Icon icon="ep:office-building" class="mr-4px" />
+            按机构查询
+          </el-radio-button>
+        </el-radio-group>
+        <div class="mode-tip">
+          <Icon icon="ep:info-filled" class="tip-icon" />
+          <span v-if="selectMode === 'area'">选择地区后，将查询该地区及子地区的所有机构数据</span>
+          <span v-else>选择特定机构后，仅查询这些机构的数据</span>
+        </div>
+      </div>
+
       <div class="selector-row">
-        <!-- 左侧：地区选择 -->
+        <!-- 左侧：地区树 -->
         <div class="selector-panel area-panel">
           <div class="panel-header theme-blue">
             <div class="panel-title">
               <Icon icon="material-symbols:public" class="panel-icon" style="color: #2563eb" />
-              <span class="panel-title-text">地区</span>
+              <span class="panel-title-text">地区选择</span>
             </div>
             <el-input
               v-model="areaKeyword"
@@ -47,7 +66,7 @@
                   class="area-node"
                   :class="{
                     'is-special': data.nodeType === 'SPECIAL',
-                    'is-active': node.key === activeAreaCode
+                    'is-active': isAreaActive(data.code)
                   }"
                 >
                   <DictIcon
@@ -78,6 +97,12 @@
                       {{ data.totalOrgCount }}
                     </span>
                   </el-tooltip>
+                  <!-- 地区模式下显示选中标记 -->
+                  <Icon
+                    v-if="selectMode === 'area' && isAreaActive(data.code)"
+                    icon="ep:select"
+                    class="selected-icon"
+                  />
                 </span>
               </template>
             </el-tree>
@@ -90,7 +115,7 @@
             <div class="org-header-row">
               <div class="panel-title">
                 <Icon icon="ep:office-building" class="panel-icon" style="color: #16a34a" />
-                <span class="panel-title-text">机构选择</span>
+                <span class="panel-title-text">机构列表</span>
               </div>
               <el-input
                 v-model="orgKeyword"
@@ -106,7 +131,7 @@
                 </template>
               </el-input>
             </div>
-            <div class="org-filter-row">
+            <div class="org-filter-row" v-if="selectMode === 'org'">
               <el-checkbox
                 v-model="selectAll"
                 size="small"
@@ -149,7 +174,7 @@
               :data="filteredDeptTree"
               :props="defaultProps"
               node-key="id"
-              show-checkbox
+              :show-checkbox="selectMode === 'org'"
               :check-strictly="true"
               :default-checked-keys="checkedIds"
               :expand-on-click-node="false"
@@ -192,11 +217,20 @@
       <div class="dialog-footer">
         <div class="selection-summary">
           <Icon icon="ep:collection" class="summary-icon" />
-          已选择 <span class="count">{{ checkedIds.length }}</span> 个机构
+          <span v-if="selectMode === 'area'">
+            已选择地区: <span class="count">{{ selectedAreaName || '未选择' }}</span>
+          </span>
+          <span v-else>
+            已选择 <span class="count">{{ checkedIds.length }}</span> 个机构
+          </span>
         </div>
         <div class="footer-actions">
           <el-button @click="handleCancel">取 消</el-button>
-          <el-button type="primary" :disabled="checkedIds.length === 0" @click="handleConfirm">
+          <el-button
+            type="primary"
+            :disabled="!canConfirm"
+            @click="handleConfirm"
+          >
             确 定
           </el-button>
         </div>
@@ -216,7 +250,9 @@ import { defaultProps, handleTree } from '@/utils/tree'
 import { RegionsApi } from '@/api/system/regions'
 import * as DeptApi from '@/api/system/dept'
 
-defineOptions({ name: 'ReportZoneOrgSelector' })
+defineOptions({ name: 'StatisticsAreaOrgSelector' })
+
+type SelectMode = 'area' | 'org'
 
 type RegionTreeNode = {
   code: string
@@ -243,21 +279,26 @@ type DeptTreeNode = {
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  selectedIds: { type: Array as PropType<number[]>, default: () => [] },
-  selectedDetails: { type: Array as PropType<any[]>, default: () => [] }
+  // 初始选择模式
+  defaultMode: { type: String as PropType<SelectMode>, default: 'area' },
+  // 初始地区代码
+  defaultAreaCode: { type: String, default: '' },
+  // 初始机构ID列表
+  defaultOrgIds: { type: Array as PropType<number[]>, default: () => [] }
 })
 
 const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
-  (event: 'update:selectedIds', value: number[]): void
-  (event: 'update:selectedDetails', value: any[]): void
-  (event: 'confirm', payload: { ids: number[]; details: any[] }): void
+  (event: 'confirm', payload: { mode: SelectMode; areaCode?: string; areaName?: string; orgIds?: number[]; orgDetails?: any[] }): void
 }>()
 
 const innerVisible = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value)
 })
+
+// 选择模式
+const selectMode = ref<SelectMode>(props.defaultMode)
 
 const areaTreeRef = ref()
 const deptTreeRef = ref()
@@ -271,17 +312,17 @@ const selectedLevels = ref<(number | string)[]>([])
 const selectAll = ref(false)
 
 const areaTree = ref<RegionTreeNode[]>([])
-const activeAreaCode = ref<string>('')
+const activeAreaCode = ref<string>(props.defaultAreaCode || '')
+const selectedAreaName = ref<string>('')
 const defaultExpandedAreaCodes = ref<string[]>([])
 const deptTree = ref<DeptTreeNode[]>([])
 const filteredDeptTree = ref<DeptTreeNode[]>([])
-const checkedIds = ref<number[]>([])
+const checkedIds = ref<number[]>([...props.defaultOrgIds])
 
 const levelOptions = computed(() => {
   return getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL) || []
 })
 
-// 获取机构类别标签
 const getInstitutionCategoryLabel = (value: string | number | boolean | undefined) => {
   return getDictObj(DICT_TYPE.INSTITUTION_CATEGORY, value)?.label ?? '机构分类'
 }
@@ -291,6 +332,20 @@ const areaTreeProps = {
   children: 'children'
 }
 
+// 判断地区是否激活
+const isAreaActive = (code: string) => {
+  return selectMode.value === 'area' && activeAreaCode.value === code
+}
+
+// 是否可以确认
+const canConfirm = computed(() => {
+  if (selectMode.value === 'area') {
+    return !!activeAreaCode.value
+  } else {
+    return checkedIds.value.length > 0
+  }
+})
+
 const loadAreaTree = async () => {
   if (areaTreeLoading.value) return
   areaTreeLoading.value = true
@@ -298,10 +353,24 @@ const loadAreaTree = async () => {
     const data = await RegionsApi.getRegionsTreeWithOrgCount()
     areaTree.value = Array.isArray(data) ? data : []
     defaultExpandedAreaCodes.value = areaTree.value.slice(0, 3).map((item) => item.code)
-    if (!activeAreaCode.value && areaTree.value.length > 0) {
+    
+    // 如果有默认地区代码，设置为激活状态
+    if (props.defaultAreaCode && areaTree.value.length > 0) {
+      activeAreaCode.value = props.defaultAreaCode
+      // 查找并设置地区名称
+      const areaNode = findAreaNode(areaTree.value, props.defaultAreaCode)
+      if (areaNode) {
+        selectedAreaName.value = areaNode.name
+        await loadDeptTree(props.defaultAreaCode)
+        await nextTick()
+        areaTreeRef.value?.setCurrentKey(props.defaultAreaCode)
+      }
+    } else if (!activeAreaCode.value && areaTree.value.length > 0) {
+      // 没有默认值，使用陕西省
       const defaultNode = findDefaultArea(areaTree.value)
       if (defaultNode) {
         activeAreaCode.value = defaultNode.code
+        selectedAreaName.value = defaultNode.name
         await loadDeptTree(defaultNode.code)
         await nextTick()
         areaTreeRef.value?.setCurrentKey(defaultNode.code)
@@ -310,6 +379,21 @@ const loadAreaTree = async () => {
   } finally {
     areaTreeLoading.value = false
   }
+}
+
+const findAreaNode = (nodes: RegionTreeNode[], code: string): RegionTreeNode | null => {
+  for (const node of nodes) {
+    if (node.code === code) {
+      return node
+    }
+    if (node.children && node.children.length > 0) {
+      const child = findAreaNode(node.children, code)
+      if (child) {
+        return child
+      }
+    }
+  }
+  return null
 }
 
 const findDefaultArea = (nodes: RegionTreeNode[]): RegionTreeNode | null => {
@@ -344,7 +428,6 @@ const filterAreaTree = (nodes: RegionTreeNode[], keyword: string): RegionTreeNod
   return traverse(nodes)
 }
 
-// 收集所有匹配节点及其祖先节点的code
 const collectExpandedKeys = (nodes: RegionTreeNode[], keyword: string): string[] => {
   if (!keyword) return defaultExpandedAreaCodes.value
   const lower = keyword.trim().toLowerCase()
@@ -358,7 +441,6 @@ const collectExpandedKeys = (nodes: RegionTreeNode[], keyword: string): string[]
       const childMatch = item.children ? traverse(item.children, currentPath) : false
 
       if (nameMatch || childMatch) {
-        // 添加所有祖先节点和当前节点
         currentPath.forEach((code) => keys.add(code))
         hasMatch = true
       }
@@ -373,7 +455,6 @@ const collectExpandedKeys = (nodes: RegionTreeNode[], keyword: string): string[]
 const filteredAreaTree = computed(() => filterAreaTree(areaTree.value, areaKeyword.value))
 
 const handleAreaSearch = () => {
-  // 更新展开的节点
   const expandKeys = collectExpandedKeys(areaTree.value, areaKeyword.value)
   defaultExpandedAreaCodes.value = expandKeys
 
@@ -385,9 +466,21 @@ const handleAreaSearch = () => {
 }
 
 const handleAreaClick = async (data: RegionTreeNode) => {
-  if (!data || data.code === activeAreaCode.value) return
-  activeAreaCode.value = data.code
-  await loadDeptTree(data.code)
+  if (!data) return
+  
+  // 地区模式下，点击即选中
+  if (selectMode.value === 'area') {
+    activeAreaCode.value = data.code
+    selectedAreaName.value = data.name
+    await loadDeptTree(data.code)
+  } else {
+    // 机构模式下，点击只是切换查看的地区，不选中
+    if (data.code !== activeAreaCode.value) {
+      activeAreaCode.value = data.code
+      selectedAreaName.value = data.name
+      await loadDeptTree(data.code)
+    }
+  }
 }
 
 const loadDeptTree = async (areaCode: string) => {
@@ -408,8 +501,10 @@ const loadDeptTree = async (areaCode: string) => {
     deptTree.value = tree
     filteredDeptTree.value = applyDeptFilters(tree)
     await nextTick()
-    syncCheckedKeys()
-    updateSelectAllState()
+    if (selectMode.value === 'org') {
+      syncCheckedKeys()
+      updateSelectAllState()
+    }
   } finally {
     deptTreeLoading.value = false
   }
@@ -441,7 +536,6 @@ const applyDeptFilters = (nodes: DeptTreeNode[]): DeptTreeNode[] => {
   return traverse(nodes)
 }
 
-// 收集树中所有节点的ID
 const collectAllDeptIds = (nodes: DeptTreeNode[]): number[] => {
   const ids: number[] = []
   const traverse = (items: DeptTreeNode[]) => {
@@ -459,17 +553,14 @@ const collectAllDeptIds = (nodes: DeptTreeNode[]): number[] => {
 const handleSelectAllChange = (checked: boolean) => {
   const allIds = collectAllDeptIds(filteredDeptTree.value)
   if (checked) {
-    // 全选：合并当前所有机构ID
     const newChecked = new Set([...checkedIds.value, ...allIds])
     checkedIds.value = Array.from(newChecked)
   } else {
-    // 取消全选：移除当前所有机构ID
     const idsToRemove = new Set(allIds)
     checkedIds.value = checkedIds.value.filter((id) => !idsToRemove.has(id))
   }
   nextTick(() => {
     syncCheckedKeys()
-    // 确保状态同步
     updateSelectAllState()
   })
 }
@@ -478,15 +569,12 @@ const handleLevelChange = () => {
   refreshOrgFilter()
 }
 
-// 更新全选框状态
 const updateSelectAllState = () => {
   const allIds = collectAllDeptIds(filteredDeptTree.value)
-  // 没有机构或选中列表为空时，取消全选
   if (allIds.length === 0) {
     selectAll.value = false
     return
   }
-  // 检查当前显示的所有机构是否都被选中
   const checkedSet = new Set(checkedIds.value)
   selectAll.value = allIds.length > 0 && allIds.every((id) => checkedSet.has(id))
 }
@@ -494,8 +582,10 @@ const updateSelectAllState = () => {
 const refreshOrgFilter = () => {
   filteredDeptTree.value = applyDeptFilters(deptTree.value)
   nextTick(() => {
-    syncCheckedKeys()
-    updateSelectAllState()
+    if (selectMode.value === 'org') {
+      syncCheckedKeys()
+      updateSelectAllState()
+    }
   })
 }
 
@@ -515,7 +605,7 @@ const collectDetailsFromTree = (ids: number[]): any[] => {
           regionName: node.regionName,
           areaName: node.areaName,
           regionPath: node.regionPath,
-          regionPathName: node.regionPathName || '' // 区域路径中文名称
+          regionPathName: node.regionPathName || ''
         })
       }
       if (node.children && node.children.length > 0) {
@@ -527,21 +617,6 @@ const collectDetailsFromTree = (ids: number[]): any[] => {
   return details
 }
 
-const mergeDetails = (ids: number[], source: any[]) => {
-  const map = new Map<number, any>()
-  source.forEach((item) => {
-    if (item && typeof item.id === 'number') {
-      map.set(item.id, item)
-    }
-  })
-  props.selectedDetails.forEach((item) => {
-    if (item && typeof item.id === 'number' && !map.has(item.id)) {
-      map.set(item.id, item)
-    }
-  })
-  return ids.map((id) => map.get(id)).filter(Boolean)
-}
-
 const updateSelection = (ids: number[]) => {
   checkedIds.value = ids
   updateSelectAllState()
@@ -551,19 +626,37 @@ const handleOrgCheck = (_: any, data: { checkedKeys: number[] }) => {
   updateSelection(data.checkedKeys ?? [])
 }
 
-// 处理节点点击，切换选中状态
 const handleNodeClick = (data: DeptTreeNode) => {
-  const isChecked = checkedIds.value.includes(data.id)
-  if (isChecked) {
-    // 当前已选中，取消选中
-    deptTreeRef.value?.setChecked(data.id, false)
-    checkedIds.value = checkedIds.value.filter(id => id !== data.id)
-  } else {
-    // 当前未选中，选中
-    deptTreeRef.value?.setChecked(data.id, true)
-    checkedIds.value = [...checkedIds.value, data.id]
+  if (selectMode.value === 'org') {
+    const isChecked = checkedIds.value.includes(data.id)
+    if (isChecked) {
+      deptTreeRef.value?.setChecked(data.id, false)
+      checkedIds.value = checkedIds.value.filter(id => id !== data.id)
+    } else {
+      deptTreeRef.value?.setChecked(data.id, true)
+      checkedIds.value = [...checkedIds.value, data.id]
+    }
+    updateSelectAllState()
   }
-  updateSelectAllState()
+}
+
+const handleModeChange = (mode: SelectMode) => {
+  // 切换模式时，重置选择
+  if (mode === 'area') {
+    // 切换到地区模式，清空机构选择
+    checkedIds.value = []
+    selectAll.value = false
+  } else {
+    // 切换到机构模式，保持当前地区，但允许选择机构
+    // 不清空 activeAreaCode，以便显示机构列表
+  }
+  
+  nextTick(() => {
+    if (mode === 'org' && activeAreaCode.value) {
+      syncCheckedKeys()
+      updateSelectAllState()
+    }
+  })
 }
 
 const handleCancel = () => {
@@ -571,11 +664,23 @@ const handleCancel = () => {
 }
 
 const handleConfirm = () => {
-  const ids = [...checkedIds.value]
-  const details = mergeDetails(ids, collectDetailsFromTree(ids))
-  emit('update:selectedIds', ids)
-  emit('update:selectedDetails', details)
-  emit('confirm', { ids, details })
+  if (selectMode.value === 'area') {
+    // 地区模式：返回地区代码和名称
+    emit('confirm', {
+      mode: 'area',
+      areaCode: activeAreaCode.value,
+      areaName: selectedAreaName.value
+    })
+  } else {
+    // 机构模式：返回机构ID列表和详情
+    const ids = [...checkedIds.value]
+    const details = collectDetailsFromTree(ids)
+    emit('confirm', {
+      mode: 'org',
+      orgIds: ids,
+      orgDetails: details
+    })
+  }
   innerVisible.value = false
 }
 
@@ -591,26 +696,22 @@ watch(
   () => props.modelValue,
   async (visible) => {
     if (visible) {
-      // 先重置状态
-      checkedIds.value = [...(props.selectedIds ?? [])]
+      // 重置为初始状态
+      selectMode.value = props.defaultMode
+      activeAreaCode.value = props.defaultAreaCode || ''
+      checkedIds.value = [...props.defaultOrgIds]
       selectAll.value = false
-      // 加载区域树（内部会自动加载机构树）
+      
+      // 加载区域树
       await loadAreaTree()
-      // 确保选中状态正确同步
+      
       await nextTick()
-      syncCheckedKeys()
-      updateSelectAllState()
+      if (selectMode.value === 'org') {
+        syncCheckedKeys()
+        updateSelectAllState()
+      }
     }
   }
-)
-
-watch(
-  () => props.selectedIds,
-  (ids) => {
-    checkedIds.value = [...(ids ?? [])]
-    nextTick(syncCheckedKeys)
-  },
-  { deep: true }
 )
 
 watch(orgKeyword, () => {
@@ -623,8 +724,7 @@ watch(areaKeyword, () => {
 </script>
 
 <style lang="scss">
-// 全局样式，确保高度约束生效
-.el-dialog.report-zone-org-selector {
+.el-dialog.statistics-area-org-selector {
   height: 85vh !important;
   min-height: 85vh !important;
   max-height: 85vh !important;
@@ -655,7 +755,7 @@ watch(areaKeyword, () => {
 </style>
 
 <style scoped lang="scss">
-.report-zone-org-selector {
+.statistics-area-org-selector {
   .selector-body {
     flex: 1 1 0%;
     overflow: hidden;
@@ -663,6 +763,44 @@ watch(areaKeyword, () => {
     flex-direction: column;
     min-height: 0;
     max-height: 100%;
+    gap: 16px;
+  }
+
+  // 模式切换区域
+  .mode-switch {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-radius: 12px;
+    border: 1px solid #bae6fd;
+
+    :deep(.el-radio-group) {
+      flex-shrink: 0;
+    }
+
+    :deep(.el-radio-button__inner) {
+      border-radius: 8px !important;
+      padding: 8px 16px;
+      font-weight: 500;
+    }
+  }
+
+  .mode-tip {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #0369a1;
+
+    .tip-icon {
+      font-size: 16px;
+      color: #0ea5e9;
+      flex-shrink: 0;
+    }
   }
 
   .selector-row {
@@ -794,6 +932,21 @@ watch(areaKeyword, () => {
     white-space: nowrap;
   }
 
+  .selected-icon {
+    font-size: 18px;
+    color: #2563eb;
+    animation: scaleIn 0.3s ease;
+  }
+
+  @keyframes scaleIn {
+    from {
+      transform: scale(0);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
   .count-chip {
     display: inline-flex;
     align-items: center;
@@ -912,7 +1065,6 @@ watch(areaKeyword, () => {
   overflow: hidden;
 }
 
-// 机构树节点样式
 .dept-tree {
   :deep(.el-tree-node__content) {
     border-radius: 6px;
@@ -928,7 +1080,6 @@ watch(areaKeyword, () => {
   }
 }
 
-// 地区树节点的选中和特殊节点样式（整行效果）
 .area-tree {
   :deep(.el-tree-node__content) {
     border-radius: 8px;
@@ -940,17 +1091,8 @@ watch(areaKeyword, () => {
       background: rgba(59, 130, 246, 0.06);
       transform: translateX(2px);
     }
-    
-    // 选中状态 - 通过 .is-active 类判断
-    .area-node.is-active {
-      // 让父节点有背景
-      & {
-        width: 100%;
-      }
-    }
   }
   
-  // 选中节点的整行样式
   :deep(.el-tree-node__content:has(.area-node.is-active)) {
     background: linear-gradient(
       135deg,
@@ -973,7 +1115,6 @@ watch(areaKeyword, () => {
     }
   }
   
-  // 特殊节点的整行样式 - 轻量化，不那么像选中状态
   :deep(.el-tree-node__content:has(.area-node.is-special)) {
     background: rgba(251, 191, 36, 0.06);
     border-left: 2px solid rgba(245, 158, 11, 0.4);
@@ -984,14 +1125,12 @@ watch(areaKeyword, () => {
       border-left-color: rgba(245, 158, 11, 0.6);
     }
     
-    // 特殊节点的文字颜色
     .area-label {
       color: #b45309;
       font-weight: 600;
     }
   }
   
-  // 特殊节点且选中的样式（优先级最高）- 明显区分
   :deep(.el-tree-node__content:has(.area-node.is-special.is-active)) {
     background: linear-gradient(
       135deg,
@@ -1004,3 +1143,4 @@ watch(areaKeyword, () => {
   }
 }
 </style>
+
