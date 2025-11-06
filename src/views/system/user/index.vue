@@ -155,6 +155,13 @@
               <Icon icon="ep:upload" /> 导入
             </el-button>
             <el-button
+              type="info"
+              plain
+              @click="handleDownloadTemplate"
+            >
+              <Icon icon="ep:document" /> 模板
+            </el-button>
+            <el-button
               type="success"
               @click="handleExport"
               :loading="exportLoading"
@@ -277,12 +284,13 @@
 
   <!-- 添加或修改用户对话框 -->
   <UserForm ref="formRef" @success="getList" />
-  <!-- 用户导入对话框 -->
-  <UserImportForm ref="importFormRef" @success="getList" />
   <!-- 分配角色 -->
   <UserAssignRoleForm ref="assignRoleFormRef" @success="getList" />
+  <!-- Excel预览弹窗 -->
+  <ExcelPreviewDialog ref="excelPreviewRef" />
 </template>
 <script lang="ts" setup>
+import { ElMessage } from 'element-plus'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { checkPermi } from '@/utils/permission'
 import { dateFormatter } from '@/utils/formatTime'
@@ -291,9 +299,9 @@ import { CommonStatusEnum } from '@/utils/constants'
 import * as UserApi from '@/api/system/user'
 import * as AreaOrgApi from '@/api/system/areaOrg'
 import UserForm from './UserForm.vue'
-import UserImportForm from './UserImportForm.vue'
 import UserAssignRoleForm from './UserAssignRoleForm.vue'
 import RegionTree from './RegionTree.vue'
+import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
 
 defineOptions({ name: 'SystemUser' })
 
@@ -319,6 +327,7 @@ const orgList = ref<AreaOrgApi.OrgItem[]>([]) // 机构列表
 const orgLoading = ref(false) // 机构加载状态
 const orgSearchText = ref('') // 机构搜索文本
 const filteredOrgList = ref<AreaOrgApi.OrgItem[]>([]) // 过滤后的机构列表
+const excelPreviewRef = ref() // Excel预览对话框引用
 
 // 面板拖拽相关
 const selectorPanel = ref<HTMLElement>()
@@ -476,10 +485,60 @@ const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
 }
 
-/** 用户导入 */
-const importFormRef = ref()
+/** 用户导入：直接调起文件选择并上传 */
 const handleImport = () => {
-  importFormRef.value.open()
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.xls,.xlsx,.csv'
+  input.onchange = async (event: Event) => {
+    const target = event.target as HTMLInputElement
+    const file = target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    const fileName = file.name.toLowerCase()
+    const isSupported = fileName.endsWith('.xls') || fileName.endsWith('.xlsx') || fileName.endsWith('.csv')
+    if (!isSupported) {
+      message.error('仅支持上传 xls、xlsx 或 csv 格式文件')
+      return
+    }
+
+    const loadingMsg = ElMessage({
+      message: '正在导入用户数据，请稍候...',
+      type: 'info',
+      duration: 0
+    })
+
+    try {
+      // 默认允许覆盖已有用户，保证重复导入不会直接失败
+      const response = await UserApi.importUser(file, true)
+      loadingMsg.close()
+
+      const payload = response.data?.data ?? {}
+      const successCount = payload.userSuccessCount ?? 0
+      const failCount = payload.userFailCount ?? 0
+      message.success(`用户导入完成：成功 ${successCount} 条，失败 ${failCount} 条`)
+
+      if (
+        failCount > 0 &&
+        Array.isArray(payload.userFailMessages) &&
+        payload.userFailMessages.length > 0
+      ) {
+        message.alert(payload.userFailMessages.join('\n'), '导入失败明细')
+      }
+
+      await getList()
+    } catch (error: any) {
+      loadingMsg.close()
+      console.error('用户导入失败:', error)
+      const errorMsg = error?.data?.msg || error?.message || '导入失败，请检查文件格式和内容'
+      message.error(errorMsg)
+    } finally {
+      target.value = ''
+    }
+  }
+  input.click()
 }
 
 /** 修改用户状态 */
@@ -564,6 +623,12 @@ const handleResetPwd = async (row: UserApi.UserVO) => {
 const assignRoleFormRef = ref()
 const handleRole = (row: UserApi.UserVO) => {
   assignRoleFormRef.value.open(row)
+}
+
+/** 打开模板预览 */
+const handleDownloadTemplate = () => {
+  // 直接通过 code 打开预览对话框
+  excelPreviewRef.value?.openByCode('USER_IMPORT_001')
 }
 
 /** 初始化 */

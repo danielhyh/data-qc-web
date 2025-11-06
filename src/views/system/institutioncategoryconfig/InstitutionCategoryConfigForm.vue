@@ -1,55 +1,110 @@
 <template>
-  <Dialog :title="dialogTitle" v-model="dialogVisible">
+  <Dialog :title="dialogTitle" v-model="dialogVisible" width="600px">
     <el-form
       ref="formRef"
       :model="formData"
       :rules="formRules"
-      label-width="100px"
+      label-width="110px"
       v-loading="formLoading"
     >
-      <el-form-item label="机构名称（用于匹配）" prop="institutionName">
-        <el-input v-model="formData.institutionName" placeholder="请输入机构名称（用于匹配）" />
-      </el-form-item>
-      <el-form-item label="行政管理归属" prop="category">
-        <el-select v-model="formData.category" placeholder="请选择行政管理归属" clearable>
-          <el-option
-            v-for="dict in getStrDictOptions(DICT_TYPE.ADMINISTRATIVE_AFFILIATION)"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="机构级别" prop="level">
-        <el-input v-model="formData.level" placeholder="请输入机构级别，如：三级" />
-      </el-form-item>
-      <el-form-item label="医疗类别" prop="medicalCategory">
-        <el-input v-model="formData.medicalCategory" placeholder="请输入医疗类别，如：综合医院" />
-      </el-form-item>
-      <el-form-item label="状态：0-启用 1-禁用" prop="status">
-        <el-radio-group v-model="formData.status">
-          <el-radio
-            v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-            :key="dict.value"
-            :label="dict.value"
-          >
-            {{ dict.label }}
-          </el-radio>
-        </el-radio-group>
-      </el-form-item>
-      <el-form-item label="备注" prop="remark">
-        <el-input v-model="formData.remark" placeholder="请输入备注" />
-      </el-form-item>
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-form-item label="机构名称" prop="institutionName">
+            <el-input 
+              v-model="formData.institutionName" 
+              placeholder="请输入完整机构名称，用于精确匹配"
+              clearable
+            >
+              <template #prefix>
+                <Icon icon="ep:office-building" />
+              </template>
+            </el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="行政归属" prop="category">
+            <el-select 
+              v-model="formData.category" 
+              placeholder="请选择" 
+              clearable
+              class="!w-full"
+            >
+              <el-option
+                v-for="dict in getStrDictOptions(DICT_TYPE.ADMINISTRATIVE_AFFILIATION)"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
+              />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="机构级别" prop="level">
+            <el-input 
+              v-model="formData.level" 
+              placeholder="如：三级、二级"
+              clearable
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="医疗类别" prop="medicalCategory">
+            <el-input 
+              v-model="formData.medicalCategory" 
+              placeholder="如：综合医院"
+              clearable
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="状态" prop="status">
+            <el-radio-group v-model="formData.status">
+              <el-radio
+                v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
+                :key="dict.value"
+                :label="dict.value"
+              >
+                {{ dict.label }}
+              </el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="24">
+          <el-form-item label="备注" prop="remark">
+            <el-input 
+              v-model="formData.remark" 
+              type="textarea"
+              :rows="3"
+              placeholder="请输入备注信息（可选）"
+              maxlength="200"
+              show-word-limit
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
     </el-form>
     <template #footer>
-      <el-button @click="submitForm" type="primary" :disabled="formLoading">确 定</el-button>
       <el-button @click="dialogVisible = false">取 消</el-button>
+      <el-button type="primary" @click="submitForm" :disabled="formLoading">
+        <Icon icon="ep:check" class="mr-5px" />
+        确 定
+      </el-button>
     </template>
   </Dialog>
 </template>
 <script setup lang="ts">
 import { getIntDictOptions, getStrDictOptions, DICT_TYPE } from '@/utils/dict'
 import { InstitutionCategoryConfigApi, InstitutionCategoryConfigVO } from '@/api/system/institutioncategoryconfig'
+import { Icon } from '@/components/Icon'
 
 /** 机构行政归属配置 表单 */
 defineOptions({ name: 'InstitutionCategoryConfigForm' })
@@ -67,13 +122,13 @@ const formData = ref({
   category: undefined,
   level: undefined,
   medicalCategory: undefined,
-  status: undefined,
+  status: 0, // 默认启用
   remark: undefined,
 })
 const formRules = reactive({
-  institutionName: [{ required: true, message: '机构名称（用于匹配）不能为空', trigger: 'blur' }],
-  category: [{ required: true, message: '行政管理归属：委直/委管/部队等不能为空', trigger: 'change' }],
-  status: [{ required: true, message: '状态：0-启用 1-禁用不能为空', trigger: 'blur' }],
+  institutionName: [{ required: true, message: '请输入机构名称', trigger: 'blur' }],
+  category: [{ required: true, message: '请选择行政归属', trigger: 'change' }],
+  status: [{ required: true, message: '请选择状态', trigger: 'change' }],
 })
 const formRef = ref() // 表单 Ref
 
@@ -127,7 +182,7 @@ const resetForm = () => {
     category: undefined,
     level: undefined,
     medicalCategory: undefined,
-    status: undefined,
+    status: 0, // 默认启用
     remark: undefined,
   }
   formRef.value?.resetFields()

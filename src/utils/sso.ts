@@ -137,8 +137,9 @@ export const SsoAuth = {
       console.error('SSO注销失败:', error)
     } finally {
       removeToken()
-      // 注销后重定向到首页，路由守卫会自动触发SSO登录
-      window.location.href = '/'
+      // 注销后重定向到前端首页的Vue路由，保留当前路径前缀（如 /sxwjwypjc）
+      // 使用 location.pathname 保留路径前缀，只修改 hash
+      window.location.href = window.location.pathname + '#/'
     }
   },
 

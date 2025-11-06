@@ -2,76 +2,71 @@
 <template>
   <div class="flex h-full">
     <!-- 左侧地区和机构选择器 -->
-    <div
-      ref="selectorPanel"
+    <ContentWrap
       class="selector-panel"
-      :style="{ width: selectorWidth + 'px' }"
-    >
-      <ContentWrap
-        class="h-full selector-card">
-        <el-row :gutter="12" class="selector-content">
-          <!-- 左侧：地区树 -->
-          <el-col :span="12">
-            <div class="section-title">地区</div>
-            <RegionTree @node-click="handleRegionNodeClick" />
-          </el-col>
+      :style="{ width: selectorWidth + 'px', flexShrink: 0 }">
+      <el-row :gutter="12" class="selector-content">
+        <!-- 左侧：地区树 -->
+        <el-col :span="12">
+          <div class="section-title">地区</div>
+          <RegionTree ref="regionTreeRef" @node-click="handleRegionNodeClick" />
+        </el-col>
 
-          <!-- 右侧：机构列表 -->
-          <el-col :span="12">
-            <div class="section-title">机构</div>
+        <!-- 右侧：机构列表 -->
+        <el-col :span="12">
+          <div class="section-title">机构</div>
 
-            <!-- 机构搜索框 -->
-            <div v-if="selectedRegionId" class="org-search-box">
-              <el-input
-                v-model="orgSearchText"
-                placeholder="搜索机构名称"
-                clearable
-                size="small"
-                @input="handleOrgSearch"
-              >
-                <template #prefix>
-                  <Icon icon="ep:search" />
-                </template>
-              </el-input>
-            </div>
+          <!-- 机构搜索框 -->
+          <div v-if="selectedRegionId" class="org-search-box">
+            <el-input
+              v-model="orgSearchText"
+              placeholder="搜索机构名称"
+              clearable
+              size="small"
+              @input="handleOrgSearch"
+            >
+              <template #prefix>
+                <Icon icon="ep:search" />
+              </template>
+            </el-input>
+          </div>
 
-            <div v-if="!selectedRegionId && orgList.length === 0 && !orgLoading" class="empty-state">
-              <Icon icon="ep:pointer" class="empty-icon" />
-              <p>请先选择左侧地区</p>
-            </div>
+          <div v-if="!selectedRegionId && orgList.length === 0 && !orgLoading" class="empty-state">
+            <Icon icon="ep:pointer" class="empty-icon" />
+            <p>请先选择左侧地区</p>
+          </div>
 
-            <div v-else-if="orgLoading" class="loading-state">
-              <el-skeleton :rows="3" animated />
-            </div>
+          <div v-else-if="orgLoading" class="loading-state">
+            <el-skeleton :rows="3" animated />
+          </div>
 
-            <div v-else-if="selectedRegionId && orgList.length === 0" class="empty-state">
-              <Icon icon="ep:document-delete" class="empty-icon" />
-              <p>该地区暂无机构</p>
-            </div>
+          <div v-else-if="selectedRegionId && orgList.length === 0" class="empty-state">
+            <Icon icon="ep:document-delete" class="empty-icon" />
+            <p>该地区暂无机构</p>
+          </div>
 
-            <div v-else-if="orgList.length > 0" class="org-list">
-              <div
-                v-for="org in filteredOrgList"
-                :key="org.id"
-                class="org-item"
-                :class="{ active: selectedOrgIds.includes(org.id) }"
-                @click="handleOrgClick(org)"
-              >
-                <div class="org-item-content">
-                  <el-tooltip
-                    :content="org.name"
-                    placement="top"
-                    :disabled="!isTextOverflow(org.name)"
-                  >
-                    <div class="org-name">{{ org.name }}</div>
-                  </el-tooltip>
-                </div>
+          <div v-else-if="orgList.length > 0" class="org-list">
+            <div
+              v-for="org in filteredOrgList"
+              :key="org.id"
+              class="org-item"
+              :class="{ active: selectedOrgIds.includes(org.id) }"
+              @click="handleOrgClick(org)"
+            >
+              <div class="org-item-content">
+                <el-tooltip
+                  :content="org.name"
+                  placement="top"
+                  :disabled="!isTextOverflow(org.name)"
+                >
+                  <div class="org-name">{{ org.name }}</div>
+                </el-tooltip>
               </div>
             </div>
-          </el-col>
-        </el-row>
-      </ContentWrap>
-    </div>
+          </div>
+        </el-col>
+      </el-row>
+    </ContentWrap>
 
     <!-- 拖拽分隔条 -->
     <div
@@ -80,133 +75,141 @@
     ></div>
 
     <!-- 右侧内容区域 -->
-    <div class="flex-1 ml-5">
-  <ContentWrap>
-    <!-- 搜索工作栏 -->
-    <el-form
-      class="-mb-15px"
-      :model="queryParams"
-      ref="queryFormRef"
-      :inline="true"
-      label-width="68px"
-    >
-      <el-form-item label="填报任务" prop="reportTaskId">
-        <el-select
-          v-model="queryParams.reportTaskId"
-          placeholder="请选择填报任务"
-          clearable
-          class="!w-200px"
-        >
-          <el-option
-            v-for="task in reportTaskList"
-            :key="task.id"
-            :label="task.taskName"
-            :value="task.id"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="文件名" prop="fileName">
-        <el-input
-          v-model="queryParams.fileName"
-          placeholder="请输入文件名"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-        <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-        <el-button
-          type="primary"
-          plain
-          @click="openForm('create')"
-          v-hasPermi="['drug:import-task-detail:create']"
-        >
-          <Icon icon="ep:plus" class="mr-5px" /> 新增
-        </el-button>
-        <el-button
-          type="success"
-          plain
-          @click="handleExport"
-          :loading="exportLoading"
-          v-hasPermi="['drug:import-task-detail:export']"
-        >
-          <Icon icon="ep:download" class="mr-5px" /> 导出
-        </el-button>
-      </el-form-item>
-    </el-form>
-  </ContentWrap>
+    <div class="flex-1 ml-5 main-content">
+      <!-- 当前选择的地区信息 -->
+      <div v-if="selectedRegion" class="my-15px">
+        <el-tag type="primary" size="large" class="region-tag" :closable="true" @close="handleClearRegion">
+          <Icon icon="ep:location" class="mr-5px" />
+          当前地区：{{ getRegionDisplayName(selectedRegion) }}
+        </el-tag>
+      </div>
 
-  <!-- 列表 -->
-  <ContentWrap>
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="任务ID" align="center" prop="taskId" width="100" />
-      <el-table-column label="任务编号" align="center" prop="taskNo" width="180" />
-      <el-table-column label="部门名称" align="center" prop="deptName" width="200" :show-overflow-tooltip="true">
-        <template #default="scope">
-          <span class="font-bold">{{ scope.row.deptName }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="所属市" align="center" prop="cityName" width="100" />
-      <el-table-column label="所属区县" align="center" prop="districtName" width="120" />
-      <el-table-column label="文件类型" align="center" prop="fileType" width="120">
-        <template #default="scope">
-          <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.fileType" />
-        </template>
-      </el-table-column>
-      <el-table-column label="文件名" align="center" prop="fileName" />
-      <el-table-column label="总行数" align="center" prop="totalRows" />
-      <el-table-column label="文件大小" align="center" prop="fileSize" />
-      <el-table-column
-        label="提交时间"
-        align="center"
-        prop="submitTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column label="操作" align="center" min-width="280px" fixed="right">
-        <template #default="scope">
-          <el-button
-            type="primary"
-            plain
-            size="small"
-            @click="openForm('update', scope.row.id)"
-            v-hasPermi="['drug:import-task-detail:update']"
-          >
-            <Icon icon="ep:edit" class="mr-5px" />
-            编辑
-          </el-button>
-          <el-button
-            type="success"
-            size="small"
-            @click="handleDownload(scope.row.id)"
-            v-hasPermi="['drug:import-task-detail:export']"
-          >
-            <Icon icon="ep:download" class="mr-5px" />
-            下载
-          </el-button>
-          <el-button
-            type="danger"
-            plain
-            size="small"
-            @click="handleDelete(scope.row.id)"
-            v-hasPermi="['drug:import-task-detail:delete']"
-          >
-            <Icon icon="ep:delete" class="mr-5px" />
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    <!-- 分页 -->
-    <Pagination
-      :total="total"
-      v-model:page="queryParams.pageNo"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-  </ContentWrap>
+      <ContentWrap>
+        <!-- 搜索工作栏 -->
+        <el-form
+          class="-mb-15px"
+          :model="queryParams"
+          ref="queryFormRef"
+          :inline="true"
+          label-width="68px"
+        >
+          <el-form-item label="填报任务" prop="reportTaskId">
+            <el-select
+              v-model="queryParams.reportTaskId"
+              placeholder="请选择填报任务"
+              clearable
+              class="!w-200px"
+            >
+              <el-option
+                v-for="task in reportTaskList"
+                :key="task.id"
+                :label="task.taskName"
+                :value="task.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="文件名" prop="fileName">
+            <el-input
+              v-model="queryParams.fileName"
+              placeholder="请输入文件名"
+              clearable
+              @keyup.enter="handleQuery"
+              class="!w-240px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
+            <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+            <el-button
+              type="primary"
+              plain
+              @click="openForm('create')"
+              v-hasPermi="['drug:import-task-detail:create']"
+            >
+              <Icon icon="ep:plus" class="mr-5px" /> 新增
+            </el-button>
+            <el-button
+              type="success"
+              plain
+              @click="handleExport"
+              :loading="exportLoading"
+              v-hasPermi="['drug:import-task-detail:export']"
+            >
+              <Icon icon="ep:download" class="mr-5px" /> 导出
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </ContentWrap>
+
+      <!-- 列表 -->
+      <ContentWrap>
+        <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+          <el-table-column label="任务ID" align="center" prop="taskId" width="100" />
+          <el-table-column label="任务编号" align="center" prop="taskNo" width="180" />
+          <el-table-column label="部门名称" align="center" prop="deptName" width="200" :show-overflow-tooltip="true">
+            <template #default="scope">
+              <span class="font-bold">{{ scope.row.deptName }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="所属市" align="center" prop="cityName" width="100" />
+          <el-table-column label="所属区县" align="center" prop="districtName" width="120" />
+          <el-table-column label="文件类型" align="center" prop="fileType" width="120">
+            <template #default="scope">
+              <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.fileType" />
+            </template>
+          </el-table-column>
+          <el-table-column label="文件名" align="center" prop="fileName" />
+          <el-table-column label="总行数" align="center" prop="totalRows" />
+          <el-table-column label="文件大小" align="center" prop="fileSize" />
+          <el-table-column
+            label="提交时间"
+            align="center"
+            prop="submitTime"
+            :formatter="dateFormatter"
+            width="180px"
+          />
+          <el-table-column label="操作" align="center" min-width="280px" fixed="right">
+            <template #default="scope">
+              <el-button
+                type="primary"
+                plain
+                size="small"
+                @click="openForm('update', scope.row.id)"
+                v-hasPermi="['drug:import-task-detail:update']"
+              >
+                <Icon icon="ep:edit" class="mr-5px" />
+                编辑
+              </el-button>
+              <el-button
+                type="success"
+                size="small"
+                @click="handleDownload(scope.row.id)"
+                v-hasPermi="['drug:import-task-detail:export']"
+              >
+                <Icon icon="ep:download" class="mr-5px" />
+                下载
+              </el-button>
+              <el-button
+                type="danger"
+                plain
+                size="small"
+                @click="handleDelete(scope.row.id)"
+                v-hasPermi="['drug:import-task-detail:delete']"
+              >
+                <Icon icon="ep:delete" class="mr-5px" />
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <Pagination
+          :total="total"
+          v-model:page="queryParams.pageNo"
+          v-model:limit="queryParams.pageSize"
+          @pagination="getList"
+        />
+      </ContentWrap>
     </div>
   </div>
 
@@ -215,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { getStrDictOptions, DICT_TYPE } from '@/utils/dict'
+import { DICT_TYPE, getDictLabel } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { DataArchiveApi, DataArchiveVO } from '@/api/drug/dataArchive'
@@ -243,12 +246,13 @@ const queryParams = reactive({
   fileSize: undefined,
   submitTime: [],
   reportTaskId: undefined, // 填报任务ID
-  deptIds: undefined, // 部门ID列表
+  deptIds: undefined as string | undefined, // 部门ID列表
 })
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中
 
 // 地区机构筛选相关
+const selectedRegion = ref<any>(null) // 选中的地区节点
 const selectedRegionId = ref<number | undefined>() // 选中的地区ID
 const selectedOrgIds = ref<number[]>([]) // 选中的机构ID列表
 const orgList = ref<AreaOrgApi.OrgItem[]>([]) // 机构列表
@@ -258,7 +262,7 @@ const filteredOrgList = ref<AreaOrgApi.OrgItem[]>([]) // 过滤后的机构列�
 const reportTaskList = ref<ReportTaskVO[]>([]) // 填报任务列表
 
 // 面板拖拽相关
-const selectorPanel = ref<HTMLElement>()
+const regionTreeRef = ref<InstanceType<typeof RegionTree>>()
 const selectorWidth = ref(320) // 默认宽度
 const isResizing = ref(false)
 
@@ -340,6 +344,8 @@ const isTextOverflow = (text: string) => {
 
 /** 处理地区被点击 */
 const handleRegionNodeClick = async (row) => {
+  // 保存选中的地区节点
+  selectedRegion.value = row
   // 更robust的ID设置逻辑
   selectedRegionId.value = row.id || row.code || row.value || 'selected'
 
@@ -362,6 +368,28 @@ const handleRegionNodeClick = async (row) => {
   }
   // 刷新列表
   await getList()
+}
+
+/** 清除地区选择 */
+const handleClearRegion = () => {
+  selectedRegion.value = null
+  selectedRegionId.value = undefined
+  selectedOrgIds.value = []
+  orgList.value = []
+  filteredOrgList.value = []
+  orgSearchText.value = ''
+  queryParams.deptIds = undefined
+  // 清除树的选中状态
+  regionTreeRef.value?.clearSelection()
+  getList()
+}
+
+/** 获取地区显示名称 */
+const getRegionDisplayName = (region: any) => {
+  if (!region) return ''
+  // 使用字典获取地区级别的文字
+  const levelLabel = getDictLabel(DICT_TYPE.REGION_LEVEL, region.level)
+  return `${region.name}(${levelLabel || ''})`
 }
 
 /** 处理机构被点击 */
@@ -407,13 +435,6 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
-  // 重置地区和机构选择
-  selectedRegionId.value = undefined
-  selectedOrgIds.value = []
-  orgList.value = []
-  filteredOrgList.value = []
-  orgSearchText.value = ''
-  queryParams.deptIds = undefined
   handleQuery()
 }
 
@@ -473,17 +494,19 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .selector-panel {
-  flex-shrink: 0;
   min-width: 250px;
   max-width: 600px;
   height: 100vh;
   overflow: hidden;
-}
-
-.selector-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
+
+  :deep(.el-card__body) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+  }
 }
 
 .resize-handle {
@@ -593,5 +616,23 @@ onMounted(async () => {
 .main-content {
   min-width: 0; // flex子元素必须设置，否则默认min-width: auto会导致内容溢出
   overflow-x: auto; // 横向滚动
+}
+
+// 地区标签美化
+.region-tag {
+  padding: 10px 18px;
+  font-size: 14px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.25);
+    transform: translateY(-1px);
+  }
+
+  :deep(.el-icon) {
+    font-size: 16px;
+  }
 }
 </style>

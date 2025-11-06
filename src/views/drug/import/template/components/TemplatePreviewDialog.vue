@@ -87,8 +87,8 @@
                     </td>
                   </tr>
 
-                  <!-- 第2行：说明（仅在有说明文本时显示） -->
-                  <tr v-if="previewData?.descriptionRow" class="description-row">
+                  <!-- 第2行：说明（仅在有说明文本且非空时显示） -->
+                  <tr v-if="previewData?.descriptionRow && previewData.descriptionRow.trim()" class="description-row">
                     <td :colspan="fieldList.length || 1" class="description-cell">
                       {{ previewData.descriptionRow }}
                     </td>
@@ -323,7 +323,7 @@ const loadPreviewData = async () => {
     const apiPreviewData = response.previewData as any
     previewData.value = {
       titleRow: apiPreviewData.title || '模板标题',
-      descriptionRow: apiPreviewData.description, // 可能为null/空字符串
+      descriptionRow: apiPreviewData.description || '', // 空字符串而非null，便于前端判断
       headerRow: apiPreviewData.headers || [],
       exampleRows: apiPreviewData.examples || []
     }

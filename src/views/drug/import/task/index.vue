@@ -2,15 +2,12 @@
 <template>
   <div class="flex h-full">
     <!-- 左侧地区树选择器 -->
-    <div
-      ref="selectorPanel"
-      class="selector-panel"
-      :style="{ width: selectorWidth + 'px' }"
-    >
-      <ContentWrap class="h-full selector-card" title="地区">
-        <RegionTree @node-click="handleRegionSelect" />
-      </ContentWrap>
-    </div>
+    <RegionTree 
+      ref="regionTreeRef"
+      :style="{ width: selectorWidth + 'px', flexShrink: 0 }"
+      :auto-select-first="false"
+      @node-click="handleRegionSelect" 
+    />
 
     <!-- 拖拽分隔条 -->
     <div
@@ -20,6 +17,14 @@
 
     <!-- 右侧内容区域 -->
     <div class="flex-1 ml-5 main-content">
+      <!-- 当前选择的地区信息 -->
+      <div v-if="selectedRegion" class="my-15px">
+        <el-tag type="primary" size="large" class="region-tag" :closable="true" @close="handleClearRegion">
+          <Icon icon="ep:location" class="mr-5px" />
+          当前地区：{{ getRegionDisplayName(selectedRegion) }}
+        </el-tag>
+      </div>
+
       <ContentWrap>
         <!-- 搜索工作栏 -->
         <el-form
@@ -132,14 +137,6 @@
 
       <!-- 列表 -->
       <ContentWrap>
-        <!-- 当前选择的地区信息 -->
-        <div v-if="selectedRegion" class="mb-15px">
-          <el-tag type="info" size="large">
-            <Icon icon="ep:location" class="mr-5px" />
-            当前地区：{{ getRegionDisplayName(selectedRegion) }}
-          </el-tag>
-        </div>
-
         <el-table
           v-loading="loading"
           :data="list"
@@ -256,7 +253,7 @@
 </template>
 
 <script setup lang="ts">
-import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
+import { getIntDictOptions, DICT_TYPE, getDictLabel } from '@/utils/dict'
 import download from '@/utils/download'
 import { getDataManageImportTaskPage, exportDataManageImportTask, DataManageImportTaskVO, getReportTaskList, ReportTaskVO, executePostQc, rejectTask, approveTask, batchExecutePostQc, batchRejectTask, batchApproveTask } from '@/api/drug/dataManage'
 import { ImportTaskApi } from '@/api/drug/batch'
@@ -280,8 +277,8 @@ const reportTaskList = ref<ReportTaskVO[]>([]) // 填报任务列表
 const multipleSelection = ref<DataManageImportTaskVO[]>([]) // 多选数据
 
 // 面板拖拽相关
-const selectorPanel = ref<HTMLElement>()
-const selectorWidth = ref(250) // 默认宽度
+const regionTreeRef = ref<InstanceType<typeof RegionTree>>()
+const selectorWidth = ref(250) // 默认宽度设为最小宽度
 const isResizing = ref(false)
 const queryParams = reactive({
   pageNo: 1,
@@ -353,11 +350,22 @@ const handleRegionSelect = (region: any) => {
   getList()
 }
 
+/** 清除地区选择 */
+const handleClearRegion = () => {
+  selectedRegion.value = null
+  queryParams.regionCode = undefined
+  queryParams.pageNo = 1
+  // 清除树的选中状态
+  regionTreeRef.value?.clearSelection()
+  getList()
+}
+
 /** 获取地区显示名称 */
 const getRegionDisplayName = (region: any) => {
   if (!region) return ''
-  const levelNames = { 1: '省', 2: '市', 3: '区县' }
-  return `${region.name}(${levelNames[region.level] || ''})`
+  // 使用字典获取地区级别的文字
+  const levelLabel = getDictLabel(DICT_TYPE.REGION_LEVEL, region.level)
+  return `${region.name}(${levelLabel || ''})`
 }
 
 /** 搜索按钮操作 */
@@ -537,27 +545,6 @@ onMounted(async () => {
 })
 </script>
 <style scoped lang="scss">
-.selector-panel {
-  flex-shrink: 0;
-  min-width: 250px;
-  max-width: 600px;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.selector-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-
-  :deep(.el-card__body) {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-  }
-}
-
 .resize-handle {
   width: 5px;
   background: var(--el-border-color-light);
@@ -574,5 +561,23 @@ onMounted(async () => {
 .main-content {
   min-width: 0; // flex子元素必须设置，否则默认min-width: auto会导致内容溢出
   overflow-x: auto; // 横向滚动
+}
+
+// 地区标签美化
+.region-tag {
+  padding: 10px 18px;
+  font-size: 14px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.25);
+    transform: translateY(-1px);
+  }
+
+  :deep(.el-icon) {
+    font-size: 16px;
+  }
 }
 </style>

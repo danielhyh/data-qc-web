@@ -150,6 +150,17 @@
                 上报
               </el-button>
 
+              <!-- 查看审核状态按钮（已上报/审核中） -->
+              <el-button
+                v-if="scope.row.reportStatus === 1"
+                type="primary"
+                size="small"
+                @click="handleViewReviewStatus(scope)"
+              >
+                <Icon icon="ep:view" class="mr-1" />
+                查看审核
+              </el-button>
+
               <!-- 重新上报按钮 -->
               <el-button
                 v-if="scope.row.reportStatus === 2"
@@ -186,7 +197,6 @@
             </el-button>
 
             <el-button
-              v-if="scope.row.reportStatus !== 0"
               size="small"
               plain
               @click="handleReportLogs(scope)"
@@ -342,6 +352,16 @@ function getRemainingTimeClass(endDate?: number, status?: number): string {
 
 /** 上报 */
 const handleReport = ({ row }) => {
+  router.push({
+    name: 'DrugReportData',
+    query: {
+      taskId: row.taskId
+    }
+  })
+}
+
+/** 查看审核状态 */
+const handleViewReviewStatus = ({ row }) => {
   router.push({
     name: 'DrugReportData',
     query: {

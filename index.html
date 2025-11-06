@@ -56,9 +56,24 @@
             }
           }
           
-          // 立即应用背景色到 html 和 body
-          document.documentElement.style.backgroundColor = bgColor
-          document.body.style.backgroundColor = bgColor
+          // 立即应用背景色到 html，并在 body 可用时再补充设置，避免因 body 尚未解析导致的空指针异常
+          const applyBackground = (color) => {
+            document.documentElement.style.backgroundColor = color
+
+            const paintBody = () => {
+              document.body.style.backgroundColor = color
+            }
+
+            if (document.body) {
+              paintBody()
+              return
+            }
+
+            // 如果脚本执行时 body 仍未生成，则监听 DOMContentLoaded 事件再设置
+            document.addEventListener('DOMContentLoaded', paintBody, { once: true })
+          }
+
+          applyBackground(bgColor)
         } catch (e) {
           console.warn('主题预加载失败:', e)
         }

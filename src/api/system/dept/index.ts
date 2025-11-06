@@ -10,6 +10,7 @@ export interface DeptVO {
   phone: string
   email: string
   createTime: Date
+  externalId?: string
   regionId?: number
   regionCode?: string
   regionPath?: string
@@ -21,7 +22,17 @@ export interface DeptVO {
   hospitalLevel?: string
   contactPerson?: string
   contactPhone?: string
+  deptAddressCode?: string
+  orgCode?: string
+  socialCreditCode?: string
+  practiceLicenseNo?: string
+  approvalRegistrationNo?: string
   address?: string
+  postalCode?: string
+  description?: string
+  grassrootsInstitution?: number
+  isMonitoringRequired?: number
+  adminCategory?: string
   deptType?: string
   area?: string
 }
@@ -60,4 +71,26 @@ export const updateDept = async (params: DeptVO) => {
 // 删除部门
 export const deleteDept = async (id: number) => {
   return await request.delete({ url: '/system/dept/delete?id=' + id })
+}
+
+// 更新部门状态
+export const updateDeptStatus = async (id: number, status: number) => {
+  return await request.put({ url: '/system/dept/update-status', params: { id, status } })
+}
+
+// 更新部门排序
+export const updateDeptSort = async (id: number, sort: number) => {
+  return await request.put({ url: '/system/dept/update-sort', params: { id, sort } })
+}
+
+// 导入机构
+export const importDept = async (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return await request.upload({ url: '/system/dept/import', data: formData })
+}
+
+// 下载导入模板
+export const importTemplate = async () => {
+  return await request.download({ url: '/system/dept/get-import-template' })
 }

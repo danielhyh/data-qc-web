@@ -68,9 +68,15 @@
         </el-table-column>
         <el-table-column label="无法上报原因" align="center" prop="unableReportReason" min-width="200" />
         <el-table-column label="备注说明" align="center" prop="remark" min-width="150" />
-        <el-table-column label="状态" align="center" prop="status" width="100">
+        <el-table-column label="状态" align="center" prop="status" width="80">
           <template #default="scope">
-            <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />
+            <el-switch
+              v-model="scope.row.status"
+              :active-value="0"
+              :inactive-value="1"
+              @change="handleStatusChange(scope.row)"
+              v-hasPermi="['system:monitoring-unable-report:update']"
+            />
           </template>
         </el-table-column>
         <el-table-column
@@ -205,6 +211,19 @@ const handleDelete = async (id: number) => {
     message.success(t('common.delSuccess'))
     await getList()
   } catch {}
+}
+
+/** 状态开关操作 */
+const handleStatusChange = async (row: MonitoringUnableReportVO) => {
+  try {
+    const statusText = row.status === 0 ? '启用' : '禁用'
+    await message.confirm(`确认要${statusText}"${row.deptName}"吗?`)
+    await MonitoringUnableReportApi.updateMonitoringUnableReportStatus(row.id, row.status)
+    message.success(`${statusText}成功`)
+  } catch {
+    // 操作失败或取消，恢复状态
+    row.status = row.status === 0 ? 1 : 0
+  }
 }
 
 /** 导出按钮操作 */

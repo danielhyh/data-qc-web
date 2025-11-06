@@ -1,13 +1,15 @@
 <!--机构管理页面-->
 <template>
-  <div class="flex h-full">
+  <div class="system-dept-page">
+    <div class="flex dept-container">
     <!-- 左侧地区树选择器 -->
-    <RegionTree 
+    <RegionTree
       ref="regionTreeRef"
-      :style="{ width: selectorWidth + 'px', flexShrink: 0 }"
+      :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
       :auto-select-first="false"
       :show-org-count="true"
-      @node-click="handleRegionNodeClick" 
+      :show-collapse-button="true"
+      @node-click="handleRegionNodeClick"
     />
 
     <!-- 拖拽分隔条 -->
@@ -15,7 +17,7 @@
 
     <!-- 右侧机构管理内容区域 -->
     <div class="flex-1 ml-5 main-content">
-      <!-- 当前选择的地区信息 - 在所有Tab外层显示 -->
+      <!-- 当前选择的地区信息 -->
       <div v-if="selectedRegion" class="mb-15px">
         <el-tag type="primary" size="large" class="region-tag" :closable="true" @close="handleClearRegion">
           <Icon icon="ep:location" class="mr-5px" />
@@ -68,10 +70,10 @@
               </el-form-item>
               <el-form-item>
                 <el-button @click="handleQuery"
-                  ><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button
+                ><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button
                 >
                 <el-button @click="resetQuery"
-                  ><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button
+                ><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button
                 >
                 <el-button
                   type="primary"
@@ -80,6 +82,20 @@
                 >
                   <Icon icon="ep:plus" class="mr-5px" /> 新增
                 </el-button>
+                <el-button
+                  type="warning"
+                  plain
+                  @click="handleImport"
+                >
+                  <Icon icon="ep:upload" class="mr-5px" /> 导入
+                </el-button>
+                <el-button
+                  type="info"
+                  plain
+                  @click="handleDownloadTemplate"
+                >
+                  <Icon icon="ep:document" class="mr-5px" /> 模板
+                </el-button>
                 <el-button type="danger" @click="toggleExpandAll">
                   <Icon icon="ep:sort" class="mr-5px" /> 展开/折叠
                 </el-button>
@@ -87,18 +103,18 @@
                   <Icon icon="ep:download" class="mr-5px" /> 从标准库同步
                 </el-button>
               </el-form-item>
-          </el-form>
-        </ContentWrap>
+            </el-form>
+          </ContentWrap>
 
-        <!-- 机构列表 -->
-        <ContentWrap>
-          <el-table
-            v-if="refreshTable"
-            v-loading="loading"
-            :data="list"
-            row-key="id"
-            :default-expand-all="isExpandAll"
-          >
+          <!-- 机构列表 -->
+          <ContentWrap>
+            <el-table
+              v-if="refreshTable"
+              v-loading="loading"
+              :data="list"
+              row-key="id"
+              :default-expand-all="isExpandAll"
+            >
               <el-table-column prop="name" label="机构名称" min-width="230">
                 <template #default="scope">
                   <div class="institution-name-cell">
@@ -117,6 +133,9 @@
                   </div>
                 </template>
               </el-table-column>
+              <el-table-column prop="externalId" label="外部机构代码" width="180" show-overflow-tooltip />
+              <el-table-column prop="regionPathName" label="所在地区" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="deptAddressCode" label="行政区划代码" width="140" show-overflow-tooltip />
               <el-table-column prop="institutionCategory" label="机构类别" width="120">
                 <template #default="scope">
                   <dict-tag
@@ -130,12 +149,58 @@
                   <dict-tag :type="DICT_TYPE.INSTITUTION_LEVEL" :value="scope.row.hospitalLevel ?? ''" />
                 </template>
               </el-table-column>
+              <el-table-column prop="adminCategory" label="行政归属" width="110" show-overflow-tooltip />
+              <el-table-column prop="orgCode" label="组织机构代码" width="160" show-overflow-tooltip />
+              <el-table-column prop="socialCreditCode" label="社会信用代码" width="190" show-overflow-tooltip />
               <el-table-column prop="contactPerson" label="联络员" width="100" />
               <el-table-column prop="contactPhone" label="联络员手机" width="120" />
-              <el-table-column prop="sort" label="排序" />
-              <el-table-column prop="status" label="状态">
+              <el-table-column prop="address" label="联系地址" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="grassrootsInstitution" label="基层机构" width="100">
                 <template #default="scope">
-                  <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />
+                  <el-tag :type="getBooleanTagType(scope.row.grassrootsInstitution)">
+                    {{ getBooleanLabel(scope.row.grassrootsInstitution) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="isMonitoringRequired" label="监测对象" width="110">
+                <template #default="scope">
+                  <el-tag :type="getBooleanTagType(scope.row.isMonitoringRequired)">
+                    {{ getBooleanLabel(scope.row.isMonitoringRequired) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="sort" label="排序" width="140">
+                <template #default="scope">
+                  <div class="sort-input-wrapper">
+                    <el-input-number
+                      :model-value="getSortInputValue(scope.row)"
+                      :min="0"
+                      :max="9999"
+                      :controls="false"
+                      size="small"
+                      class="sort-input"
+                      :disabled="updatingSortId === scope.row.id"
+                      @update:model-value="(value) => handleSortInputChange(scope.row, value)"
+                      @blur="() => handleSortCommit(scope.row)"
+                      @keydown.enter.prevent="() => handleSortCommit(scope.row)"
+                    />
+                    <Icon
+                      v-if="updatingSortId === scope.row.id"
+                      icon="line-md:loading-twotone-loop"
+                      class="sort-loading"
+                    />
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态" width="80">
+                <template #default="scope">
+                  <el-switch
+                    v-model="scope.row.status"
+                    :active-value="0"
+                    :inactive-value="1"
+                    @change="handleStatusChange(scope.row)"
+                    v-hasPermi="['system:dept:update']"
+                  />
                 </template>
               </el-table-column>
               <el-table-column
@@ -170,7 +235,7 @@
                 </template>
               </el-table-column>
             </el-table>
-        </ContentWrap>
+          </ContentWrap>
         </el-tab-pane>
 
         <!-- 监测内无法上报机构 Tab -->
@@ -207,16 +272,17 @@
         </el-tab-pane>
       </el-tabs>
     </div>
+    </div>
+
+    <!-- 表单弹窗：添加/修改 -->
+    <DeptForm ref="formRef" @success="getList" />
+
+    <!-- 同步弹窗：从标准库同步 -->
+    <InstitutionSyncModal ref="syncModalRef" @success="getList" />
   </div>
-
-  <!-- 表单弹窗：添加/修改 -->
-  <DeptForm ref="formRef" @success="getList" />
-
-  <!-- 同步弹窗：从标准库同步 -->
-  <InstitutionSyncModal ref="syncModalRef" @success="getList" />
 </template>
 <script lang="ts" setup>
-import { computed, nextTick, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { DICT_TYPE, getDictObj, getIntDictOptions, getDictLabel } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import { handleTree } from '@/utils/tree'
@@ -229,6 +295,9 @@ import MonitoringUnableReportTab from './MonitoringUnableReportTab.vue'
 import InstitutionCategoryConfigTab from './InstitutionCategoryConfigTab.vue'
 import DictIcon from '@/components/DictIcon'
 import { Icon } from '@/components/Icon'
+import { ElMessage } from 'element-plus'
+import { useMessage } from '@/hooks/web/useMessage'
+import { useI18n } from '@/hooks/web/useI18n'
 
 defineOptions({ name: 'SystemDept' })
 
@@ -245,7 +314,7 @@ const queryParams = reactive({
   areaCode: undefined // 使用areaCode匹配后端接口
 })
 const queryFormRef = ref() // 搜索的表单
-const isExpandAll = ref(true) // 是否展开，默认全部展开
+const isExpandAll = ref(false) // 是否展开，默认不全部展开，避免一次性渲染过多节点
 const refreshTable = ref(true) // 重新渲染表格状态
 const userList = ref<UserApi.UserVO[]>([]) // 用户列表
 const selectedRegionId = ref<string | undefined>() // 选中的地区Code
@@ -253,6 +322,9 @@ const selectedRegionCode = ref<string | undefined>() // 选中的地区代码
 const selectedRegion = ref<any>(null) // 选中的地区节点（用于显示标签）
 const activeTab = ref('dept') // 当前激活的标签页
 const unableReportCount = ref(0) // 无法上报机构数量（用于徽标显示）
+
+const editingSortCache = reactive(new Map<number, number>())
+const updatingSortId = ref<number | null>(null)
 
 const selectedRegionIdForMonitor = computed(() => {
   if (!selectedRegionId.value) {
@@ -266,6 +338,59 @@ const getInstitutionCategoryLabel = (value: string | number | boolean | undefine
   return getDictObj(DICT_TYPE.INSTITUTION_CATEGORY, value)?.label ?? '机构分类'
 }
 
+const getBooleanLabel = (value: number | undefined | null) => {
+  if (value === 0) return '是'
+  if (value === 1) return '否'
+  return '-'
+}
+
+const getBooleanTagType = (value: number | undefined | null) => {
+  if (value === 0) return 'success'
+  if (value === 1) return 'info'
+  return 'info'
+}
+
+const getSortInputValue = (row: any) => {
+  const cached = editingSortCache.get(row.id)
+  return cached !== undefined ? cached : Number(row.sort ?? 0)
+}
+
+const handleSortInputChange = (row: any, value: number | undefined) => {
+  const numericValue = Number(value ?? 0)
+  editingSortCache.set(row.id, numericValue)
+}
+
+const handleSortCommit = async (row: any) => {
+  if (updatingSortId.value === row.id) {
+    return
+  }
+  const cached = editingSortCache.get(row.id)
+  if (cached === undefined) {
+    return
+  }
+  const original = Number(row.sort ?? 0)
+  const sanitizedSource = typeof cached === 'number' && Number.isFinite(cached) ? cached : original
+  const sanitized = Math.max(0, Math.floor(sanitizedSource))
+  if (sanitized === original) {
+    editingSortCache.delete(row.id)
+    return
+  }
+  updatingSortId.value = row.id
+  try {
+    await DeptApi.updateDeptSort(row.id, sanitized)
+    message.success('排序已更新')
+    editingSortCache.delete(row.id)
+    await getList()
+  } catch (error: any) {
+    console.error('更新排序失败:', error)
+    const errorMsg = error?.data?.msg || error?.message || '排序更新失败'
+    message.error(errorMsg)
+    editingSortCache.set(row.id, sanitized)
+  } finally {
+    updatingSortId.value = null
+  }
+}
+
 // 面板拖拽相关
 const regionTreeRef = ref<InstanceType<typeof RegionTree>>()
 const selectorWidth = ref(250) // 默认宽度设为最小宽度
@@ -273,6 +398,11 @@ const isResizing = ref(false)
 
 /** 开始拖拽调整大小 */
 const startResize = (e: MouseEvent) => {
+  // 如果地区树处于折叠状态，禁用拖拽
+  if (regionTreeRef.value?.isCollapsed) {
+    return
+  }
+
   isResizing.value = true
   const startX = e.clientX
   const startWidth = selectorWidth.value
@@ -299,16 +429,31 @@ const startResize = (e: MouseEvent) => {
   e.preventDefault()
 }
 
+/** 监听地区树折叠状态，自动调整宽度 */
+watch(
+  () => regionTreeRef.value?.isCollapsed,
+  (collapsed) => {
+    if (collapsed) {
+      selectorWidth.value = 50 // 折叠状态宽度 - 只显示展开按钮
+    } else if (selectorWidth.value === 50) {
+      selectorWidth.value = 250 // 恢复默认宽度
+    }
+  }
+)
+
 /** 查询部门列表 */
 const getList = async () => {
   loading.value = true
   try {
     const data = await DeptApi.getDeptPage(queryParams)
-    console.log('原始数据:', data)
     const treeData = handleTree(data)
-    console.log('处理后的树形数据:', treeData)
+    refreshTable.value = false
+    await nextTick()
     list.value = treeData
+    editingSortCache.clear()
+    refreshTable.value = true
   } finally {
+    refreshTable.value = true
     loading.value = false
   }
 }
@@ -407,6 +552,72 @@ const handleDelete = async (id: number) => {
   } catch {}
 }
 
+/** 状态开关操作 */
+const handleStatusChange = async (row: any) => {
+  try {
+    const statusText = row.status === 0 ? '启用' : '禁用'
+    await message.confirm(`确认要${statusText}"${row.name}"吗?`)
+    await DeptApi.updateDeptStatus(row.id, row.status)
+    message.success(`${statusText}成功`)
+  } catch {
+    // 操作失败或取消，恢复状态
+    row.status = row.status === 0 ? 1 : 0
+  }
+}
+
+/** 导入按钮操作 */
+const handleImport = () => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.xls,.xlsx,.csv'
+  input.onchange = async (e: any) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const fileName = file.name.toLowerCase()
+    const isSupported = fileName.endsWith('.xls') || fileName.endsWith('.xlsx') || fileName.endsWith('.csv')
+    if (!isSupported) {
+      message.error('仅支持上传 xls、xlsx 或 csv 格式文件')
+      return
+    }
+
+    // 添加 Loading 提示
+    const loadingMsg = ElMessage({
+      message: '正在导入数据，请稍候...',
+      type: 'info',
+      duration: 0 // 不自动关闭
+    })
+
+    try {
+      // 调用后端接口
+      await DeptApi.importDept(file)
+      loadingMsg.close()
+      message.success('数据导入成功！')
+      // 刷新列表
+      await getList()
+    } catch (error: any) {
+      loadingMsg.close()
+      console.error('导入失败:', error)
+
+      // 显示详细错误信息
+      const errorMsg = error.data?.msg || error.message || '导入失败，请检查文件格式和内容'
+      message.error(errorMsg)
+    }
+  }
+  input.click()
+}
+
+/** 打开模板下载 */
+const handleDownloadTemplate = async () => {
+  try {
+    // 调用后端接口下载模板
+    await DeptApi.importTemplate()
+  } catch (error: any) {
+    console.error('模板下载失败:', error)
+    message.error('模板下载失败，请稍后重试')
+  }
+}
+
 /** 初始化 **/
 onMounted(async () => {
   // 获取用户列表
@@ -417,6 +628,13 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
+/* 容器高度自适应 */
+.dept-container {
+  height: calc(100vh - 140px); /* 减去头部导航和边距 */
+  min-height: 600px; /* 最小高度保证内容可见 */
+  overflow: hidden;
+}
+
 /* Tab 标签图标优化 */
 .tab-label-wrapper {
   display: inline-flex;
@@ -483,10 +701,18 @@ onMounted(async () => {
   background: var(--el-border-color-light);
   cursor: ew-resize;
   flex-shrink: 0;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     background: var(--el-color-primary);
+    width: 6px;
+  }
+
+  // 折叠状态下禁用拖拽（通过父组件判断）
+  &:has(~ .main-content) {
+    &:hover {
+      cursor: ew-resize;
+    }
   }
 }
 
@@ -546,6 +772,31 @@ onMounted(async () => {
 .institution-name-text {
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+
+.sort-input-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-input {
+  width: 110px;
+}
+
+.sort-loading {
+  color: var(--el-color-primary);
+  font-size: 16px;
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 // 右侧内容区域 - 关键：限制宽度避免被表格撑开

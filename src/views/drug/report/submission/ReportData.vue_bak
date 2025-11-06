@@ -91,7 +91,7 @@
     </ContentWrap>
 
     <!-- 主要内容区域 -->
-    <div class="content-card" v-loading="loading && currentStep !== 2">
+    <div class="content-card" v-loading="loading">
       <!-- 步骤0: 准备阶段 -->
       <div v-if="currentStep === 0" class="step-content">
         <div class="requirements-section">
@@ -200,7 +200,7 @@
               :auto-upload="false"
               :on-change="handleFileChange"
               accept=".zip,.rar,.xlsx"
-              :disabled="isUploading || uploadingFiles.length > 0"
+              :disabled="isUploading || currentStep < currentTask.maxCurrentStep || uploadingFiles.length > 0"
               :show-file-list="false"
             >
               <el-icon class="el-icon--upload">
@@ -215,7 +215,7 @@
 
             <!-- 上传结果总览（处理完成后显示） -->
             <transition name="fade-slide">
-              <div v-if="uploadResult && !isUploading" class="upload-progress-section" style="position: relative; z-index: 0;">
+              <div v-if="uploadResult && !isUploading" class="upload-progress-section">
                 <el-alert
                   :type="uploadResult.failedCount > 0 ? 'warning' : 'success'"
                   :closable="true"
@@ -283,22 +283,20 @@
             </transition>
           </div>
 
-          <!-- 文件列表（带上传统计和刷新按钮） -->
+          <!-- 文件列表（带总进度和刷新按钮） -->
           <div class="table-header">
             <span class="table-title">文件列表</span>
             
-            <!-- 上传统计（始终显示） -->
-            <div class="header-upload-stats">
-              <span class="stats-label">上传进度：</span>
+            <!-- 总进度条（上传中时显示） -->
+            <div v-if="isUploading" class="header-progress">
+              <span class="progress-label">总进度：</span>
               <el-progress 
-                :percentage="fileUploadPercentage" 
-                :color="getProgressColor(fileUploadPercentage)"
+                :percentage="overallProgress" 
+                :color="getProgressColor(overallProgress)"
                 :stroke-width="6"
-                class="stats-progress"
+                class="progress-bar"
               />
-              <span class="stats-count" :class="{ 'uploading': isUploading }">
-                {{ uploadedFileCount }}/{{ totalFileCount }}
-              </span>
+              <span class="progress-count">{{ uploadedFileCount }}/{{ totalFileCount }}</span>
             </div>
             
             <el-button
@@ -337,28 +335,27 @@
             </el-table-column>
             <el-table-column label="上传进度" width="200" align="center">
               <template #default="{ row }">
-                <div class="progress-wrapper">
-                  <!-- 正在上传：显示实时进度 -->
-                  <template v-if="uploadingFiles.includes(row.fileType) && uploadProgress[row.fileType]">
-                    <el-progress 
-                      :percentage="uploadProgress[row.fileType]?.progress || 0"
-                      :status="getProgressStatus(uploadProgress[row.fileType]?.status)"
-                    />
-                    <div class="progress-message">
-                      {{ uploadProgress[row.fileType]?.currentStep || uploadProgress[row.fileType]?.phase || '处理中...' }}
-                    </div>
-                  </template>
-                  <!-- 未上传或已完成：显示固定状态 -->
-                  <template v-else>
-                    <el-progress 
-                      :percentage="row.uploadStatus === 2 ? 100 : 0"
-                      :status="row.uploadStatus === 2 ? 'success' : undefined"
-                    />
-                    <div class="progress-message">
-                      {{ row.uploadStatus === 2 ? '已完成' : '等待上传' }}
-                    </div>
-                  </template>
+                <!-- 正在上传：显示Redis实时进度 -->
+                <div v-if="uploadProgress[row.fileType] && uploadingFiles.includes(row.fileType)" class="progress-wrapper">
+                  <el-progress 
+                    :percentage="uploadProgress[row.fileType]?.progress || 0"
+                    :status="getProgressStatus(uploadProgress[row.fileType]?.status)"
+                  />
+                  <div class="progress-message">
+                    {{ uploadProgress[row.fileType]?.currentStep || uploadProgress[row.fileType]?.phase || '处理中...' }}
+                  </div>
                 </div>
+                <!-- 未上传或已完成：显示数据库中的进度 -->
+                <div v-else-if="row.uploadProgress !== undefined && row.uploadProgress >= 0" class="progress-wrapper">
+                  <el-progress 
+                    :percentage="row.uploadProgress"
+                    :status="row.uploadProgress === 100 ? 'success' : row.uploadProgress === 0 ? undefined : 'warning'"
+                  />
+                  <div class="progress-message text-sm text-gray-500">
+                    {{ row.uploadPhase || '-' }}
+                  </div>
+                </div>
+                <span v-else class="record-count">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="fileSize" label="文件大小" width="120" align="center">
@@ -391,9 +388,10 @@
                   v-if="row.uploadStatus === 2 && row.errorCount === 0"
                   type="primary"
                   size="small"
+                  :disabled="currentStep < currentTask.maxCurrentStep"
                   @click="viewFileData(row)"
                 >
-                  <el-icon class="mr-5px"><Document /></el-icon>
+                  <Icon icon="ep:view" class="mr-5px" />
                   查看数据
                 </el-button>
 
@@ -404,7 +402,7 @@
                   size="small"
                   @click="viewErrorDetail(row)"
                 >
-                  <el-icon class="mr-5px"><WarningFilled /></el-icon>
+                  <Icon icon="ep:warning-filled" class="mr-5px" />
                   查看详情
                 </el-button>
 
@@ -415,7 +413,7 @@
                   :auto-upload="false"
                   :on-change="(file) => handleSingleFileUpload(file, row)"
                   accept=".xlsx"
-                  :disabled="uploadingFiles.includes(row.fileType)"
+                  :disabled="currentStep < currentTask.maxCurrentStep || uploadingFiles.includes(row.fileType)"
                   :show-file-list="false"
                   class="inline-upload"
                 >
@@ -424,7 +422,7 @@
                     size="small"
                     :loading="uploadingFiles.includes(row.fileType)"
                   >
-                    <el-icon class="mr-5px" v-if="!uploadingFiles.includes(row.fileType)"><Upload /></el-icon>
+                    <Icon icon="ep:upload" class="mr-5px" v-if="!uploadingFiles.includes(row.fileType)" />
                     {{ uploadingFiles.includes(row.fileType) ? '上传中...' : (row.uploadStatus === 0 ? '上传' : '修复重传') }}
                   </el-button>
                 </el-upload>
@@ -433,8 +431,8 @@
           </el-table>
 
           <div class="upload-actions">
-            <el-button @click="currentStep = 0">
-              <el-icon class="mr-5px"><ArrowLeft /></el-icon>
+            <el-button @click="currentTask.currentStep = 0" :disabled="currentStep < currentTask.maxCurrentStep">
+              <Icon icon="ep:back" class="mr-5px" />
               返回准备
             </el-button>
             <el-tooltip 
@@ -446,9 +444,9 @@
                 <el-button
                   type="primary"
                   @click="startPreQC"
-                  :disabled="!allFilesUploaded"
+                  :disabled="!allFilesUploaded || currentStep < currentTask.maxCurrentStep"
                 >
-                  <el-icon class="mr-5px"><CircleCheck /></el-icon>
+                  <Icon icon="ep:circle-check" class="mr-5px" />
                   开始前置质控
                 </el-button>
               </span>
@@ -461,58 +459,8 @@
       <div v-if="currentStep === 2" class="step-content">
         <h3 class="step-title">前置质控结果</h3>
         
-        <!-- 🔥 质控进度条 -->
-        <transition name="fade-slide">
-          <div v-if="isQCProcessing" class="qc-progress-section">
-            <el-card class="qc-progress-card">
-              <div class="qc-progress-header">
-                <div class="header-left">
-                  <el-icon class="processing-icon"><Loading /></el-icon>
-                  <h4>正在执行前置质控...</h4>
-                </div>
-                <div class="header-right">
-                  <span class="progress-percent">{{ qcProgress }}%</span>
-                </div>
-              </div>
-              
-              <el-progress 
-                :percentage="qcProgress" 
-                :color="getProgressColor(qcProgress)"
-                :stroke-width="12"
-                class="main-progress"
-              />
-              
-              <div class="qc-current-phase">
-                <el-icon class="phase-icon"><Document /></el-icon>
-                <span class="phase-text">{{ qcCurrentPhase }}</span>
-              </div>
-              
-              <!-- 文件进度列表 -->
-              <div v-if="qcFileProgress.length > 0" class="qc-files-list">
-                <div v-for="(file, index) in qcFileProgress" :key="index" class="qc-file-item">
-                  <div class="file-info">
-                    <el-icon :class="['file-icon', file.status]">
-                      <Loading v-if="file.status === 'processing'" />
-                      <CircleCheckFilled v-else-if="file.status === 'success'" />
-                      <Document v-else />
-                    </el-icon>
-                    <span class="file-name">{{ file.name }}</span>
-                  </div>
-                  <el-progress 
-                    :percentage="file.progress" 
-                    :status="file.status === 'success' ? 'success' : undefined"
-                    :stroke-width="6"
-                    class="file-progress"
-                  />
-                </div>
-              </div>
-            </el-card>
-          </div>
-        </transition>
-        
         <!-- 总览卡片 -->
         <StepSummaryCard 
-          v-if="!isQCProcessing"
           :key="`step2-${stepSummaryKey}`"
           :step-type="2" 
           :task-id="currentTask.taskId"
@@ -520,7 +468,7 @@
           @close="handleSummaryClose"
         />
         
-        <div v-if="!isQCProcessing" class="qc-section">
+        <div class="qc-section">
         <!-- 质控统计卡片 -->
         <div class="qc-summary">
           <div class="summary-card" :class="preQCResult.passed ? 'success' : 'warning'">
@@ -606,27 +554,30 @@
               <el-button
                 type="primary"
                 size="small"
+                :disabled="currentStep < currentTask.maxCurrentStep"
                 @click="viewFileData(row)"
               >
-                <el-icon class="mr-5px"><Document /></el-icon>
+                <Icon icon="ep:view" class="mr-5px" />
                 查看详情
               </el-button>
               <el-button
                 v-if="row.qcStatus === 4"
                 type="danger"
                 size="small"
+                :disabled="currentStep < currentTask.maxCurrentStep"
                 @click="viewQCErrors(row)"
               >
-                <el-icon class="mr-5px"><Warning /></el-icon>
+                <Icon icon="ep:warning" class="mr-5px" />
                 查看错误
               </el-button>
               <el-button
                 v-if="row.qcStatus === 4"
                 type="warning"
                 size="small"
+                :disabled="currentStep < currentTask.maxCurrentStep"
                 @click="fixAndReupload(row)"
               >
-                <el-icon class="mr-5px"><RefreshRight /></el-icon>
+                <Icon icon="ep:refresh" class="mr-5px" />
                 修复重传
               </el-button>
             </template>
@@ -634,16 +585,16 @@
         </el-table>
 
         <div class="qc-actions">
-          <el-button @click="backToUpload">
-            <el-icon class="mr-5px"><ArrowLeft /></el-icon>
+          <el-button @click="backToUpload" :disabled="currentStep < currentTask.maxCurrentStep">
+            <Icon icon="ep:back" class="mr-5px" />
             返回上传
           </el-button>
           <el-button
             type="primary"
-            :disabled="!preQCResult.passed"
+            :disabled="!preQCResult.passed || currentStep < currentTask.maxCurrentStep"
             @click="startSubmitReport"
           >
-            <el-icon class="mr-5px"><Promotion /></el-icon>
+            <Icon icon="ep:promotion" class="mr-5px" />
             开始提交上报
           </el-button>
         </div>
@@ -664,84 +615,8 @@
         />
         
         <div class="submit-section">
-        
-        <!-- 🔥 审核状态卡片 -->
-        <transition name="fade-slide">
-          <div v-if="reviewStatus !== null" class="review-status-section">
-            <el-card :class="['review-status-card', getReviewStatusClass()]">
-              <div class="review-status-header">
-                <div class="status-icon-wrapper">
-                  <el-icon :class="['status-icon', getReviewStatusClass()]">
-                    <Clock v-if="reviewStatus === 0" />
-                    <CircleCheckFilled v-else-if="reviewStatus === 1" />
-                    <CircleCloseFilled v-else-if="reviewStatus === 2" />
-                  </el-icon>
-                </div>
-                <div class="status-content">
-                  <h3 class="status-title">{{ getReviewStatusText() }}</h3>
-                  <p class="status-desc">{{ getReviewStatusDesc() }}</p>
-                </div>
-              </div>
-              
-              <!-- 审核信息 -->
-              <div v-if="reviewInfo" class="review-info">
-                <el-descriptions :column="2" border>
-                  <el-descriptions-item label="提交时间">
-                    {{ formatDateTime(reviewInfo.submitTime) }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="审核状态">
-                    <el-tag :type="getReviewTagType()">{{ getReviewStatusText() }}</el-tag>
-                  </el-descriptions-item>
-                  <el-descriptions-item v-if="reviewInfo.reviewTime" label="审核时间">
-                    {{ formatDateTime(reviewInfo.reviewTime) }}
-                  </el-descriptions-item>
-                  <el-descriptions-item v-if="reviewInfo.reviewer" label="审核人">
-                    {{ reviewInfo.reviewer }}
-                  </el-descriptions-item>
-                  <el-descriptions-item v-if="reviewInfo.reviewComment" label="审核意见" :span="2">
-                    <div class="review-comment">{{ reviewInfo.reviewComment }}</div>
-                  </el-descriptions-item>
-                  <el-descriptions-item v-if="reviewStatus === 2 && reviewInfo.rejectReason" label="驳回原因" :span="2">
-                    <div class="reject-reason">{{ reviewInfo.rejectReason }}</div>
-                  </el-descriptions-item>
-                </el-descriptions>
-              </div>
-              
-              <!-- 操作按钮 -->
-              <div class="review-actions">
-                <el-button 
-                  v-if="reviewStatus === 0" 
-                  :icon="RefreshRight"
-                  @click="refreshReviewStatus"
-                  :loading="refreshingReview"
-                >
-                  刷新审核状态
-                </el-button>
-                <el-button 
-                  v-if="reviewStatus === 1" 
-                  type="success"
-                  size="large"
-                  @click="goToNationalSubmit"
-                >
-                  <el-icon><Promotion /></el-icon>
-                  进入国家平台提交
-                </el-button>
-                <el-button 
-                  v-if="reviewStatus === 2" 
-                  type="warning"
-                  size="large"
-                  @click="backToUploadForResubmit"
-                >
-                  <el-icon><RefreshLeft /></el-icon>
-                  重新上传文件
-                </el-button>
-              </div>
-            </el-card>
-          </div>
-        </transition>
-        
         <!-- 上报信息 -->
-        <div v-if="reviewStatus === null" class="submit-info">
+        <div class="submit-info">
           <el-descriptions :column="2" border>
             <el-descriptions-item label="任务名称">
               {{ submitInfo.taskName }}
@@ -807,7 +682,7 @@
           <el-table-column label="操作" width="150" fixed="right" align="center">
             <template #default="{ row }">
               <el-button type="primary" size="small" @click="viewFileData(row)">
-                <el-icon class="mr-5px"><Document /></el-icon>
+                <Icon icon="ep:view" class="mr-5px" />
                 查看详情
               </el-button>
             </template>
@@ -815,167 +690,47 @@
         </el-table>
 
         <div class="qc-actions">
-          <el-button @click="() => (currentStep = 2)" :disabled="reviewStatus !== null">
-            <el-icon class="mr-5px"><ArrowLeft /></el-icon>
+          <el-button @click="() => (currentTask.currentStep = 2)">
+            <Icon icon="ep:back" class="mr-5px" />
             返回前置质控
           </el-button>
           <el-button
-            v-if="reviewStatus === null"
             type="success"
             size="large"
             :disabled="!preQCResult.passed"
             @click="submitReport"
           >
-            <el-icon class="mr-5px"><Promotion /></el-icon>
+            <Icon icon="ep:promotion" class="mr-5px" />
             确认提交上报
           </el-button>
         </div>
         </div>
       </div>
-      
-      <!-- 步骤4: 提交国家平台 -->
-      <div v-if="currentStep === 4" class="step-content">
-        <h3 class="step-title">提交国家平台</h3>
-        
-        <div class="national-submit-section">
-          <el-result icon="success" title="准备就绪" sub-title="您的数据已通过审核，可以提交到国家平台了">
-            <template #extra>
-              <el-space direction="vertical" size="large" alignment="center" style="width: 100%">
-                <div class="submit-info-card">
-                  <el-descriptions :column="2" border>
-                    <el-descriptions-item label="任务名称">
-                      {{ currentTask.taskName }}
-                    </el-descriptions-item>
-                    <el-descriptions-item label="审核状态">
-                      <el-tag type="success">已审核通过</el-tag>
-                    </el-descriptions-item>
-                    <el-descriptions-item label="数据周期">
-                      {{ formatDateTime(currentTask.startDate) }} ~ {{ formatDateTime(currentTask.endDate) }}
-                    </el-descriptions-item>
-                    <el-descriptions-item label="文件数量">
-                      {{ fileList.length }} 个
-                    </el-descriptions-item>
-                  </el-descriptions>
-    </div>
-                
-                <el-alert
-                  title="提示"
-                  type="warning"
-                  :closable="false"
-                  show-icon
-                >
-                  <template #default>
-                    <div style="line-height: 1.8">
-                      <p>提交到国家平台后，数据将同步至国家药品监测系统</p>
-                      <p>请确保数据准确无误后再进行提交</p>
-                    </div>
-                  </template>
-                </el-alert>
-                
-                <el-space>
-                  <el-button size="large" @click="currentStep = 3">
-                    返回上一步
-                  </el-button>
-                  <el-button type="primary" size="large" @click="submitToNationalPlatform">
-                    <el-icon><Promotion /></el-icon>
-                    确认提交国家平台
-                  </el-button>
-                </el-space>
-              </el-space>
-            </template>
-          </el-result>
-        </div>
-      </div>
     </div>
   </div>
 
-  <!-- 错误详情对话框 - 分页表格展示 -->
-  <Dialog v-model="errorDialog.visible" title="质检错误详情" width="900px" top="5vh">
-    <div class="qc-error-details">
-      <!-- 头部统计信息 -->
-      <div class="error-header">
-        <div class="header-info">
-          <el-icon class="header-icon error">
-            <WarningFilled />
-          </el-icon>
-          <div class="header-content">
-            <h3 class="header-title">{{ errorDialog.fileName }}</h3>
-            <p class="header-subtitle">
-              共检测到 <span class="error-count-text">{{ errorDialog.totalErrors }}</span> 个错误
-              <span class="page-info">（当前显示第 {{ (errorDialog.currentPage - 1) * errorDialog.pageSize + 1 }}-{{ Math.min(errorDialog.currentPage * errorDialog.pageSize, errorDialog.totalErrors) }} 条）</span>
-            </p>
-          </div>
-        </div>
-        <el-button type="primary" @click="exportQCErrors" :icon="Download" size="default">
-          导出全部
-        </el-button>
+  <!-- 错误详情对话框 -->
+  <Dialog v-model="errorDialog.visible" title="质检提示" width="600px">
+    <div class="quality-details">
+      <div class="detail-header">
+        <el-icon class="detail-icon">
+          <Warning />
+        </el-icon>
+        <h4>质检初审不通过</h4>
       </div>
-
-      <!-- 错误列表表格 - 只渲染当前页数据 -->
-      <div class="error-table-wrapper">
-        <el-table
-          :data="paginatedErrors"
-          stripe
-          border
-          height="450"
-          :show-overflow-tooltip="true"
-        >
-          <el-table-column label="序号" width="80" align="center">
-            <template #default="{ $index }">
-              {{ (errorDialog.currentPage - 1) * errorDialog.pageSize + $index + 1 }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="row" label="行号" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag type="danger" size="small">第 {{ row.row }} 行</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="message" label="错误详情" min-width="400">
-            <template #default="{ row }">
-              <div class="error-message-cell">
-                <el-icon class="cell-icon"><Warning /></el-icon>
-                <span>{{ row.message }}</span>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <!-- 分页器 -->
-        <div class="error-pagination">
-          <el-pagination
-            v-model:current-page="errorDialog.currentPage"
-            v-model:page-size="errorDialog.pageSize"
-            :page-sizes="[20, 50, 100, 200]"
-            :total="errorDialog.totalErrors"
-            layout="total, sizes, prev, pager, next, jumper"
-            background
-            @current-change="handleErrorPageChange"
-            @size-change="handleErrorSizeChange"
-          />
+      <div class="quality-details-content">
+        <div class="detail-item">
+          <span class="detail-label">文件名称:</span>
+          <span>{{ errorDialog.fileName }}</span>
         </div>
-      </div>
-
-      <!-- 提示信息 -->
-      <div class="error-tips">
-        <el-alert
-          type="info"
-          :closable="false"
-          show-icon
-        >
-          <template #default>
-            <div>💡 数据较多时建议导出Excel文件查看。支持切换每页显示数量，可快速跳转到指定页。</div>
-          </template>
-        </el-alert>
+        <div class="detail-item">
+          <span class="detail-label">未通过原因：</span>
+          <div class="error-messages">{{ errorDialog.errors }}</div>
+        </div>
       </div>
     </div>
-
     <template #footer>
-      <div class="dialog-footer">
-        <el-button @click="errorDialog.visible = false">关闭</el-button>
-        <el-button type="primary" @click="exportQCErrors" :icon="Download">
-          导出全部错误 ({{ errorDialog.totalErrors }}条)
-        </el-button>
-      </div>
+      <el-button @click="errorDialog.visible = false">关闭</el-button>
     </template>
   </Dialog>
 
@@ -1196,7 +951,6 @@ import {
   Files,
   ArrowLeft,
   RefreshRight,
-  RefreshLeft,
   Loading,
   SuccessFilled,
   WarningFilled,
@@ -1204,8 +958,7 @@ import {
   CircleCloseFilled,
   ArrowDown,
   ArrowRight,
-  ArrowUp,
-  Clock
+  ArrowUp
 } from '@element-plus/icons-vue'
 import { ContentWrap } from '@/components/ContentWrap'
 import DictTag from '@/components/DictTag/src/DictTag.vue'
@@ -1234,8 +987,7 @@ const message = useMessage()
 const tableDefinitions = ref<any>({})
 const loadingTemplates = ref(false)
 const excelPreviewRef = ref()
-// 🔥 改为 ref 以便动态设置步骤
-const currentStep = ref(0)
+const currentStep = computed(() => currentTask.value.currentStep || 0)
 const loading = ref(false)
 const refreshingFileList = ref(false)
 const route = useRoute()
@@ -1260,12 +1012,9 @@ const currentTask = ref<any>({
 // 文件列表完全从后端获取
 const fileList = ref<any[]>([])
 
-const selectedFileIds = ref<number[]>([])
+const selectedFileIds = ref([])
 
-const preQCResult = ref<{
-  passed: boolean
-  details: any[]
-}>({
+const preQCResult = ref({
   passed: false,
   details: []
 })
@@ -1287,25 +1036,14 @@ const dataViewDialog = ref({
   visible: false,
   loading: false,
   fileName: '',
-  data: [],
-  errorRows: new Set() // 🔥 存储有错误的行号
+  data: []
 })
 const activeFile = ref()
 
-const errorDialog = ref<{
-  visible: boolean
-  fileName: string
-  errors: any[]
-  totalErrors: number
-  currentPage: number
-  pageSize: number
-}>({
+const errorDialog = ref({
   visible: false,
   fileName: '',
-  errors: [],
-  totalErrors: 0,
-  currentPage: 1,
-  pageSize: 50
+  errors: []
 })
 
 // ==================== 上传进度跟踪 ====================
@@ -1349,32 +1087,6 @@ const errorDetailDialog = ref({
   expandedGroups: ['required', 'type'], // 默认展开的错误组
   expandedTypes: [] as string[] // 控制是否展开全部
 })
-
-// 🔥 质控进度相关数据
-const isQCProcessing = ref(false)
-const qcProgress = ref(0)
-const qcCurrentPhase = ref('准备开始质控...')
-const qcFileProgress = ref<Array<{
-  name: string
-  progress: number
-  status: 'pending' | 'processing' | 'success'
-}>>([])
-
-// 表类型映射为中文名称
-const tableTypeNameMap: Record<string, string> = {
-  'hospital': '医疗机构信息',
-  'catalog': '药品目录',
-  'inbound': '入库数据',
-  'outbound': '出库数据',
-  'usage': '使用数据'
-}
-
-// 🔥 审核状态相关数据
-// 0=待审核, 1=审核通过, 2=审核驳回
-const reviewStatus = ref<number | null>(null)
-const reviewInfo = ref<any>(null)
-const refreshingReview = ref(false)
-let reviewPollingInterval: ReturnType<typeof setInterval> | null = null
 
 // ==================== 计算属性 ====================
 const excelDetailTarget = computed(() => {
@@ -1461,12 +1173,6 @@ const overallUploadProgress = computed(() => {
   return Math.round((uploadedFileCount.value / totalFileCount.value) * 100)
 })
 
-// 文件列表上传百分比（根据已完成文件数计算）
-const fileUploadPercentage = computed(() => {
-  if (totalFileCount.value === 0) return 0
-  return Math.round((uploadedFileCount.value / totalFileCount.value) * 100)
-})
-
 // 显示的必填错误（默认显示前5条）
 const displayedRequiredErrors = computed(() => {
   return errorDetailDialog.value.expandedTypes.includes('required')
@@ -1481,13 +1187,6 @@ const displayedTypeErrors = computed(() => {
     : errorDetailDialog.value.typeErrors.slice(0, 5)
 })
 
-// 分页后的错误数据（性能优化：只渲染当前页）
-const paginatedErrors = computed(() => {
-  const start = (errorDialog.value.currentPage - 1) * errorDialog.value.pageSize
-  const end = start + errorDialog.value.pageSize
-  return errorDialog.value.errors.slice(start, end)
-})
-
 // ==================== 方法定义 ====================
 function checkboxDisabled(row) {
   return [2, 3].includes(row.qcStatus)
@@ -1499,7 +1198,6 @@ function handleSelectionChange(val) {
 
 function changeSteps(step: number) {
   if (step <= currentTask.value.maxCurrentStep) {
-    currentStep.value = step
     currentTask.value.currentStep = step
   }
 }
@@ -1801,7 +1499,6 @@ const startUpload = async () => {
   try {
     loading.value = true
     await updateCurrentStep(1)
-    currentStep.value = 1  // 🔥 更新页面显示步骤
     currentTask.value.currentStep = 1
     currentTask.value.maxCurrentStep = 1
   } finally {
@@ -1809,8 +1506,101 @@ const startUpload = async () => {
   }
 }
 
-// ==================== 演示版本：不需要轮询，已移除 ====================
-// startProgressPolling 和 stopProgressPolling 方法已移除，使用前端模拟进度
+/**
+ * 开始轮询上传进度
+ */
+const startProgressPolling = (taskId: number) => {
+  // 清除已有的轮询
+  if (progressPollingInterval) {
+    clearInterval(progressPollingInterval)
+  }
+
+  progressPollingInterval = setInterval(async () => {
+    try {
+      // 🔥 使用新接口：同时获取总进度和子文件进度
+      const result = await request.get({
+        url: '/drug/report-data/complete-upload-progress',
+        params: { taskId }
+      })
+
+      // 🔥 更新总进度数据
+      overallProgressData.value = result?.overall || null
+      
+      // 🔥 更新子文件进度
+      uploadProgress.value = result?.files || {}
+
+      // 检查是否全部完成
+      const hasUploading = Object.values(uploadProgress.value).some(
+        (p: any) => p.status === 'uploading' || p.status === 'validating' || p.status === 'importing'
+      )
+
+      if (!hasUploading && Object.keys(uploadProgress.value).length > 0) {
+        // 全部完成，停止轮询
+        if (progressPollingInterval !== null) {
+          clearInterval(progressPollingInterval)
+          progressPollingInterval = null
+        }
+        isUploading.value = false
+        uploadingFiles.value = []
+
+        // 刷新文件列表
+        await loadFileList(currentTask.value.taskId)
+        
+        // 检查是否有错误
+        const hasError = Object.values(uploadProgress.value).some((p: any) => p.status === 'error')
+        
+        // 完成步骤1的总览
+        try {
+          // 计算总览数据
+          const successFiles = Object.values(uploadProgress.value).filter((p: any) => p.status === 'success').length
+          const totalFiles = Object.keys(uploadProgress.value).length
+          const totalRows = Object.values(uploadProgress.value).reduce((sum: number, p: any) => sum + (p.totalRows || 0), 0)
+          
+          // 先更新总览数据
+          await ReportStepSummaryApi.createOrUpdateStepSummary({
+            taskId: currentTask.value.taskId,
+            stepType: 1,
+            status: hasError ? 2 : 1, // 1=成功, 2=部分失败
+            totalFiles,
+            successFiles,
+            failedFiles: totalFiles - successFiles,
+            totalRecords: totalRows,
+            summaryData: JSON.stringify({
+              totalFiles,
+              successFiles,
+              errorFiles: totalFiles - successFiles,
+              totalRows,
+              hasError
+            })
+          })
+          
+          // 重新加载总览
+          await loadStepSummary()
+        } catch (error) {
+          console.error('完成上传总览失败:', error)
+        }
+        
+        if (hasError) {
+          message.warning('部分文件处理失败，请查看详情')
+        } else {
+          message.success('文件处理完成')
+        }
+      }
+    } catch (error) {
+      console.error('轮询进度失败:', error)
+    }
+  }, 1000) // 每秒轮询一次
+}
+
+/**
+ * 停止轮询
+ */
+const stopProgressPolling = () => {
+  if (progressPollingInterval !== null) {
+    clearInterval(progressPollingInterval)
+    progressPollingInterval = null
+  }
+}
 
 /**
  * 获取进度条状态
@@ -1833,7 +1623,7 @@ const getProgressTagType = (status: string) => {
 }
 
 /**
- * 拖拽上传文件（演示版本：前端模拟进度）
+ * 拖拽上传文件
  */
 const handleFileChange = async (uploadFile: any) => {
   const file = uploadFile.raw
@@ -1844,80 +1634,34 @@ const handleFileChange = async (uploadFile: any) => {
     const fileName = file.name
     const isZip = fileName.toLowerCase().endsWith('.zip')
 
-    // 🔥 前端模拟进度：开始上传
-    uploadProgress.value = {}
-    overallProgressData.value = { overallProgress: 0 }
-    
-    // 模拟上传进度
-    const simulateProgress = (start: number, end: number, duration: number) => {
-      return new Promise(resolve => {
-        const step = (end - start) / (duration / 100)
-        let current = start
-        const interval = setInterval(() => {
-          current = Math.min(current + step, end)
-          overallProgressData.value = { overallProgress: Math.round(current) }
-          if (current >= end) {
-            clearInterval(interval)
-            resolve(true)
-          }
-        }, 100)
-      })
-    }
+    message.info('正在上传文件，请稍候...')
 
-    // 阶段1: 上传文件 (0% -> 30%)
-    message.info('正在上传文件...')
-    await simulateProgress(0, 30, 1000)
-
-    // 阶段2: 解析文件 (30% -> 60%)
-    message.info('正在解析文件...')
-    await simulateProgress(30, 60, 1500)
-
-    // 阶段3: 验证数据 (60% -> 90%)
-    message.info('正在验证数据...')
-    await simulateProgress(60, 90, 1000)
-
-    // 调用后端同步接口
+    // 提交文件（异步处理，不等待完成）
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('taskId', String(currentTask.value.taskId))
-    // 传递文件原始名称
-    formData.append('originalFileName', file.name)
+    formData.append('taskId', currentTask.value.taskId)
 
-    const result = await request.post({
+    await request.post({
       url: '/drug/report-data/validate-and-parse',
       data: formData,
       headers: {
         'Content-Type': 'multipart/form-data'
-      },
-      timeout: 600000 // 10分钟超时
+      }
     })
 
-    // 阶段4: 完成 (90% -> 100%)
-    await simulateProgress(90, 100, 500)
-    
-    message.success(isZip ? '压缩包上传完成' : '文件上传完成')
-    
-    // 刷新文件列表
-    await loadFileList(currentTask.value.taskId)
-    
-    // 清空进度
-    overallProgressData.value = { overallProgress: 100 }
-    setTimeout(() => {
-      isUploading.value = false
-      uploadProgress.value = {}
-      overallProgressData.value = null
-    }, 500)
+    message.success(isZip ? '压缩包已提交，正在处理...' : '文件已提交，正在处理...')
+
+    // 立即开始轮询进度
+    startProgressPolling(currentTask.value.taskId)
   } catch (error) {
     console.error('文件上传失败:', error)
     message.error('文件上传失败，请重试')
     isUploading.value = false
-    uploadProgress.value = {}
-    overallProgressData.value = null
   }
 }
 
 /**
- * 操作列单文件上传（演示版本：前端模拟进度）
+ * 操作列单文件上传
  */
 const handleSingleFileUpload = async (uploadFile: any, row: any) => {
   const file = uploadFile.raw
@@ -1932,68 +1676,28 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
       uploadingFiles.value.push(fileType)
     }
 
-    // 🔥 前端模拟单文件进度
-    uploadProgress.value[fileType] = { progress: 0, status: 'uploading' }
-
-    const simulateSingleProgress = (start: number, end: number, duration: number) => {
-      return new Promise(resolve => {
-        const step = (end - start) / (duration / 100)
-        let current = start
-        const interval = setInterval(() => {
-          current = Math.min(current + step, end)
-          uploadProgress.value[fileType] = { 
-            progress: Math.round(current), 
-            status: current < end ? 'uploading' : 'success' 
-          }
-          if (current >= end) {
-            clearInterval(interval)
-            resolve(true)
-          }
-        }, 100)
-      })
-    }
-
     message.info(`正在上传${displayName}...`)
-    await simulateSingleProgress(0, 30, 800)
 
-    message.info(`正在解析${displayName}...`)
-    await simulateSingleProgress(30, 70, 1000)
-
-    message.info(`正在验证${displayName}...`)
-    await simulateSingleProgress(70, 90, 800)
-
-    // 调用后端同步接口
+    // 提交文件（异步处理，不等待完成）
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('taskId', String(currentTask.value.taskId))
-    // 传递文件原始名称
-    formData.append('originalFileName', file.name)
+    formData.append('taskId', currentTask.value.taskId)
+    formData.append('fileType', fileType)
 
-    const result = await request.post({
+    await request.post({
       url: '/drug/report-data/validate-and-parse',
       data: formData,
       headers: {
         'Content-Type': 'multipart/form-data'
-      },
-      timeout: 600000 // 10分钟超时
+      }
     })
 
-    await simulateSingleProgress(90, 100, 300)
-    message.success(`${displayName}上传完成`)
+    message.success(`${displayName}已提交，正在处理...`)
 
-    // 刷新文件列表
-    await loadFileList(currentTask.value.taskId)
-
-    // 从上传中列表移除
-    const index = uploadingFiles.value.indexOf(fileType)
-    if (index > -1) {
-      uploadingFiles.value.splice(index, 1)
+    // 如果还没有轮询，开始轮询
+    if (!progressPollingInterval) {
+      startProgressPolling(currentTask.value.taskId)
     }
-    
-    // 清空该文件进度
-    setTimeout(() => {
-      delete uploadProgress.value[fileType]
-    }, 500)
   } catch (error) {
     console.error('文件上传失败:', error)
     message.error(`${displayName}上传失败，请重试`)
@@ -2003,12 +1707,6 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
     if (index > -1) {
       uploadingFiles.value.splice(index, 1)
     }
-    
-    // 标记为失败
-    uploadProgress.value[fileType] = { progress: 0, status: 'error' }
-    setTimeout(() => {
-      delete uploadProgress.value[fileType]
-    }, 2000)
   }
 }
 
@@ -2016,26 +1714,6 @@ const viewFileData = async (file: any) => {
   excelDetailTotal.value = 0
   queryParams.value.pageNo = 1
   activeFile.value = file
-  
-  // 🔥 获取错误信息
-  try {
-    const errorInfo = await ReportDataApi.getFileValidationErrors(file.taskId, file.fileType)
-    const errorRowsSet = new Set()
-    
-    // 收集所有错误行号
-    if (errorInfo.requiredErrors) {
-      errorInfo.requiredErrors.forEach(err => errorRowsSet.add(err.rowIndex))
-    }
-    if (errorInfo.typeErrors) {
-      errorInfo.typeErrors.forEach(err => errorRowsSet.add(err.rowIndex))
-    }
-    
-    dataViewDialog.value.errorRows = errorRowsSet
-  } catch (error) {
-    console.warn('获取错误信息失败:', error)
-    dataViewDialog.value.errorRows = new Set()
-  }
-  
   getExcelDetailData()
 }
 
@@ -2056,10 +1734,7 @@ const getExcelDetailData = async () => {
       excelDetailTotal.value = result.total
       const list = result.list
       list.forEach((item, index) => {
-        const rowNum = (queryParams.value.pageNo - 1) * queryParams.value.pageSize + index + 1
-        item.orderNo = rowNum
-        // 🔥 标记是否有错误
-        item.hasError = dataViewDialog.value.errorRows.has(rowNum)
+        item.orderNo = (queryParams.value.pageNo - 1) * queryParams.value.pageSize + index + 1
       })
       dataViewDialog.value.data = list
     } else {
@@ -2113,186 +1788,46 @@ const updateCurrentStep = async (step: number) => {
 }
 
 const startPreQC = async () => {
+  message.info('正在进行前置质控...')
   if (currentTask.value.maxCurrentStep === 1) {
+    loading.value = true
     try {
-      // 🔥 1. 立即切换到步骤2并更新后端
       await updateCurrentStep(2)
-      currentStep.value = 2
       currentTask.value.currentStep = 2
       currentTask.value.maxCurrentStep = 2
-      
-      // 🔥 2. 显示质控进度动画
-      isQCProcessing.value = true
-      qcProgress.value = 0
-      qcCurrentPhase.value = '准备开始质控...'
-      
-      // 初始化文件进度列表
-      qcFileProgress.value = fileList.value.map(file => ({
-        name: tableTypeNameMap[file.fileType] || file.standardFileName,
-        progress: 0,
-        status: 'pending' as const
-      }))
-      
-      // 阶段1: 准备质控 (0% -> 10%)
-      qcCurrentPhase.value = '正在准备质控环境...'
-      await simulateQCProgress(0, 10, 1500)
-      
-      // 阶段2: 检查数据完整性 (10% -> 30%)
-      qcCurrentPhase.value = '正在检查数据完整性...'
-      await simulateQCProgress(10, 30, 2000)
-      
-      // 阶段3: 逐个文件质控 (30% -> 70%)
-      for (let i = 0; i < qcFileProgress.value.length; i++) {
-        qcFileProgress.value[i].status = 'processing'
-        qcCurrentPhase.value = `正在质控 ${qcFileProgress.value[i].name}...`
-        
-        const startProgress = 30 + (i * 40 / qcFileProgress.value.length)
-        const endProgress = 30 + ((i + 1) * 40 / qcFileProgress.value.length)
-        
-        await simulateFileQCProgress(i, startProgress, endProgress, 1500)
-      }
-      
-      // 阶段4: 执行质控规则 (70% -> 85%)
-      qcCurrentPhase.value = '正在执行质控规则...'
-      await simulateQCProgress(70, 85, 2000)
-      
-      // 🔥 3. 调用后端质控接口
-      qcCurrentPhase.value = '正在调用后端质控接口...'
       await operateQCResults(currentTask.value.taskId)
-      
-      // 阶段5: 完成 (85% -> 100%)
-      qcCurrentPhase.value = '质控完成，正在生成报告...'
-      await simulateQCProgress(85, 100, 1500)
-      
-      // 🔥 4. 加载质控结果
       await loadQCResults(currentTask.value.taskId)
-      
-      message.success('前置质控完成，所有文件质控通过')
     } catch (error) {
       console.error('前置质控失败:', error)
       message.error('前置质控失败，请重试')
     } finally {
-      // 延迟隐藏进度条
-      setTimeout(() => {
-        isQCProcessing.value = false
-      }, 1000)
+      loading.value = false
     }
   } else {
+    loading.value = true
     try {
-      // 🔥 重新质控：先切换步骤，再显示进度
-      currentStep.value = 2
-      currentTask.value.currentStep = 2
-      
-      isQCProcessing.value = true
-      qcProgress.value = 0
-      qcCurrentPhase.value = '正在重新进行前置质控...'
-      
-      await simulateQCProgress(0, 50, 2000)
-      
-      qcCurrentPhase.value = '正在调用后端质控接口...'
       await operateQCResults(currentTask.value.taskId)
-      
-      await simulateQCProgress(50, 100, 2000)
-      
+      currentTask.value.currentStep = 2
       await loadQCResults(currentTask.value.taskId)
-      
-      message.success('前置质控完成')
     } catch (error) {
       console.error('前置质控失败:', error)
       message.error('前置质控失败，请重试')
     } finally {
-      setTimeout(() => {
-        isQCProcessing.value = false
-      }, 1000)
+      loading.value = false
     }
   }
-}
-
-// 🔥 模拟质控进度
-const simulateQCProgress = (start: number, end: number, duration: number) => {
-  return new Promise(resolve => {
-    const step = (end - start) / (duration / 50)
-    let current = start
-    const interval = setInterval(() => {
-      current = Math.min(current + step, end)
-      qcProgress.value = Math.round(current)
-      if (current >= end) {
-        clearInterval(interval)
-        resolve(true)
-      }
-    }, 50)
-  })
-}
-
-// 🔥 模拟单个文件质控进度
-const simulateFileQCProgress = (fileIndex: number, start: number, end: number, duration: number) => {
-  return new Promise(resolve => {
-    const step = (end - start) / (duration / 50)
-    let current = start
-    const fileStep = 100 / (duration / 50)
-    let fileProgress = 0
-    
-    const interval = setInterval(() => {
-      current = Math.min(current + step, end)
-      fileProgress = Math.min(fileProgress + fileStep, 100)
-      
-      qcProgress.value = Math.round(current)
-      qcFileProgress.value[fileIndex].progress = Math.round(fileProgress)
-      
-      if (current >= end) {
-        clearInterval(interval)
-        qcFileProgress.value[fileIndex].status = 'success'
-        qcFileProgress.value[fileIndex].progress = 100
-        resolve(true)
-      }
-    }, 50)
-  })
 }
 
 const viewQCErrors = async (row: any) => {
-  if (row.qcStatus !== 4) {
+  if (row.qcStatus !== 4 || currentStep.value < currentTask.value.maxCurrentStep) {
     return
   }
   try {
-    const response = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.fileType) as any
-    
-    // 解析错误数据 - 处理多种可能的返回格式
-    let errorList: any[] = []
-    
-    if (response && typeof response === 'object') {
-      // 格式1: { data: { errors: [...] } }
-      if (response.data && Array.isArray(response.data.errors)) {
-        errorList = response.data.errors
-      }
-      // 格式2: { errors: [...] }
-      else if (Array.isArray(response.errors)) {
-        errorList = response.errors
-      }
-      // 格式3: 直接是数组
-      else if (Array.isArray(response)) {
-        errorList = response
-      }
-      // 格式4: { data: [...] }
-      else if (Array.isArray(response.data)) {
-        errorList = response.data
-      }
-    } else if (Array.isArray(response)) {
-      errorList = response
-    }
-    
-    // 统一字段名 (后端可能返回 errorMessage/message 和 excelRowNum/row)
-    const normalizedErrors = errorList.map((item: any) => ({
-      row: item.excelRowNum || item.row || item.rowNum || '-',
-      message: item.errorMessage || item.message || '未知错误',
-      id: item.id
-    }))
-    
-    // 设置错误数据和分页信息
-    errorDialog.value.errors = normalizedErrors
-    errorDialog.value.totalErrors = normalizedErrors.length
+    const data = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.fileType)
+    errorDialog.value.errors = data.errors
+      ?.map((item) => `第${item.excelRowNum}行: ${item.errorMessage}`)
+      ?.join('\n')
     errorDialog.value.fileName = row.originalFileName || row.standardFileName || row.fileName
-    errorDialog.value.currentPage = 1 // 重置到第一页
-    errorDialog.value.pageSize = 50 // 默认每页50条
     errorDialog.value.visible = true
   } catch (error) {
     console.error('获取错误详情失败:', error)
@@ -2303,80 +1838,14 @@ const viewQCErrors = async (row: any) => {
 
 const fixAndReupload = (row: any) => {
   message.info(`请修正 ${row.originalFileName || row.standardFileName || row.fileName} 的错误后重新上传`)
-  currentStep.value = 1
   currentTask.value.currentStep = 1
 }
 
-// 处理错误列表分页变化
-const handleErrorPageChange = (page: number) => {
-  errorDialog.value.currentPage = page
-}
-
-// 处理错误列表每页大小变化
-const handleErrorSizeChange = (size: number) => {
-  errorDialog.value.pageSize = size
-  errorDialog.value.currentPage = 1 // 切换每页大小时重置到第一页
-}
-
-// 导出质控错误列表
-const exportQCErrors = () => {
-  if (!Array.isArray(errorDialog.value.errors) || errorDialog.value.errors.length === 0) {
-    message.warning('暂无错误数据可导出')
-    return
-  }
-
-  try {
-    // 生成CSV格式数据
-    const fileName = errorDialog.value.fileName || '质检错误'
-    const timestamp = new Date().toLocaleString('zh-CN', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }).replace(/\//g, '-').replace(/:/g, '-')
-    
-    // CSV表头
-    let csvContent = '\uFEFF' // UTF-8 BOM，确保Excel正确识别中文
-    csvContent += '序号,行号,错误详情\n'
-    
-    // CSV数据行
-    errorDialog.value.errors.forEach((error, index) => {
-      const row = error.row || '-'
-      const message = (error.message || '').replace(/"/g, '""') // 转义双引号
-      csvContent += `${index + 1},"第${row}行","${message}"\n`
-    })
-    
-    // 创建Blob并下载
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    
-    link.setAttribute('href', url)
-    link.setAttribute('download', `${fileName}_质检错误列表_${timestamp}.csv`)
-    link.style.visibility = 'hidden'
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    
-    URL.revokeObjectURL(url)
-    
-    message.success('错误列表导出成功')
-  } catch (error) {
-    console.error('导出失败:', error)
-    message.error('导出失败，请重试')
-  }
-}
-
 const backToUpload = async () => {
-  currentStep.value = 1
   currentTask.value.currentStep = 1
 }
 
 const startSubmitReport = async () => {
-  currentStep.value = 3
   currentTask.value.currentStep = 3
   currentTask.value.maxCurrentStep = 3
   await updateCurrentStep(3)
@@ -2405,243 +1874,8 @@ const submitReport = async () => {
     )
     loading.value = true
     await ReportDataApi.submitReport(currentTask.value.taskId, fileIds)
-    message.success('数据已成功提交上报，等待后台审核...')
-    
-    // 🔥 重新加载任务信息，获取最新的 reportStatus
-    await loadCurrentTask()
-    
-    // 🔥 显示审核状态
-    reviewStatus.value = 0 // 待审核
-    reviewInfo.value = {
-      submitTime: new Date(),
-      reviewTime: null,
-      reviewer: null,
-      reviewComment: null,
-      rejectReason: null
-    }
-    
-    // 开始轮询审核状态
-    startReviewPolling()
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      console.error('提交上报失败:', error)
-      message.error('提交上报失败，请重试')
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
-// 🔥 审核状态相关方法
-
-/** 获取审核状态样式类 */
-const getReviewStatusClass = () => {
-  if (reviewStatus.value === 0) return 'status-pending'
-  if (reviewStatus.value === 1) return 'status-approved'
-  if (reviewStatus.value === 2) return 'status-rejected'
-  return ''
-}
-
-/** 获取审核状态文本 */
-const getReviewStatusText = () => {
-  if (reviewStatus.value === 0) return '等待审核'
-  if (reviewStatus.value === 1) return '审核通过'
-  if (reviewStatus.value === 2) return '审核驳回'
-  return ''
-}
-
-/** 获取审核状态描述 */
-const getReviewStatusDesc = () => {
-  if (reviewStatus.value === 0) return '您的上报数据已提交，管理员正在审核中，请耐心等待...'
-  if (reviewStatus.value === 1) return '恭喜！您的上报数据已通过审核，可以提交到国家平台了'
-  if (reviewStatus.value === 2) return '很抱歉，您的上报数据未通过审核，请根据驳回原因修改后重新提交'
-  return ''
-}
-
-/** 获取审核标签类型 */
-const getReviewTagType = () => {
-  if (reviewStatus.value === 0) return 'warning'
-  if (reviewStatus.value === 1) return 'success'
-  if (reviewStatus.value === 2) return 'danger'
-  return 'info'
-}
-
-/** 刷新审核状态 */
-const refreshReviewStatus = async () => {
-  refreshingReview.value = true
-  try {
-    // 调用后端接口获取审核状态
-    const task = await ReportDataApi.getCurrentActiveTask(currentTask.value.taskId)
-    
-    // 保存旧状态，避免不必要的更新
-    const oldReportStatus = currentTask.value.reportStatus
-    const oldReviewStatus = reviewStatus.value
-    
-    // 根据 reportStatus 判断审核状态
-    // reportStatus: 1/5=审核中, 2=驳回, 3=通过
-    if (task.reportStatus === 3) {
-      // 审核通过
-      if (oldReportStatus !== 3) {
-        currentTask.value.reportStatus = task.reportStatus
-        reviewStatus.value = 1
-        message.success('审核已通过！')
-        stopReviewPolling()
-      } else if (oldReviewStatus !== 1) {
-        reviewStatus.value = 1
-      }
-    } else if (task.reportStatus === 2) {
-      // 审核驳回
-      if (oldReportStatus !== 2) {
-        currentTask.value.reportStatus = task.reportStatus
-        reviewStatus.value = 2
-        message.warning('审核已驳回')
-        stopReviewPolling()
-      } else if (oldReviewStatus !== 2) {
-        reviewStatus.value = 2
-      }
-    } else if (task.reportStatus === 1 || task.reportStatus === 5) {
-      // 审核中
-      if (oldReviewStatus !== 0) {
-        reviewStatus.value = 0
-        message.info('仍在审核中...')
-      }
-    }
-    
-    // 更新审核信息（只在有新信息时更新）
-    if (task.reviewTime || task.reviewer || task.reviewComment || task.rejectReason) {
-      reviewInfo.value = {
-        submitTime: reviewInfo.value?.submitTime || task.submitTime || task.reportTime,
-        reviewTime: task.reviewTime,
-        reviewer: task.reviewer,
-        reviewComment: task.reviewComment,
-        rejectReason: task.rejectReason
-      }
-    }
-  } catch (error) {
-    console.error('刷新审核状态失败:', error)
-    message.error('刷新失败，请重试')
-  } finally {
-    refreshingReview.value = false
-  }
-}
-
-/** 开始轮询审核状态 */
-const startReviewPolling = () => {
-  // 清除已有轮询
-  stopReviewPolling()
-  
-  reviewPollingInterval = setInterval(async () => {
-    try {
-      const task = await ReportDataApi.getCurrentActiveTask(currentTask.value.taskId)
-      
-      // 只在状态发生变化时才更新，避免不必要的页面刷新
-      const oldReportStatus = currentTask.value.reportStatus
-      
-      // 根据 reportStatus 判断审核状态
-      // reportStatus: 1/5=审核中, 2=驳回, 3=通过
-      if (task.reportStatus === 3 && oldReportStatus !== 3) {
-        // 审核通过
-        currentTask.value.reportStatus = task.reportStatus
-        reviewStatus.value = 1
-        reviewInfo.value = {
-          submitTime: reviewInfo.value?.submitTime || task.submitTime || task.reportTime,
-          reviewTime: task.reviewTime,
-          reviewer: task.reviewer,
-          reviewComment: task.reviewComment,
-          rejectReason: task.rejectReason
-        }
-        stopReviewPolling()
-        message.success('审核已通过！可以提交到国家平台了')
-      } else if (task.reportStatus === 2 && oldReportStatus !== 2) {
-        // 审核驳回
-        currentTask.value.reportStatus = task.reportStatus
-        reviewStatus.value = 2
-        reviewInfo.value = {
-          submitTime: reviewInfo.value?.submitTime || task.submitTime || task.reportTime,
-          reviewTime: task.reviewTime,
-          reviewer: task.reviewer,
-          reviewComment: task.reviewComment,
-          rejectReason: task.rejectReason
-        }
-        stopReviewPolling()
-        message.warning('审核已驳回，请查看驳回原因')
-      }
-      // 审核中状态不更新任何数据，避免页面刷新
-    } catch (error) {
-      console.error('轮询审核状态失败:', error)
-    }
-  }, 5000) // 每5秒轮询一次
-}
-
-/** 停止轮询审核状态 */
-const stopReviewPolling = () => {
-  if (reviewPollingInterval) {
-    clearInterval(reviewPollingInterval)
-    reviewPollingInterval = null
-  }
-}
-
-/** 进入国家平台提交 */
-const goToNationalSubmit = async () => {
-  try {
-    // 🔥 直接跳转到步骤4
-    currentStep.value = 4
-    currentTask.value.currentStep = 4
-    currentTask.value.maxCurrentStep = 4
-    await updateCurrentStep(4)
-    
-    // 清除审核状态显示
-    reviewStatus.value = null
-    reviewInfo.value = null
-    
-    message.success('已进入国家平台提交步骤')
-  } catch (error) {
-    console.error('进入国家平台提交失败:', error)
-    message.error('操作失败，请重试')
-  }
-}
-
-/** 驳回后返回重新上传 */
-const backToUploadForResubmit = async () => {
-  try {
-    await message.confirm('返回后需要重新上传文件并提交，确认继续？')
-    
-    // 🔥 重置步骤到上传阶段
-    currentStep.value = 1
-    currentTask.value.currentStep = 1
-    currentTask.value.maxCurrentStep = 1
-    await updateCurrentStep(1)
-    
-    // 清空审核状态
-    reviewStatus.value = null
-    reviewInfo.value = null
-    
-    message.info('请重新上传文件')
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      console.error('返回失败:', error)
-      message.error('操作失败，请重试')
-    }
-  }
-}
-
-/** 提交到国家平台 */
-const submitToNationalPlatform = async () => {
-  try {
-    await message.confirm('确认提交数据到国家平台？提交后将无法撤回')
-    
-    loading.value = true
-    
-    // 模拟提交过程
-    message.info('正在提交到国家平台...')
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // 调用后端接口
-    // await ReportDataApi.submitNationalPlatform(currentTask.value.taskId)
-    
-    message.success('数据已成功提交到国家平台！')
-    
-    // 提交成功后返回列表
+    message.success('数据已成功提交上报')
+    // 提交成功后自动跳转到列表页并刷新
     setTimeout(() => {
       router.push({
         name: 'DrugReportSubmission',
@@ -2650,8 +1884,8 @@ const submitToNationalPlatform = async () => {
     }, 1500)
   } catch (error: any) {
     if (error !== 'cancel') {
-      console.error('提交国家平台失败:', error)
-      message.error('提交失败，请重试')
+      console.error('提交上报失败:', error)
+      message.error('提交上报失败，请重试')
     }
   } finally {
     loading.value = false
@@ -2671,8 +1905,8 @@ onActivated(() => {
 })
 
 onUnmounted(() => {
-  // 清理审核状态轮询
-  stopReviewPolling()
+  // 组件销毁时停止轮询
+  stopProgressPolling()
 })
 
 // ==================== 数据加载方法 ====================
@@ -2689,34 +1923,6 @@ const loadCurrentTask = async () => {
       task.maxCurrentStep = task.maxCurrentStep ?? task.currentStep ?? 0
       task.currentStep = task.currentStep ?? 0
       currentTask.value = task
-      
-      // 🔥 根据 reportStatus 决定显示哪个步骤
-      // 0: 未上报 -> 正常流程（步骤0-3）
-      // 1/5: 已上报/审核中 -> 显示审核状态页（步骤3）
-      // 2: 已退回 -> 跳回步骤1重新上报
-      // 3: 已通过 -> 显示提交国家平台页（步骤4）
-      // 4: 已提交 -> 完成
-      if (task.reportStatus === 1 || task.reportStatus === 5) {
-        // 已上报/审核中 -> 显示审核状态页
-        currentStep.value = 3
-        currentTask.value.maxCurrentStep = Math.max(currentTask.value.maxCurrentStep || 0, 3)
-      } else if (task.reportStatus === 2) {
-        // 已退回 -> 跳回步骤1
-        currentStep.value = 1
-        currentTask.value.maxCurrentStep = Math.max(currentTask.value.maxCurrentStep || 0, 1)
-      } else if (task.reportStatus === 3) {
-        // 已通过 -> 显示提交国家平台页
-        currentStep.value = 4
-        currentTask.value.maxCurrentStep = Math.max(currentTask.value.maxCurrentStep || 0, 4)
-      } else if (task.reportStatus === 4) {
-        // 已提交 -> 显示完成页
-        currentStep.value = 4
-        currentTask.value.maxCurrentStep = 4
-      } else {
-        // 未上报 -> 使用任务记录的当前步骤
-        currentStep.value = task.currentStep ?? 0
-      }
-      
       if (task.taskId || currentTask.value.taskId) {
         const taskId = task.taskId || currentTask.value.taskId
         // 始终加载文件列表
@@ -2729,22 +1935,8 @@ const loadCurrentTask = async () => {
             taskName: task.taskName,
             startDate: task.startDate,
             endDate: task.endDate,
-            reportTime: task.reportTime ? String(task.reportTime) : ''
+            reportTime: task.reportTime
           }
-        }
-        
-        // 🔥 如果 reportStatus 为 1/5（审核中），显示审核状态
-        if (task.reportStatus === 1 || task.reportStatus === 5) {
-          reviewStatus.value = 0 // 待审核
-          reviewInfo.value = {
-            submitTime: task.submitTime || task.reportTime || new Date(),
-            reviewTime: null,
-            reviewer: null,
-            reviewComment: null,
-            rejectReason: null
-          }
-          // 开始轮询审核状态
-          startReviewPolling()
         }
       }
     } else {
@@ -2815,7 +2007,7 @@ const loadQCResults = async (taskId: number) => {
   try {
     if (currentStep.value >= 2) {
       const files = await ReportDataApi.getFileList(taskId)
-      preQCResult.value.passed = !files.find((item) => [0, 1, 4, null].includes(item.qcStatus ?? null))
+      preQCResult.value.passed = !files.find((item) => [0, 1, 4, null].includes(item.qcStatus))
       // 完全使用后端返回的数据
       preQCResult.value.details = files.map((file: any) => ({
         id: file.id,
@@ -2879,7 +2071,7 @@ const handleSummaryClose = async () => {
   overflow: hidden;
   position: sticky;
   top: 20px;
-  z-index: 100;
+  z-index: 1;
   transition: all 0.3s ease;
   /* backdrop-filter 会创建新的层叠上下文，移除以避免覆盖抽屉 */
 }
@@ -3147,8 +2339,6 @@ const handleSummaryClose = async () => {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   margin-bottom: 32px;
   transition: all 0.3s ease;
-  position: relative;
-  z-index: 1;
 }
 
 .step-content {
@@ -3486,59 +2676,36 @@ const handleSummaryClose = async () => {
   border: 1px solid #e4e7ed;
 }
 
-.table-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.header-upload-stats {
+.header-progress {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 2px solid #e5e7eb;
-  transition: all 0.3s ease;
   flex: 1;
   max-width: 500px;
 }
 
-.header-upload-stats .stats-label {
+.header-progress .progress-label {
   font-size: 14px;
   color: #606266;
-  font-weight: 500;
   white-space: nowrap;
 }
 
-.header-upload-stats .stats-progress {
+.header-progress .progress-bar {
   flex: 1;
   min-width: 200px;
 }
 
-.header-upload-stats .stats-count {
-  font-size: 16px;
-  color: #667eea;
-  font-weight: 700;
-  min-width: 50px;
-  text-align: center;
+.header-progress .progress-count {
+  font-size: 14px;
+  color: #409eff;
+  font-weight: 600;
   white-space: nowrap;
-  transition: all 0.3s ease;
 }
 
-.header-upload-stats .stats-count.uploading {
-  color: #f59e0b;
-  animation: pulse-count 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-count {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
+.table-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .batch-upload {
@@ -3687,7 +2854,6 @@ const handleSummaryClose = async () => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  z-index: 0;
 }
 
 .summary-card::before {
@@ -3784,137 +2950,77 @@ const handleSummaryClose = async () => {
   padding-top: 0;
 }
 
-/* 质控错误详情对话框样式 */
-.qc-error-details {
-  padding: 4px 0;
-}
-
-.error-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
+/* 质检详情样式优化 */
+.quality-details {
   background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
   border: 2px solid #fca5a5;
-  border-radius: 12px;
-  margin-bottom: 20px;
-}
-
-.header-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-}
-
-.header-icon.error {
-  font-size: 48px;
-  color: #ef4444;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 12px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-}
-
-.header-content {
-  flex: 1;
-}
-
-.header-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #991b1b;
-  margin: 0 0 8px 0;
-}
-
-.header-subtitle {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0;
-}
-
-.error-count-text {
-  font-size: 18px;
-  font-weight: 700;
-  color: #ef4444;
-  padding: 0 4px;
-}
-
-.error-table-wrapper {
-  margin-bottom: 0;
-}
-
-.error-table-wrapper :deep(.el-table) {
-  border-radius: 8px 8px 0 0;
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
   overflow: hidden;
 }
 
-.error-table-wrapper :deep(.el-table th) {
-  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
-  color: #1a202c;
+.quality-details::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.detail-icon {
+  font-size: 40px;
+  color: #ef4444;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.detail-header h4 {
+  color: #991b1b;
+  font-size: 18px;
+  margin: 0;
   font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
-.error-table-wrapper :deep(.el-table .el-table__row:hover) {
-  background: #fef2f2 !important;
+.quality-details-content {
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.8;
 }
 
-/* 错误列表分页器样式 */
-.error-pagination {
-  display: flex;
-  justify-content: center;
-  padding: 16px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
-  border: 1px solid #e4e7ed;
-  border-top: none;
-  border-radius: 0 0 8px 8px;
+.detail-item {
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 12px 16px;
+  border-radius: 10px;
 }
 
-.error-pagination :deep(.el-pagination) {
-  justify-content: center;
+.detail-label {
+  font-weight: 700;
+  color: #1f2937;
+  display: inline-block;
+  min-width: 100px;
 }
 
-.error-pagination :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.error-pagination :deep(.el-pagination.is-background .el-pager li:hover:not(.is-active)) {
-  color: #667eea;
-}
-
-.page-info {
-  font-size: 13px;
-  color: #9ca3af;
-  margin-left: 8px;
-}
-
-.error-message-cell {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  line-height: 1.6;
-}
-
-.error-message-cell .cell-icon {
-  font-size: 16px;
-  color: #f59e0b;
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-.error-tips {
-  margin-top: 16px;
-}
-
-.dialog-footer {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
-
-.dialog-footer .el-button {
-  padding: 10px 24px;
-  font-weight: 600;
+.error-messages {
+  display: inline-block;
+  color: #dc2626;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-weight: 500;
+  line-height: 1.8;
 }
 
 /* 表格样式优化 */
@@ -3940,37 +3046,6 @@ const handleSummaryClose = async () => {
 :deep(.el-table .el-table__row:hover) {
   background: #f9fafb !important;
   transform: scale(1.001);
-}
-
-/* 错误行样式 - 覆盖全局hover样式 */
-:deep(.el-table .el-table__row.error-row) {
-  background: #fef0f0 !important;
-}
-
-:deep(.el-table .el-table__row.error-row:hover) {
-  background: #fde2e2 !important;
-  transform: scale(1.001);
-}
-
-:deep(.el-table .el-table__row.error-row > td) {
-  background: #fef0f0 !important;
-  color: #dc2626 !important;
-  font-weight: 600 !important;
-}
-
-:deep(.el-table .el-table__row.error-row:hover > td) {
-  background: #fde2e2 !important;
-  color: #dc2626 !important;
-}
-
-:deep(.el-table .el-table__row.error-row td *) {
-  color: #dc2626 !important;
-}
-
-:deep(.el-table .el-table__row.error-row .el-tag) {
-  color: #dc2626 !important;
-  background-color: #fee2e2 !important;
-  border-color: #fca5a5 !important;
 }
 
 :deep(.el-table .el-button) {
@@ -4488,8 +3563,6 @@ const handleSummaryClose = async () => {
   border-radius: 12px;
   padding: 20px;
   margin-top: 16px;
-  position: relative;
-  z-index: 0;
 }
 
 .upload-progress-detail .progress-header {
@@ -4580,335 +3653,5 @@ const handleSummaryClose = async () => {
 .fade-slide-leave-to {
   opacity: 0;
   transform: translateY(10px);
-}
-
-/* 质控进度样式 */
-.qc-progress-section {
-  margin-bottom: 24px;
-}
-
-.qc-progress-card {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 2px solid #7dd3fc;
-  border-radius: 16px;
-  padding: 24px;
-  position: relative;
-  z-index: 0;
-}
-
-.qc-progress-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.qc-progress-header .header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.qc-progress-header .processing-icon {
-  font-size: 24px;
-  color: #0ea5e9;
-  animation: spin 2s linear infinite;
-}
-
-.qc-progress-header h4 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #0c4a6e;
-}
-
-.qc-progress-header .progress-percent {
-  font-size: 24px;
-  font-weight: 700;
-  color: #0284c7;
-  background: rgba(14, 165, 233, 0.1);
-  padding: 8px 20px;
-  border-radius: 20px;
-  border: 2px solid #0ea5e9;
-}
-
-.qc-progress-card .main-progress {
-  margin-bottom: 20px;
-}
-
-.qc-current-phase {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 12px;
-  border: 1px solid #bae6fd;
-  margin-bottom: 20px;
-}
-
-.qc-current-phase .phase-icon {
-  font-size: 20px;
-  color: #0ea5e9;
-}
-
-.qc-current-phase .phase-text {
-  font-size: 15px;
-  color: #0c4a6e;
-  font-weight: 500;
-}
-
-.qc-files-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.qc-file-item {
-  background: rgba(255, 255, 255, 0.6);
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid #e0f2fe;
-  transition: all 0.3s ease;
-}
-
-.qc-file-item:hover {
-  border-color: #7dd3fc;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
-}
-
-.qc-file-item .file-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.qc-file-item .file-icon {
-  font-size: 18px;
-}
-
-.qc-file-item .file-icon.pending {
-  color: #94a3b8;
-}
-
-.qc-file-item .file-icon.processing {
-  color: #0ea5e9;
-  animation: spin 1.5s linear infinite;
-}
-
-.qc-file-item .file-icon.success {
-  color: #10b981;
-}
-
-.qc-file-item .file-name {
-  font-size: 14px;
-  color: #1e293b;
-  font-weight: 500;
-}
-
-.qc-file-item .file-progress {
-  margin: 0;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* 审核状态卡片样式 */
-.review-status-section {
-  margin-bottom: 24px;
-}
-
-.review-status-card {
-  border-radius: 16px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  position: relative;
-  z-index: 0;
-}
-
-.review-status-card.status-pending {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 2px solid #f59e0b;
-}
-
-.review-status-card.status-approved {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-  border: 2px solid #10b981;
-}
-
-.review-status-card.status-rejected {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  border: 2px solid #ef4444;
-}
-
-.review-status-header {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 24px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.status-icon-wrapper {
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.status-icon {
-  font-size: 48px;
-}
-
-.status-icon.status-pending {
-  color: #f59e0b;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.status-icon.status-approved {
-  color: #10b981;
-}
-
-.status-icon.status-rejected {
-  color: #ef4444;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.status-content {
-  flex: 1;
-}
-
-.status-title {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-}
-
-.review-status-card.status-pending .status-title {
-  color: #d97706;
-}
-
-.review-status-card.status-approved .status-title {
-  color: #047857;
-}
-
-.review-status-card.status-rejected .status-title {
-  color: #dc2626;
-}
-
-.status-desc {
-  font-size: 15px;
-  color: #4b5563;
-  margin: 0;
-  line-height: 1.6;
-}
-
-.review-info {
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.6);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.review-comment,
-.reject-reason {
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 8px;
-  line-height: 1.6;
-}
-
-.reject-reason {
-  color: #dc2626;
-  font-weight: 500;
-  border-left: 4px solid #ef4444;
-}
-
-.review-actions {
-  padding: 20px 24px;
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.review-actions .el-button {
-  padding: 12px 32px;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: 10px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.review-actions .el-button--success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border: none;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-.review-actions .el-button--success:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-}
-
-.review-actions .el-button--warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  border: none;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-}
-
-.review-actions .el-button--warning:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-}
-
-/* 国家平台提交样式 */
-.national-submit-section {
-  padding: 40px 0;
-}
-
-.submit-info-card {
-  width: 100%;
-  max-width: 800px;
-}
-
-:deep(.el-result__title) {
-  font-size: 24px;
-  font-weight: 700;
-  color: #047857;
-}
-
-:deep(.el-result__subtitle) {
-  font-size: 16px;
-  color: #6b7280;
-  margin-top: 12px;
-}
-
-:deep(.el-result__icon svg) {
-  width: 80px;
-  height: 80px;
-}
-
-.national-submit-section .el-alert {
-  max-width: 800px;
 }
 </style>

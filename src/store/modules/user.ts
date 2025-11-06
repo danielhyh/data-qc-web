@@ -103,12 +103,12 @@ export const useUserStore = defineStore('admin-user', {
         console.error('后端登出失败:', error)
       }
 
-      // 调用SSO logout（会清理token并重定向）
-      await SsoAuth.logout()
-
-      // 清理本地状态
+      // 清理本地状态（在跳转前清理）
       deleteUserCache()
       this.resetState()
+
+      // 调用SSO logout（会清理token并重定向）
+      await SsoAuth.logout()
     },
     resetState() {
       this.permissions = new Set<string>()

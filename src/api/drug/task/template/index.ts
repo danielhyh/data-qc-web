@@ -288,7 +288,16 @@ export const ImportTemplateApi = {
   },
 
   /**
-   * 下载模板文件
+   * 预览模板（通过Code）
+   */
+  previewImportTemplateByCode: async (code: string): Promise<TemplatePreviewVO> => {
+    return await request.get({
+      url: `/drug/import-template/preview/by-code/${code}`
+    })
+  },
+
+  /**
+   * 下载模板文件（通过ID）
    */
   downloadImportTemplateBlob: async (
     id: number,
@@ -302,6 +311,33 @@ export const ImportTemplateApi = {
   ) => {
     return await request.download({
       url: `/drug/import-template/download/${id}`,
+      params: {
+        includeExampleData,
+        exampleRows,
+        fileFormat,
+        includeValidation: includeValidation || false,
+        freezeHeader: freezeHeader || false,
+        autoColumnWidth: autoColumnWidth || false,
+        includeDropdown: includeDropdown || false
+      }
+    })
+  },
+
+  /**
+   * 下载模板文件（通过Code）
+   */
+  downloadImportTemplateBlobByCode: async (
+    code: string,
+    includeExampleData: boolean = true,
+    exampleRows: number = 3,
+    fileFormat: string = 'xlsx',
+    includeValidation?: boolean,
+    freezeHeader?: boolean,
+    autoColumnWidth?: boolean,
+    includeDropdown?: boolean
+  ) => {
+    return await request.download({
+      url: `/drug/import-template/download/by-code/${code}`,
       params: {
         includeExampleData,
         exampleRows,

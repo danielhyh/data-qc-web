@@ -107,7 +107,7 @@
 
   <!-- 列表 -->
   <ContentWrap>
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+    <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
       <el-table-column label="机构名称" align="center" prop="institutionName" min-width="250">
         <template #default="scope">
           <div class="institution-name-cell">
@@ -125,7 +125,13 @@
       <el-table-column label="医疗类别" align="center" prop="medicalCategory" width="120" />
       <el-table-column label="状态" align="center" prop="status" width="80">
         <template #default="scope">
-          <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />
+          <el-switch
+            v-model="scope.row.status"
+            :active-value="0"
+            :inactive-value="1"
+            @change="handleStatusChange(scope.row)"
+            v-hasPermi="['system:institution-category-config:update']"
+          />
         </template>
       </el-table-column>
       <el-table-column label="备注" align="center" prop="remark" min-width="150" />
@@ -172,6 +178,9 @@
 
   <!-- 表单弹窗：添加/修改 -->
   <InstitutionCategoryConfigForm ref="formRef" @success="getList" />
+  
+  <!-- Excel预览弹窗 -->
+  <ExcelPreviewDialog ref="excelPreviewRef" />
 </template>
 
 <script setup lang="ts">
@@ -180,7 +189,9 @@ import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { InstitutionCategoryConfigApi, InstitutionCategoryConfigVO } from '@/api/system/institutioncategoryconfig'
 import InstitutionCategoryConfigForm from '../institutioncategoryconfig/InstitutionCategoryConfigForm.vue'
+import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
 import { Icon } from '@/components/Icon'
+import { ElMessage } from 'element-plus'
 
 /** 机构行政归属配置 Tab */
 defineOptions({ name: 'InstitutionCategoryConfigTab' })
@@ -202,6 +213,7 @@ const queryParams = reactive({
 })
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中
+const excelPreviewRef = ref() // Excel预览对话框引用
 
 /** 查询列表 */
 const getList = async () => {
@@ -246,6 +258,19 @@ const handleDelete = async (id: number) => {
   } catch {}
 }
 
+/** 状态开关操作 */
+const handleStatusChange = async (row: InstitutionCategoryConfigVO) => {
+  try {
+    const statusText = row.status === 0 ? '启用' : '禁用'
+    await message.confirm(`确认要${statusText}"${row.institutionName}"吗?`)
+    await InstitutionCategoryConfigApi.updateInstitutionCategoryConfigStatus(row.id, row.status)
+    message.success(`${statusText}成功`)
+  } catch {
+    // 操作失败或取消，恢复状态
+    row.status = row.status === 0 ? 1 : 0
+  }
+}
+
 /** 导出按钮操作 */
 const handleExport = async () => {
   try {
@@ -269,25 +294,37 @@ const handleImport = () => {
   input.onchange = async (e: any) => {
     const file = e.target.files[0]
     if (!file) return
+    
+    // 添加 Loading 提示
+    const loadingMsg = ElMessage({
+      message: '正在导入数据，请稍候...',
+      type: 'info',
+      duration: 0 // 不自动关闭
+    })
+    
     try {
+      // 调用后端接口（使用模板校验方式）
       await InstitutionCategoryConfigApi.importInstitutionCategoryConfig(file)
-      message.success('导入成功')
+      loadingMsg.close()
+      message.success('数据导入成功！')
+      // 刷新列表
       await getList()
     } catch (error: any) {
-      message.error('导入失败：' + (error.message || '未知错误'))
+      loadingMsg.close()
+      console.error('导入失败:', error)
+      
+      // 显示详细错误信息
+      const errorMsg = error.data?.msg || error.message || '导入失败，请检查文件格式和内容'
+      message.error(errorMsg)
     }
   }
   input.click()
 }
 
-/** 下载导入模板 */
-const handleDownloadTemplate = async () => {
-  try {
-    const data = await InstitutionCategoryConfigApi.importTemplate()
-    download.excel(data, '机构属性配置导入模板.xls')
-  } catch {
-    message.error('下载模板失败')
-  }
+/** 打开模板预览 */
+const handleDownloadTemplate = () => {
+  // 直接通过 code 打开预览对话框
+  excelPreviewRef.value?.openByCode('ADMINISTRATIVE_AFFILIATION')
 }
 
 /** 初始化 **/

@@ -52,6 +52,14 @@ export const importUserTemplate = () => {
   return request.download({ url: '/system/user/get-import-template' })
 }
 
+// 导入用户
+export const importUser = async (file: File, updateSupport = false) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('updateSupport', String(updateSupport))
+  return await request.upload({ url: '/system/user/import', data: formData })
+}
+
 // 用户密码重置
 export const resetUserPassword = (id: number, password: string) => {
   const data = {

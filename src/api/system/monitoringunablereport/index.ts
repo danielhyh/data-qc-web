@@ -42,4 +42,12 @@ export const MonitoringUnableReportApi = {
   exportMonitoringUnableReport: async (params) => {
     return await request.download({ url: `/system/monitoring-unable-report/export-excel`, params })
   },
+
+  // 更新监测内无法上报机构状态
+  updateMonitoringUnableReportStatus: async (id: number, status: number) => {
+    return await request.put({
+      url: `/system/monitoring-unable-report/update-status`,
+      params: { id, status }
+    })
+  },
 }

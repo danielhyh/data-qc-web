@@ -85,8 +85,7 @@ const loginOut = async () => {
     })
     await userStore.loginOut()
     tagsViewStore.delAllViews()
-    // 退出后跳转到首页，路由守卫会自动触发SSO登录
-    window.location.href = '/'
+    // 注意：不要在这里跳转，userStore.loginOut() 内部会调用 SsoAuth.logout() 处理跳转
   } catch {}
 }
 const toProfile = async () => {

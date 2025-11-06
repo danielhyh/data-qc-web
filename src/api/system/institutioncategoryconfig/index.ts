@@ -54,4 +54,12 @@ export const InstitutionCategoryConfigApi = {
     formData.append('file', file)
     return await request.upload({ url: `/system/institution-category-config/import`, data: formData })
   },
+
+  // 更新机构行政归属配置状态
+  updateInstitutionCategoryConfigStatus: async (id: number, status: number) => {
+    return await request.put({
+      url: `/system/institution-category-config/update-status`,
+      params: { id, status }
+    })
+  },
 }

@@ -230,7 +230,7 @@ const handleAuthorized = () => {
       deleteUserCache() // 删除用户缓存
       removeToken()
       isRelogin.show = false
-      // 干掉token后再走一次路由让它过router.beforeEach的校验
+      // 刷新当前页面，保留完整URL（包含路径前缀），路由守卫会触发SSO登录
       window.location.href = window.location.href
     })
   }

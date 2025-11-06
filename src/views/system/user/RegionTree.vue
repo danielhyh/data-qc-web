@@ -1,7 +1,7 @@
 <template>
-  <div class="region-tree-container">
+  <div class="region-tree-container" :class="{ 'is-collapsed': isCollapsed }">
     <!-- 现代化头部栏 -->
-    <div class="region-header">
+    <div class="region-header" v-show="!isCollapsed">
       <div class="header-title">
         <Icon icon="material-symbols:public" class="title-icon" />
         <span class="title-text">地区</span>
@@ -19,10 +19,37 @@
           <Icon icon="ep:search" />
         </template>
       </el-input>
+      <!-- 折叠按钮放在搜索框后面 -->
+      <el-tooltip v-if="showCollapseButton" :content="'收起地区树'" placement="bottom">
+        <el-button
+          text
+          circle
+          size="small"
+          @click="toggleCollapse"
+          class="collapse-btn"
+        >
+          <Icon icon="ep:d-arrow-left" :size="16" />
+        </el-button>
+      </el-tooltip>
+    </div>
+
+    <!-- 折叠状态下只显示展开按钮 -->
+    <div v-show="isCollapsed" class="collapsed-state">
+      <el-tooltip content="展开地区树" placement="right">
+        <el-button
+          text
+          circle
+          size="small"
+          @click="toggleCollapse"
+          class="expand-btn"
+        >
+          <Icon icon="ep:d-arrow-right" :size="20" />
+        </el-button>
+      </el-tooltip>
     </div>
 
     <!-- 树形区域 -->
-    <div class="region-body">
+    <div v-show="!isCollapsed" class="region-body">
       <el-skeleton :loading="loading" animated :count="6" v-if="loading" />
       <el-tree
         v-else
@@ -108,10 +135,12 @@ const props = withDefaults(
   defineProps<{
     autoSelectFirst?: boolean // 是否自动选中第一个节点
     showOrgCount?: boolean // 是否显示机构数量标签
+    showCollapseButton?: boolean // 是否显示内部的收起按钮
   }>(),
   {
     autoSelectFirst: true, // 默认自动选中
-    showOrgCount: false // 默认不显示机构数量
+    showOrgCount: false, // 默认不显示机构数量
+    showCollapseButton: false // 默认不显示，交由外部控制
   }
 )
 
@@ -121,6 +150,10 @@ const treeRef = ref<InstanceType<typeof ElTree>>()
 const loading = ref(false)
 const activeCode = ref<string>('')
 const defaultExpandedKeys = ref<string[]>([]) // 默认展开的节点
+
+// 折叠状态 - 从 localStorage 读取
+const STORAGE_KEY = 'region-tree-collapsed'
+const isCollapsed = ref<boolean>(localStorage.getItem(STORAGE_KEY) === 'true')
 
 // 地区树属性配置
 const areaTreeProps = {
@@ -147,7 +180,7 @@ const getTree = async () => {
     // 使用带机构数量的地区树API
     const res = await AreaOrgApi.getAreaTree()
     regionList.value = res || []
-    
+
     // 收集默认展开的节点（展开到市级）
     defaultExpandedKeys.value = collectExpandKeys(regionList.value)
 
@@ -194,6 +227,13 @@ const clearSelection = () => {
   treeRef.value?.setCurrentKey(undefined)
 }
 
+/** 切换折叠状态 */
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value
+  // 持久化到 localStorage
+  localStorage.setItem(STORAGE_KEY, String(isCollapsed.value))
+}
+
 /** 判断是否显示直属机构数量 */
 const hasDirectCount = (node: Tree) => (node.directOrgCount ?? 0) > 0
 
@@ -207,7 +247,9 @@ const hasTotalCount = (node: Tree) => {
 
 /** 暴露方法给父组件 */
 defineExpose({
-  clearSelection
+  clearSelection,
+  toggleCollapse,
+  isCollapsed
 })
 
 /** 监听regionName */
@@ -223,7 +265,7 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .region-tree-container {
-  height: 750px; // 固定高度 - 加高
+  height: 100%; // 自适应父容器高度
   min-width: 250px;
   max-width: 600px;
   display: flex;
@@ -233,6 +275,42 @@ onMounted(async () => {
   border-radius: 12px;
   border: 1px solid rgba(229, 231, 235, 0.8);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  // 折叠状态 - 只显示展开按钮
+  &.is-collapsed {
+    min-width: 50px;
+    max-width: 50px;
+  }
+}
+
+// 折叠状态下只显示展开按钮
+.collapsed-state {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px 0;
+  height: 100%;
+
+  .expand-btn {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.08) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 197, 253, 0.12) 100%);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #2563eb;
+      transform: scale(1.15);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
 }
 
 .region-header {
@@ -403,5 +481,21 @@ onMounted(async () => {
 
 :deep(.el-skeleton__item) {
   margin: 6px 0;
+}
+
+// 折叠按钮样式（仅当showCollapseButton为true时显示）
+.collapse-btn {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
 }
 </style>

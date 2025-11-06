@@ -1,283 +1,190 @@
 <template>
-  <Dialog :title="dialogTitle" v-model="dialogVisible">
-    <el-form
-      ref="formRef"
-      :model="formData"
-      :rules="formRules"
-      label-width="120px"
-      v-loading="formLoading"
-    >
-      <el-form-item label="任务名称" prop="taskName">
-        <el-input v-model="formData.taskName" placeholder="请输入任务名称" />
-      </el-form-item>
-      <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="上报开始时间" prop="startDate">
-            <el-date-picker
-              v-model="formData.startDate"
-              type="date"
-              value-format="x"
-              placeholder="选择开始时间"
-              style="width: 100%"
+  <div>
+    <Dialog :title="dialogTitle" v-model="dialogVisible" width="1000px">
+      <div v-loading="formLoading" class="report-task-form-container">
+      <!-- 基本信息卡片 -->
+      <ContentWrap
+        title="基本信息"
+        header-icon="ep:info-filled"
+        :collapsible="true"
+        :default-collapsed="false"
+        shadow="hover"
+        class="config-section"
+      >
+        <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px">
+          <el-form-item label="任务名称" prop="taskName">
+            <el-input v-model="formData.taskName" placeholder="请输入任务名称" />
+          </el-form-item>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="上报开始时间" prop="startDate">
+                <el-date-picker
+                  v-model="formData.startDate"
+                  type="date"
+                  value-format="x"
+                  placeholder="选择开始时间"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="上报截止时间" prop="endDate">
+                <el-date-picker
+                  v-model="formData.endDate"
+                  type="date"
+                  value-format="x"
+                  placeholder="选择截止时间"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="任务描述" prop="description">
+            <el-input
+              v-model="formData.description"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入任务描述"
             />
           </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="上报截止时间" prop="endDate">
-            <el-date-picker
-              v-model="formData.endDate"
-              type="date"
-              value-format="x"
-              placeholder="选择截止时间"
-              style="width: 100%"
-            />
-          </el-form-item>
-        </el-col>
-      </el-row>
-      <el-form-item label="任务描述" prop="description">
-        <el-input
-          v-model="formData.description"
-          type="textarea"
-          :rows="3"
-          placeholder="请输入任务描述"
-        />
-      </el-form-item>
-    </el-form>
+        </el-form>
+      </ContentWrap>
 
-    <!-- 可填报机构选择器 -->
-    <el-card shadow="never" class="org-selector-card">
-      <template #header>
-        <div class="card-header">
-          <span>可填报机构</span>
-          <div class="header-actions">
-            <el-button size="small" @click="openOrgSelector">
+      <!-- 可填报机构选择器 -->
+      <ContentWrap
+        :title="`可填报机构（已选机构 ${selectedOrgCount} 个）`"
+        header-icon="ep:office-building"
+        :collapsible="true"
+        :default-collapsed="false"
+        shadow="hover"
+        class="config-section"
+      >
+        <template #header>
+          <div class="org-header-actions">
+            <el-button size="small" type="primary" @click.stop="openOrgSelector">
               <Icon icon="ep:setting" class="mr-1" />
               配置机构
             </el-button>
-            <el-button size="small" @click="clearAllOrgs" :disabled="selectedOrgCount === 0">
+            <el-button
+              size="small"
+              type="danger"
+              @click.stop="clearAllOrgs"
+              :disabled="selectedOrgCount === 0"
+            >
               <Icon icon="ep:delete" class="mr-1" />
               清空选择
             </el-button>
           </div>
-        </div>
-      </template>
+        </template>
 
-      <div class="org-summary">
-        <div v-if="selectedOrgCount === 0" class="empty-org-state">
-          <Icon icon="ep:office-building" class="empty-icon" />
-          <p>暂未选择任何机构</p>
-          <p class="hint">点击"配置机构"按钮选择可填报的医疗机构</p>
-        </div>
-        <div v-else class="selected-orgs-list">
-          <div class="org-summary-header">
-            <el-tag type="success" size="large" class="org-count-tag">
-              已选择 {{ selectedOrgCount }} 个机构
-            </el-tag>
-            <el-link type="primary" @click="openOrgSelector" class="view-detail">
-              重新配置
-              <Icon icon="ep:edit" />
-            </el-link>
+        <div class="org-summary">
+          <!-- 搜索栏 -->
+          <div v-if="selectedOrgCount > 0" class="org-search-bar">
+            <el-input
+              v-model="orgSearchKeyword"
+              placeholder="搜索机构名称、地区..."
+              clearable
+              prefix-icon="ep:search"
+              size="default"
+              class="org-search-input"
+            />
           </div>
 
-          <!-- 简化的机构列表 -->
-          <div class="org-list-container">
-            <div class="org-grid">
-              <div v-for="org in selectedOrgsDetail.slice(0, 12)" :key="org.id" class="org-card">
-                <div class="org-header">
-                  <span class="org-name" :title="org.name">{{ org.name }}</span>
+          <div class="selected-orgs-table-wrapper">
+            <el-table
+              :data="filteredOrgDetails"
+              border
+              size="small"
+              row-key="id"
+              class="selected-orgs-table"
+              height="320"
+            >
+              <el-table-column
+                prop="name"
+                label="机构名称"
+                min-width="220"
+                show-overflow-tooltip
+              >
+                <template #default="{ row }">
+                  <span class="org-name-bold">{{ row.name }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="所属地区" min-width="200">
+                <template #default="{ row }">
+                  {{ row.regionPathName || row.regionName || row.areaName || '—' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="等级" min-width="120" align="center">
+                <template #default="{ row }">
                   <dict-tag
                     :type="DICT_TYPE.INSTITUTION_LEVEL"
-                    :value="org.hospitalLevel"
+                    :value="row.hospitalLevel"
                     size="small"
                   />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="100" align="center" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="danger" size="small" @click="handleRemoveOrg(row.id)">
+                    <Icon icon="ep:delete" class="mr-1" />
+                    移除
+                  </el-button>
+                </template>
+              </el-table-column>
+              <template #empty>
+                <div class="empty-org-state">
+                  <Icon icon="ep:office-building" class="empty-icon" />
+                  <p v-if="orgSearchKeyword">未找到匹配的机构</p>
+                  <p v-else>暂未选择任何机构</p>
+                  <p v-if="!orgSearchKeyword" class="hint">
+                    点击「配置机构」按钮选择可填报的医疗机构
+                  </p>
                 </div>
-              </div>
-            </div>
+              </template>
+            </el-table>
+          </div>
 
-            <!-- 如果选中机构超过12个，显示"更多"提示 -->
-            <div v-if="selectedOrgsDetail.length > 12" class="more-orgs-tip">
-              <Icon icon="ep:more" />
-              还有 {{ selectedOrgsDetail.length - 12 }} 个机构，点击"重新配置"查看全部
-            </div>
+          <!-- 统计信息 -->
+          <div v-if="selectedOrgCount > 0 && orgSearchKeyword" class="org-search-result">
+            <el-tag size="small" type="info">
+              显示 {{ filteredOrgDetails.length }} / {{ selectedOrgCount }} 个机构
+            </el-tag>
           </div>
         </div>
+        </ContentWrap>
       </div>
-    </el-card>
-    <template #footer>
-      <!-- 1. 校验: 未配置机构时禁止提交 -->
-      <el-button 
-        @click="() => { if (selectedOrgCount === 0) { message.warning('请先配置可填报机构！'); return } submitForm() }"
-        type="primary"
-        :disabled="formLoading"
-      >确 定</el-button>
-      <el-button @click="dialogVisible = false">取 消</el-button>
-    </template>
-  </Dialog>
+      <template #footer>
+        <el-button @click="submitForm" type="primary" :disabled="formLoading">确 定</el-button>
+        <el-button @click="dialogVisible = false">取 消</el-button>
+      </template>
+    </Dialog>
 
-  <!-- 机构选择器弹窗 -->
-  <el-dialog
-    v-model="orgSelectorVisible"
-    title="选择可填报机构(不包含监测内无法上报机构)"
-    width="1200px"
-    :close-on-click-modal="false"
-  >
-    <div class="org-selector-container">
-      <el-row :gutter="12">
-        <!-- 左侧：地区树 -->
-        <el-col :span="10">
-          <el-card shadow="never" class="selector-card">
-            <template #header>
-              <div class="card-header">
-                <span>选择地区</span>
-              </div>
-            </template>
-            <!-- 地区树搜索输入框：现代 UI，易用 -->
-            <el-input
-              v-model="areaFilterText"
-              placeholder="输入地区名称搜索"
-              clearable
-              size="small"
-              class="mb-2"
-              @input="onAreaFilterInput"
-            />
-            <el-tree
-              ref="areaTreeRef"
-              :data="areaTreeData"
-              :props="areaTreeProps"
-              node-key="code"
-              highlight-current
-              default-expand-all
-              @node-click="handleAreaNodeClick"
-              :filter-node-method="filterAreaTreeNode"
-            >
-              <template #default="{ node, data }">
-                <span class="tree-node">
-                  <Icon :icon="getAreaIcon(data.level)" class="node-icon" />
-                  <span class="node-label">
-                    {{ node.label }}
-                    <span v-if="data.orgCount !== undefined" class="org-count">({{ data.orgCount }})</span>
-                  </span>
-                </span>
-              </template>
-            </el-tree>
-          </el-card>
-        </el-col>
-
-        <!-- 右侧：机构树 -->
-        <el-col :span="14">
-          <el-card shadow="never" class="selector-card">
-            <template #header>
-              <div class="card-header">
-                <span>选择机构</span>
-                <div class="header-actions">
-                  全选/全不选:
-                  <el-switch
-                    v-model="treeNodeAll"
-                    active-text="是"
-                    inactive-text="否"
-                    inline-prompt
-                    @change="handleCheckedTreeNodeAll()"
-                    :disabled="!selectedArea"
-                  />
-                  全部展开/折叠:
-                  <el-switch
-                    v-model="deptExpand"
-                    active-text="展开"
-                    inactive-text="折叠"
-                    inline-prompt
-                    @change="handleCheckedTreeExpand"
-                    :disabled="!selectedArea"
-                  />
-                  父子联动:
-                  <el-switch
-                    v-model="checkStrictly"
-                    active-text="是"
-                    inactive-text="否"
-                    inline-prompt
-                    :disabled="!selectedArea"
-                  />
-                </div>
-              </div>
-            </template>
-            <!-- 机构树搜索输入框：现代 UI，易用 -->
-            <el-input
-              v-model="deptFilterText"
-              placeholder="输入机构名称搜索"
-              clearable
-              size="small"
-              class="mb-2"
-              @input="onDeptFilterInput"
-              :disabled="!selectedArea"
-            />
-            <div v-if="selectedArea" class="institution-level-filter">
-              <span class="filter-label">机构等级筛选：</span>
-              <el-checkbox-group
-                v-model="selectedInstitutionLevels"
-                @change="handleInstitutionLevelChange"
-              >
-                <el-checkbox
-                  v-for="dict in getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL)"
-                  :key="dict.value"
-                  :value="dict.value"
-                  border
-                  size="small"
-                  class="level-checkbox"
-                >
-                  {{ dict.label }}
-                </el-checkbox>
-              </el-checkbox-group>
-            </div>
-            <div v-if="!selectedArea" class="empty-state">
-              <Icon icon="ep:pointer" class="empty-icon" />
-              <p>请先选择左侧地区</p>
-            </div>
-            <el-tree
-              v-else
-              ref="treeRef"
-              :check-strictly="!checkStrictly"
-              :data="filteredDeptOptions"
-              :props="defaultProps"
-              :default-expand-all="deptExpand"
-              empty-text="该地区暂无机构"
-              node-key="id"
-              show-checkbox
-              :filter-node-method="filterDeptTreeNode"
-            >
-              <template #default="{ node, data }">
-                <div class="dept-node">
-                  <span>{{ node.label }}</span>
-                  <dict-tag
-                    :type="DICT_TYPE.INSTITUTION_LEVEL"
-                    :value="data.hospitalLevel"
-                    class="ml-2"
-                  />
-                </div>
-              </template>
-            </el-tree>
-          </el-card>
-        </el-col>
-      </el-row>
-    </div>
-
-    <template #footer>
-      <el-button @click="confirmOrgSelection" type="primary">确定选择</el-button>
-      <el-button @click="orgSelectorVisible = false">取消</el-button>
-    </template>
-  </el-dialog>
+    <ReportTaskOrgSelector
+      v-model="orgSelectorVisible"
+      :selected-ids="selectedOrgIds"
+      :selected-details="selectedOrgsDetail"
+      @confirm="handleOrgSelectorConfirm"
+    />
+  </div>
 </template>
+
 <script setup lang="ts">
-import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
-import { ReportTaskApi, ReportTaskVO } from '@/api/drug/reporttask'
+import { computed, defineAsyncComponent, reactive, ref } from 'vue'
+import { DICT_TYPE } from '@/utils/dict'
+import type { ReportTaskVO } from '@/api/drug/reporttask'
+import { ReportTaskApi } from '@/api/drug/reporttask'
 import { Icon } from '@/components/Icon'
+import { ContentWrap } from '@/components/ContentWrap'
 import * as DeptApi from '@/api/system/dept'
-import * as RegionsApi from '@/api/system/regions'
-import { defaultProps, handleTree } from '@/utils/tree'
-import { ref, watch } from 'vue'
+import { useMessage } from '@/hooks/web/useMessage'
+
+const ReportTaskOrgSelector = defineAsyncComponent(
+  () => import('./components/ReportTaskOrgSelector.vue') as Promise<any>
+)
 
 /** 填报任务设置 表单 */
 defineOptions({ name: 'ReportTaskForm' })
 const emit = defineEmits(['success'])
-const { t } = useI18n() // 国际化
 const message = useMessage() // 消息弹窗
 
 const dialogVisible = ref(false) // 弹窗的是否展示
@@ -298,280 +205,109 @@ const formRules = reactive({
   endDate: [{ required: true, message: '上报截止时间不能为空', trigger: 'blur' }]
 })
 
-// 部门树相关
-const deptOptions = ref<any[]>([]) // 原始部门树形结构
-const filteredDeptOptions = ref<any[]>([]) // 过滤后的部门树形结构
-const deptExpand = ref(true) // 展开/折叠
-const treeRef = ref() // 部门树组件 Ref
-const treeNodeAll = ref(false) // 全选/全不选
-const checkStrictly = ref(true) // 是否严格模式，即父子不关联
-
-// 地区树相关
-const areaTreeRef = ref() // 地区树组件 Ref
-const areaTreeData = ref<any[]>([]) // 地区树形结构
-const selectedArea = ref<any>(null) // 选中的地区
-
-const areaTreeProps = {
-  label: 'name',
-  children: 'children'
-}
-
-// 机构等级筛选相关
-const selectedInstitutionLevels = ref<number[]>([]) // 选中的机构等级
+const formRef = ref() // 表单 Ref
 
 // 机构选择器弹窗相关
 const orgSelectorVisible = ref(false) // 机构选择器弹窗是否显示
 const selectedOrgIds = ref<number[]>([]) // 当前选中的机构ID列表
+const selectedOrgsDetail = ref<any[]>([]) // 当前选中的机构详情
+const orgSearchKeyword = ref('') // 机构搜索关键字
 
 // 计算属性：已选择机构数量
 const selectedOrgCount = computed(() => selectedOrgIds.value.length)
 
-// 用于存储已选中机构的详细信息（用于编辑状态下的回显）
-const selectedOrgsCache = ref<any[]>([])
-
-// 计算属性：选中的机构详情列表
-const selectedOrgsDetail = computed(() => {
-  if (selectedOrgIds.value.length === 0) return []
-
-  // 从树形数据中递归查找选中的机构详情
-  const findOrgInTree = (nodes: any[], targetIds: number[]): any[] => {
-    const result: any[] = []
-
-    for (const node of nodes) {
-      if (targetIds.includes(node.id)) {
-        result.push({
-          id: node.id,
-          name: node.name,
-          hospitalLevel: node.hospitalLevel,
-          address: node.address || '',
-          contactPerson: node.contactPerson || '',
-          contactPhone: node.contactPhone || ''
-        })
-      }
-
-      // 递归查找子节点
-      if (node.children && node.children.length > 0) {
-        const childResults = findOrgInTree(node.children, targetIds)
-        result.push(...childResults)
-      }
-    }
-
-    return result
+// 计算属性：根据搜索关键字过滤机构列表
+const filteredOrgDetails = computed(() => {
+  if (!orgSearchKeyword.value) {
+    return selectedOrgsDetail.value
   }
-
-  // 优先从deptOptions中查找，如果找不到则使用缓存数据
-  const foundOrgs = findOrgInTree(deptOptions.value, selectedOrgIds.value)
-  if (foundOrgs.length > 0) {
-    return foundOrgs
-  }
-
-  // 如果没有在当前树中找到，使用缓存的机构信息（编辑状态下的回显）
-  return selectedOrgsCache.value.filter((org) => selectedOrgIds.value.includes(org.id))
-})
-const formRef = ref() // 表单 Ref
-
-// —— 新增：树名称快速搜索相关变量（高内聚，易维护） —— //
-const areaFilterText = ref('') // 地区树搜索关键字
-const deptFilterText = ref('') // 机构树搜索关键字
-
-// 地区树节点过滤方法
-const filterAreaTreeNode = (value: string, data: any) => {
-  if (!value) return true
-  // 名称模糊包含（兼容 null/undefined）
-  return (data.name || '').toLowerCase().includes(value.toLowerCase())
-}
-// 机构树节点过滤方法
-const filterDeptTreeNode = (value: string, data: any) => {
-  if (!value) return true
-  // 名称模糊包含（兼容 null/undefined）
-  return (data.name || '').toLowerCase().includes(value.toLowerCase())
-}
-
-// 搜索时主动触发 el-tree 过滤方法
-const onAreaFilterInput = () => {
-  areaTreeRef.value && areaTreeRef.value.filter(areaFilterText.value)
-}
-const onDeptFilterInput = () => {
-  treeRef.value && treeRef.value.filter(deptFilterText.value)
-}
-
-// 弹窗关闭时清理搜索词（保持体验）
-watch(() => orgSelectorVisible.value, (val) => {
-  if (!val) {
-    areaFilterText.value = ''
-    deptFilterText.value = ''
-  }
-})
-
-// 获取区域图标
-const getAreaIcon = (level: number) => {
-  const icons = {
-    1: 'ep:location', // 省
-    2: 'ep:map-location', // 市
-    3: 'ep:place' // 区
-  }
-  return icons[level] || 'ep:location'
-}
-
-// 处理地区节点点击
-const handleAreaNodeClick = async (data: any) => {
-  selectedArea.value = data
-
-  // 切换地区时，重置相关状态
-  selectedInstitutionLevels.value = []
-  treeNodeAll.value = false
-
-  // 加载该地区的机构数据
-  await loadDeptData(data.code)
-
-  // 在数据加载完成后，设置已选中的机构状态
-  setTimeout(() => {
-    if (selectedOrgIds.value.length > 0 && treeRef.value) {
-      treeRef.value.setCheckedKeys(selectedOrgIds.value)
-    }
-  }, 200)
-}
-
-// 加载机构数据
-const loadDeptData = async (areaCode: string) => {
-  try {
-    // 根据地区代码查询该地区下的机构数据，排除监测内无法上报机构
-    const data = await DeptApi.getDeptPage({ areaCode, pageSize: 1000, excludeUnableReport: true })
-    deptOptions.value = handleTree(data.list || data)
-
-    // 应用机构等级筛选
-    applyInstitutionLevelFilter()
-  } catch (error) {
-    console.error('加载机构数据失败:', error)
-    deptOptions.value = []
-    filteredDeptOptions.value = []
-  }
-}
-
-// 处理机构等级变化
-const handleInstitutionLevelChange = () => {
-  applyInstitutionLevelFilter()
-
-  // 新增：筛选后自动选中筛选出来的机构
-  if (selectedInstitutionLevels.value.length > 0) {
-    nextTick(() => {
-      // 获取筛选后的所有机构 ID
-      const filteredOrgIds = getAllOrgIds(filteredDeptOptions.value)
-
-      // 将筛选出的机构 ID 与已选中的 ID 合并（去重）
-      const newSelectedIds = [...new Set([...selectedOrgIds.value, ...filteredOrgIds])]
-      selectedOrgIds.value = newSelectedIds
-
-      // 在树组件中设置选中状态
-      if (treeRef.value) {
-        treeRef.value.setCheckedKeys(newSelectedIds)
-      }
-
-      message.success(`已自动选中 ${filteredOrgIds.length} 个机构`)
-    })
-  } else {
-    // 如果取消所有等级筛选，保持当前选中状态不变
-    nextTick(() => {
-      if (selectedOrgIds.value.length > 0 && treeRef.value) {
-        treeRef.value.setCheckedKeys(selectedOrgIds.value)
-      }
-    })
-  }
-}
-
-// 新增：递归获取树中所有机构的 ID
-const getAllOrgIds = (nodes: any[]): number[] => {
-  const ids: number[] = []
-
-  const traverse = (nodeList: any[]) => {
-    nodeList.forEach(node => {
-      // 只收集叶子节点（实际机构）的 ID
-      if (node.id) {
-        ids.push(node.id)
-      }
-      // 递归处理子节点
-      if (node.children && node.children.length > 0) {
-        traverse(node.children)
-      }
-    })
-  }
-
-  traverse(nodes)
-  return ids
-}
-
-// 应用机构等级筛选
-const applyInstitutionLevelFilter = () => {
-  if (selectedInstitutionLevels.value.length === 0) {
-    // 如果没有选择等级，显示所有机构
-    filteredDeptOptions.value = deptOptions.value
-  } else {
-    // 筛选指定等级的机构
-    filteredDeptOptions.value = filterTreeByLevel(
-      deptOptions.value,
-      selectedInstitutionLevels.value
+  const keyword = orgSearchKeyword.value.toLowerCase()
+  return selectedOrgsDetail.value.filter((org) => {
+    const name = org.name?.toLowerCase() || ''
+    const regionName = org.regionName?.toLowerCase() || ''
+    const areaName = org.areaName?.toLowerCase() || ''
+    const regionPath = org.regionPath?.toLowerCase() || ''
+    const regionPathName = org.regionPathName?.toLowerCase() || ''
+    return (
+      name.includes(keyword) ||
+      regionName.includes(keyword) ||
+      areaName.includes(keyword) ||
+      regionPath.includes(keyword) ||
+      regionPathName.includes(keyword)
     )
-  }
+  })
+})
 
-  // 筛选后重新设置选中状态
-  nextTick(() => {
-    if (selectedOrgIds.value.length > 0 && treeRef.value) {
-      treeRef.value.setCheckedKeys(selectedOrgIds.value)
+const mergeOrgDetails = (ids: number[], details: any[] = []) => {
+  const detailMap = new Map<number, any>()
+  // 先放入新的详情
+  details.forEach((item) => {
+    if (item && typeof item.id === 'number') {
+      detailMap.set(item.id, item)
     }
   })
+  // 再补充旧的详情，避免丢失
+  selectedOrgsDetail.value.forEach((item) => {
+    if (item && typeof item.id === 'number' && !detailMap.has(item.id)) {
+      detailMap.set(item.id, item)
+    }
+  })
+
+  return ids.map((id) => detailMap.get(id)).filter(Boolean)
 }
 
-// 递归筛选树节点
-const filterTreeByLevel = (nodes: any[], levels: number[]): any[] => {
-  const levelStrings = levels.map((l) => l.toString()) // 转换为字符串数组进行比较
+const handleRemoveOrg = (orgId: number) => {
+  selectedOrgIds.value = selectedOrgIds.value.filter((id) => id !== orgId)
+  selectedOrgsDetail.value = selectedOrgsDetail.value.filter((item) => item.id !== orgId)
+}
 
-  return nodes
-    .filter((node) => {
-      // 如果当前节点匹配等级条件，保留
-      const nodeLevel = node.hospitalLevel
-      if (nodeLevel !== undefined && nodeLevel !== null) {
-        // 支持数字和字符串类型的hospitalLevel比较
-        const nodeLevelStr = nodeLevel.toString()
-        if (levels.includes(nodeLevel) || levelStrings.includes(nodeLevelStr)) {
-          return true
-        }
-      }
+const clearAllOrgs = () => {
+  if (selectedOrgIds.value.length === 0) {
+    return
+  }
+  selectedOrgIds.value = []
+  selectedOrgsDetail.value = []
+  message.success('已清空所有选定机构')
+}
 
-      // 如果有子节点，递归筛选子节点
-      if (node.children && node.children.length > 0) {
-        const filteredChildren = filterTreeByLevel(node.children, levels)
-        if (filteredChildren.length > 0) {
-          // 如果有符合条件的子节点，保留当前节点但更新子节点
-          return { ...node, children: filteredChildren }
-        }
-      }
+const openOrgSelector = () => {
+  orgSelectorVisible.value = true
+}
 
-      return false
-    })
-    .map((node) => {
-      if (node.children && node.children.length > 0) {
-        return { ...node, children: filterTreeByLevel(node.children, levels) }
-      }
-      return node
-    })
+type OrgSelectorConfirmPayload = {
+  ids: number[]
+  details: any[]
+}
+
+const handleOrgSelectorConfirm = (payload: OrgSelectorConfirmPayload) => {
+  const { ids, details } = payload
+  selectedOrgIds.value = [...ids]
+  selectedOrgsDetail.value = mergeOrgDetails(ids, details)
+  orgSelectorVisible.value = false
+  if (ids.length > 0) {
+    message.success(`成功选择 ${ids.length} 个机构`)
+  }
 }
 
 // 根据机构ID列表获取机构详情（用于编辑状态下的回显）
 const loadOrgDetailsByIds = async (orgIds: number[]) => {
   if (!orgIds || orgIds.length === 0) {
-    selectedOrgsCache.value = []
+    selectedOrgsDetail.value = []
     return
   }
 
   try {
-    // 批量查询机构详情
-    const promises = orgIds.map(async (id) => {
+    const tasks = orgIds.map(async (id) => {
       try {
         const orgDetail = await DeptApi.getDept(id)
         return {
           id: orgDetail.id,
           name: orgDetail.name,
           hospitalLevel: orgDetail.hospitalLevel,
+          regionName: orgDetail.regionName,
+          areaName: orgDetail.areaName,
+          regionPath: orgDetail.regionPath,
+          regionPathName: orgDetail.regionPathName || '', // 区域路径中文名称
           address: orgDetail.address || '',
           contactPerson: orgDetail.contactPerson || '',
           contactPhone: orgDetail.contactPhone || ''
@@ -582,6 +318,10 @@ const loadOrgDetailsByIds = async (orgIds: number[]) => {
           id,
           name: `机构ID: ${id}`,
           hospitalLevel: '',
+          regionName: '',
+          areaName: '',
+          regionPath: '',
+          regionPathName: '',
           address: '',
           contactPerson: '',
           contactPhone: ''
@@ -589,127 +329,20 @@ const loadOrgDetailsByIds = async (orgIds: number[]) => {
       }
     })
 
-    const orgDetails = await Promise.all(promises)
-    selectedOrgsCache.value = orgDetails.filter((org) => org !== null)
+    const details = await Promise.all(tasks)
+    selectedOrgsDetail.value = mergeOrgDetails(orgIds, details)
   } catch (error) {
     console.error('批量获取机构详情失败:', error)
-    selectedOrgsCache.value = []
-  }
-}
-
-// 初始化地区树数据
-const initAreaTree = async () => {
-  try {
-    // 调用真实的地区树API
-    const data = await RegionsApi.RegionsApi.getRegionsTreeWithOrgCount()
-    areaTreeData.value = data || []
-  } catch (error) {
-    console.error('初始化地区树失败:', error)
-    areaTreeData.value = []
-  }
-}
-
-// 打开机构选择器弹窗
-const openOrgSelector = async () => {
-  orgSelectorVisible.value = true
-
-  // 初始化地区树（如果还没有加载）
-  if (areaTreeData.value.length === 0) {
-    await initAreaTree()
-  }
-
-  // 默认选择顶级节点(610000)并加载所有机构数据
-  if (areaTreeData.value.length > 0) {
-    // 查找陕西省节点 (610000)
-    const findTopLevelNode = (nodes: any[]): any => {
-      for (const node of nodes) {
-        if (node.code === '610000') {
-          return node
-        }
-        if (node.children && node.children.length > 0) {
-          const found = findTopLevelNode(node.children)
-          if (found) return found
-        }
-      }
-      return nodes[0] // 如果找不到610000，使用第一个节点
-    }
-
-    const topLevelNode = findTopLevelNode(areaTreeData.value)
-    if (topLevelNode) {
-      selectedArea.value = topLevelNode
-      // 加载该地区的机构数据
-      await loadDeptData(topLevelNode.code)
-
-      // 在地区树中高亮选中的节点
-      nextTick(() => {
-        if (areaTreeRef.value) {
-          areaTreeRef.value.setCurrentKey(topLevelNode.code)
-        }
-      })
-    }
-  }
-
-  // 如果当前有选中的机构，需要在树组件中设置选中状态
-  // 使用更长的延迟确保树组件完全渲染
-  setTimeout(() => {
-    if (selectedOrgIds.value.length > 0 && treeRef.value) {
-      // 先清除已有的选中状态
-      treeRef.value.setCheckedKeys([])
-      // 再设置新的选中状态
-      treeRef.value.setCheckedKeys(selectedOrgIds.value)
-      console.log('设置选中机构ID:', selectedOrgIds.value)
-    }
-  }, 800) // 增加延迟时间确保数据加载完成
-}
-
-// 清空所有机构选择
-const clearAllOrgs = () => {
-  selectedOrgIds.value = []
-  treeRef.value?.setCheckedNodes([])
-  treeNodeAll.value = false
-}
-
-// 确认机构选择
-const confirmOrgSelection = () => {
-  // 获取当前选中的机构ID列表
-  const checkedKeys = treeRef.value?.getCheckedKeys(false) || []
-  selectedOrgIds.value = [...checkedKeys]
-
-  // 关闭弹窗
-  orgSelectorVisible.value = false
-
-  // 显示选择结果提示
-  if (checkedKeys.length > 0) {
-    message.success(`成功选择 ${checkedKeys.length} 个机构`)
-  }
-}
-
-/** 全选/全不选 */
-const handleCheckedTreeNodeAll = () => {
-  if (!selectedArea.value) return
-  treeRef.value.setCheckedNodes(treeNodeAll.value ? filteredDeptOptions.value : [])
-}
-
-/** 展开/折叠全部 */
-const handleCheckedTreeExpand = () => {
-  const nodes = treeRef.value?.store.nodesMap
-  for (let node in nodes) {
-    if (nodes[node].expanded === deptExpand.value) {
-      continue
-    }
-    nodes[node].expanded = deptExpand.value
+    selectedOrgsDetail.value = mergeOrgDetails(orgIds)
   }
 }
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
   dialogVisible.value = true
-  dialogTitle.value = t('action.' + type)
+  dialogTitle.value = type === 'create' ? '新增填报任务' : '编辑填报任务'
   formType.value = type
   resetForm()
-
-  // 初始化地区树数据
-  await initAreaTree()
 
   // 修改时，设置数据
   if (id) {
@@ -735,19 +368,18 @@ const open = async (type: string, id?: number) => {
 }
 defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 
-/** 重写 submitForm，提交前进行二次确认 */
+/** 提交表单 */
 const submitForm = async () => {
-  // 先保证有机构已配置（理论上button已拦截，这里兜底防御）
+  // 先保证有机构已配置
   if (selectedOrgCount.value === 0) {
     message.warning('请先配置可填报机构！')
     return
   }
+
   // 二次确认对话
-  const confirmed = await message.confirm(
-    '确认后将会给配置的机构新增填报任务，且不可再修改。是否继续？',
-    '提示',
-    { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
-  ).catch(() => false)
+  const confirmed = await message
+    .confirm('确认后将会给配置的机构新增填报任务，且不可再修改。是否继续？', '提示')
+    .catch(() => false)
   if (!confirmed) return
 
   // 校验表单
@@ -758,17 +390,17 @@ const submitForm = async () => {
   // 提交请求
   formLoading.value = true
   try {
-    const data = { ...formData.value } as ReportTaskVO
+    const data: Partial<ReportTaskVO> = { ...formData.value }
 
     // 处理可填报机构ID列表
     data.reportableOrgs = selectedOrgIds.value.join(',')
 
     if (formType.value === 'create') {
-      await ReportTaskApi.createReportTask(data)
-      message.success(t('common.createSuccess'))
+      await ReportTaskApi.createReportTask(data as ReportTaskVO)
+      message.success('创建成功')
     } else {
-      await ReportTaskApi.updateReportTask(data)
-      message.success(t('common.updateSuccess'))
+      await ReportTaskApi.updateReportTask(data as ReportTaskVO)
+      message.success('更新成功')
     }
     dialogVisible.value = false
     // 发送操作成功的事件
@@ -789,268 +421,203 @@ const resetForm = () => {
     reportableOrgs: undefined
   }
 
-  // 重置地区和机构相关状态
-  selectedArea.value = null
-  selectedInstitutionLevels.value = []
+  // 重置机构相关状态
   selectedOrgIds.value = []
-  selectedOrgsCache.value = [] // 清空缓存
-  deptOptions.value = []
-  filteredDeptOptions.value = []
+  selectedOrgsDetail.value = []
+  orgSearchKeyword.value = '' // 重置搜索关键字
 
   // 重置机构选择器弹窗状态
   orgSelectorVisible.value = false
-
-  // 重置部门树状态
-  treeNodeAll.value = false
-  deptExpand.value = true
-  checkStrictly.value = true
-  treeRef.value?.setCheckedNodes([])
 
   formRef.value?.resetFields()
 }
 </script>
 
 <style scoped lang="scss">
-// 机构选择器卡片样式
-.org-selector-card {
-  margin-bottom: 20px;
+// 表单容器
+.report-task-form-container {
+  max-height: 75vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 4px;
+  // 预留滚动条空间，避免内容挤压
+  scrollbar-gutter: stable;
 
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: 500;
-
-    .header-actions {
-      display: flex;
-      gap: 8px;
-    }
+  // 自定义滚动条样式
+  &::-webkit-scrollbar {
+    width: 6px;
   }
 
-  .org-summary {
-    min-height: 120px;
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-    .empty-org-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      color: var(--el-text-color-secondary);
-      padding: 40px 0;
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
 
-      .empty-icon {
-        font-size: 48px;
-        margin-bottom: 16px;
-        color: var(--el-border-color-darker);
-      }
-
-      p {
-        margin: 8px 0;
-
-        &.hint {
-          font-size: 14px;
-          color: var(--el-text-color-placeholder);
-        }
-      }
-    }
-
-    .selected-orgs-list {
-      .org-summary-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid var(--el-border-color-lighter);
-
-        .org-count-tag {
-          padding: 12px 16px;
-          font-size: 16px;
-        }
-
-        .view-detail {
-          font-size: 14px;
-          text-decoration: none;
-
-          &:hover {
-            text-decoration: underline;
-          }
-        }
-      }
-
-      .org-list-container {
-        max-height: 300px;
-        overflow-y: auto;
-
-        .org-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-          gap: 8px;
-          margin-bottom: 12px;
-        }
-
-        .org-card {
-          padding: 8px 12px;
-          background: var(--el-bg-color-page);
-          border: 1px solid var(--el-border-color-lighter);
-          border-radius: 4px;
-          transition: all 0.2s ease;
-          min-height: 40px;
-          display: flex;
-          align-items: center;
-
-          &:hover {
-            border-color: var(--el-color-primary-light-5);
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-          }
-
-          .org-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-
-            .org-name {
-              font-size: 14px;
-              color: var(--el-text-color-primary);
-              flex: 1;
-              margin-right: 8px;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-          }
-        }
-
-        .more-orgs-tip {
-          text-align: center;
-          padding: 12px;
-          color: var(--el-text-color-secondary);
-          font-size: 13px;
-          background: var(--el-bg-color);
-          border: 1px dashed var(--el-border-color);
-          border-radius: 4px;
-
-          .ep-more {
-            margin-right: 4px;
-          }
-        }
-      }
+    &:hover {
+      background: rgba(0, 0, 0, 0.2);
     }
   }
 }
 
-// 机构选择器弹窗内的样式
-.org-selector-container {
-  .selector-card {
-    height: 500px;
-    display: flex;
-    flex-direction: column;
+// 配置区块样式 - ContentWrap 组件
+.config-section {
+  margin-bottom: 20px;
 
-    :deep(.el-card__header) {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--el-border-color-lighter);
-    }
-
-    :deep(.el-card__body) {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-    }
+  &:last-child {
+    margin-bottom: 0;
   }
+}
 
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.org-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
 
-    .header-actions {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-      font-size: 14px;
-    }
-  }
+.org-summary {
+  min-height: 160px;
 
-  .tree-node {
-    display: flex;
-    align-items: center;
-    flex: 1;
+  // 搜索栏样式
+  .org-search-bar {
+    margin-bottom: 12px;
 
-    .node-icon {
-      margin-right: 6px;
-      color: var(--el-color-primary);
-    }
+    .org-search-input {
+      :deep(.el-input__wrapper) {
+        border-radius: 8px;
+        transition: all 0.3s ease;
 
-    .node-label {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-
-      .org-count {
-        color: var(--el-text-color-secondary);
-        font-size: 12px;
-        font-weight: normal;
-      }
-    }
-  }
-
-  .institution-level-filter {
-    padding: 12px 0;
-    margin-bottom: 16px;
-    border-bottom: 1px solid var(--el-border-color-lighter);
-
-    .filter-label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      color: var(--el-text-color-regular);
-      font-weight: 500;
-    }
-
-    :deep(.el-checkbox-group) {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-
-      .el-checkbox.is-bordered {
-        margin-right: 0;
-        border-radius: 4px;
-
-        &.is-checked {
-          border-color: var(--el-color-primary);
-          background-color: var(--el-color-primary-light-9);
+        &:hover,
+        &.is-focus {
+          box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.3) inset;
         }
       }
     }
   }
 
-  .dept-node {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    gap: 8px;
+  // 搜索结果统计
+  .org-search-result {
+    margin-top: 8px;
+    text-align: right;
   }
 
-  .empty-state {
+  .empty-org-state {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 300px;
+    text-align: center;
     color: var(--el-text-color-secondary);
+    padding: 48px 0;
 
     .empty-icon {
-      font-size: 48px;
+      font-size: 52px;
       margin-bottom: 16px;
       color: var(--el-border-color-darker);
     }
 
-    p {
-      margin: 0;
+    .hint {
       font-size: 14px;
+      color: var(--el-text-color-placeholder);
     }
   }
+
+  .selected-orgs-table-wrapper {
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    background: var(--el-bg-color);
+
+    :deep(.el-table__inner-wrapper) {
+      border-radius: 0;
+    }
+
+    :deep(.el-table__header) {
+      background: linear-gradient(135deg, rgba(64, 158, 255, 0.08), rgba(99, 102, 241, 0.08));
+    }
+
+    // 表格主体区域 - 固定高度，自动滚动
+    :deep(.el-table__body-wrapper) {
+      overflow-y: auto !important;
+
+      // 自定义滚动条样式
+      &::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.25);
+        }
+      }
+    }
+
+    :deep(.el-table__row) {
+      transition: background 0.2s ease;
+
+      &:hover > td.el-table__cell {
+        background: rgba(59, 130, 246, 0.08) !important;
+      }
+    }
+
+    :deep(.el-table__cell) {
+      padding: 12px 16px;
+    }
+
+    :deep(.el-table__empty-block) {
+      min-height: 160px;
+    }
+  }
+}
+
+// 表单样式优化
+:deep(.el-input__wrapper) {
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-textarea__inner) {
+  border-radius: 6px;
+}
+
+:deep(.el-select .el-input__wrapper) {
+  border-radius: 6px;
+}
+
+// 按钮样式
+:deep(.el-button) {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+// 标签样式
+:deep(.el-tag) {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+// 加载遮罩
+:deep(.el-loading-mask) {
+  border-radius: 8px;
+  backdrop-filter: blur(2px);
+}
+
+// 机构名称加粗
+.org-name-bold {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 </style>

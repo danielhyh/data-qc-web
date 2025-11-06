@@ -30,6 +30,7 @@ export interface ReportTaskVO {
 
 export interface ReportTaskRespVO {
   id: number
+  taskId?: number
   taskName: string
   status: number
   currentStep: number
@@ -41,6 +42,13 @@ export interface ReportTaskRespVO {
   description: string
   submitTime?: Date
   completeTime?: Date
+  reportTime?: Date
+  reportStatus?: number
+  reviewStatus?: number
+  reviewTime?: Date
+  reviewer?: string
+  reviewComment?: string
+  rejectReason?: string
 }
 
 export interface ImportTaskCreateReqVO {
@@ -55,12 +63,20 @@ export interface ImportTaskCreateReqVO {
 
 export interface FileUploadVO {
   id: number
+  taskId?: number
   fileName: string
+  standardFileName?: string
+  originalFileName?: string
   fileType: string
+  uploadStatus?: string
   status: string
+  qcStatus?: number
+  fileSize?: number
   size: number
+  fileFormat?: string
   recordCount: number
   errorCount?: number
+  warningCount?: number
   message?: string
 }
 
@@ -248,7 +264,8 @@ export const ReportDataApi = {
   executePreQC: (taskId: number): Promise<QCResultVO> => {
     return request.post({
       url: '/drug/report-data/qc/pre',
-      data: { taskId }
+      data: { taskId },
+      timeout: 600000 // 10分钟超时
     })
   },
 

@@ -47,10 +47,10 @@
                       </td>
                     </tr>
 
-                    <!-- 第2行：说明 -->
-                    <tr class="description-row">
+                    <!-- 第2行：说明（仅在有说明文本且非空时显示） -->
+                    <tr v-if="previewData?.descriptionRow && previewData.descriptionRow.trim()" class="description-row">
                       <td :colspan="fieldList.length || 1" class="description-cell">
-                        {{ previewData?.descriptionRow || '模板说明文本' }}
+                        {{ previewData.descriptionRow }}
                       </td>
                     </tr>
 
@@ -156,6 +156,12 @@ const open = async (templateId: number) => {
   await loadPreviewData()
 }
 
+/** 通过Code打开弹框 */
+const openByCode = async (templateCode: string) => {
+  dialogVisible.value = true
+  await loadPreviewDataByCode(templateCode)
+}
+
 /** 加载预览数据 */
 const loadPreviewData = async () => {
   if (!currentTemplateId.value) return
@@ -173,7 +179,7 @@ const loadPreviewData = async () => {
 
     // 从 template 对象中获取标题和说明，如果 previewData 中没有的话
     const titleRow = response.previewData?.titleRow || response.template?.titleText || '模板标题'
-    const descriptionRow = response.previewData?.descriptionRow || response.template?.descriptionText || '模板说明文本'
+    const descriptionRow = response.previewData?.descriptionRow || response.template?.descriptionText || '' // 空字符串而非默认文本
 
     // previewData 已经是正确的对象格式，但需要确保 titleRow 和 descriptionRow 有值
     previewData.value = {
@@ -189,6 +195,51 @@ const loadPreviewData = async () => {
       fieldType: convertFieldType(field.fieldType), // 转换字段类型
       isRequired: field.isRequired || false
     }))
+    
+    // 保存当前模板ID，用于下载
+    currentTemplateId.value = response.template.id
+  } catch (error) {
+    console.error('加载预览数据失败:', error)
+    ElMessage.error('加载预览数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+/** 通过Code加载预览数据 */
+const loadPreviewDataByCode = async (code: string) => {
+  loading.value = true
+  try {
+    const response = await ImportTemplateApi.previewImportTemplateByCode(code)
+
+    // 修复数据结构映射
+    templateInfo.value = {
+      ...response.template,
+      tableTypeName: getTableTypeName(response.template.tableType), // 添加表类型名称
+      statusText: response.template.status ? '启用' : '禁用'
+    }
+
+    // 从 template 对象中获取标题和说明，如果 previewData 中没有的话
+    const titleRow = response.previewData?.titleRow || response.template?.titleText || '模板标题'
+    const descriptionRow = response.previewData?.descriptionRow || response.template?.descriptionText || '' // 空字符串而非默认文本
+
+    // previewData 已经是正确的对象格式，但需要确保 titleRow 和 descriptionRow 有值
+    previewData.value = {
+      titleRow,
+      descriptionRow,
+      headerRow: response.previewData?.headerRow || [],
+      exampleRows: response.previewData?.exampleRows || []
+    }
+
+    // 修复字段列表映射，并转换字段类型
+    fieldList.value = (response.fields || []).map((field) => ({
+      ...field,
+      fieldType: convertFieldType(field.fieldType), // 转换字段类型
+      isRequired: field.isRequired || false
+    }))
+    
+    // 保存当前模板ID，用于下载
+    currentTemplateId.value = response.template.id
   } catch (error) {
     console.error('加载预览数据失败:', error)
     ElMessage.error('加载预览数据失败')
@@ -254,7 +305,8 @@ const downloadTemplate = async () => {
 
 // ========================= 暴露方法 =========================
 defineExpose({
-  open
+  open,
+  openByCode
 })
 </script>
 

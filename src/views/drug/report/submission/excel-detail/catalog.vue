@@ -1,6 +1,13 @@
 <template>
-  <el-table :data="dataViewDialog.data" stripe max-height="500" v-loading="dataViewDialog.loading">
-    <el-table-column label="ID" align="center" prop="id" />
+  <el-table :data="dataViewDialog.data" stripe max-height="500" v-loading="dataViewDialog.loading" :row-class-name="getRowClassName">
+    <el-table-column label="ID" align="center" prop="id">
+      <template #default="{ row }">
+        <div class="id-cell">
+          <el-icon v-if="row.hasError" class="error-icon"><WarningFilled /></el-icon>
+          <span>{{ row.orderNo }}</span>
+        </div>
+      </template>
+    </el-table-column>
     <el-table-column label="数据上报日期" align="center" prop="uploadDate" width="100">
       <template #default="{ row }">
         {{ formatDate(row.uploadDate) }}
@@ -89,9 +96,16 @@
 <script setup lang="ts">
 defineOptions({ name: 'CatalogDetails' })
 import { defineProps } from 'vue'
+import { WarningFilled } from '@element-plus/icons-vue'
+
 const props = defineProps({
   dataViewDialog: Object
 })
+
+/** 获取行样式类名 */
+const getRowClassName = ({ row }) => {
+  return row.hasError ? 'error-row' : ''
+}
 
 /** 格式化日期 */
 const formatDate = (dateStr: string): string => {
@@ -99,3 +113,25 @@ const formatDate = (dateStr: string): string => {
   return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`
 }
 </script>
+<style scoped>
+.id-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.error-icon {
+  color: #f56c6c;
+  font-size: 16px;
+}
+
+/* 错误行样式 */
+:deep(.error-row) {
+  background-color: #fef0f0 !important;
+}
+
+:deep(.error-row:hover > td) {
+  background-color: #fde2e2 !important;
+}
+</style>
