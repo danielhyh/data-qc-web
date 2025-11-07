@@ -81,7 +81,7 @@ export interface DashboardConfig {
 const roleConfigs: Record<UserRole, DashboardConfig> = {
   // 机构管理员配置
   [UserRole.INSTITUTION_ADMIN]: {
-    title: '药品使用监测质量控制平台',
+    title: '陕西省药品使用监测管理系统',
     description: '医疗机构药品数据上报和质量管控中心',
     statistics: [
       {

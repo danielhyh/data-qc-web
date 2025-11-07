@@ -42,8 +42,14 @@ import Logger from '@/utils/Logger'
 
 import VueDOMPurifyHTML from 'vue-dompurify-html' // 解决v-html 的安全隐患
 
+// 引入SSO工具
+import { SsoAuth } from '@/utils/sso'
+
 // 创建实例
 const setupAll = async () => {
+  // 初始化SSO状态，清理可能残留的重定向标记
+  SsoAuth.init()
+  
   const app = createApp(App)
 
   await setupI18n(app)

@@ -2,7 +2,7 @@ import { store } from '@/store'
 import { defineStore } from 'pinia'
 import { getAccessToken } from '@/utils/auth'
 import { CACHE_KEY, useCache, deleteUserCache } from '@/hooks/web/useCache'
-import { getInfo, loginOut } from '@/api/login'
+import { getInfo } from '@/api/login'
 import { useAppStore } from './app'
 import { SsoAuth } from '@/utils/sso'
 
@@ -96,18 +96,12 @@ export const useUserStore = defineStore('admin-user', {
       wsCache.set(CACHE_KEY.USER, userInfo)
     },
     async loginOut() {
-      try {
-        // 先调用后端logout接口
-        await loginOut()
-      } catch (error) {
-        console.error('后端登出失败:', error)
-      }
-
-      // 清理本地状态（在跳转前清理）
+      // 清理本地状态
       deleteUserCache()
       this.resetState()
 
-      // 调用SSO logout（会清理token并重定向）
+      // SSO模式：只调用SSO logout即可，会同时处理普通退出和SSO退出
+      // 注意：SsoAuth.logout() 内部会调用 /system/auth/sso/logout，然后清除token并刷新页面
       await SsoAuth.logout()
     },
     resetState() {

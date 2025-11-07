@@ -52,47 +52,86 @@ router.beforeEach(async (to, from, next) => {
   start()
   loadStart()
 
-  console.log('[路由守卫] ===== 开始 =====', {
-    from: from.path,
-    to: to.path,
-    toFullPath: to.fullPath,
-    fromFullPath: from.fullPath,
-    hasQuery: Object.keys(to.query).length > 0,
-    query: to.query
-  })
-
-  // 优先处理SSO回调Token（在所有路由判断之前，且必须立即处理）
+  // 优先处理SSO回调Token和错误（在所有路由判断之前，且必须立即处理）
   const urlParams = new URLSearchParams(window.location.search)
   const hasAccessToken = urlParams.has('accessToken')
   const hasRefreshToken = urlParams.has('refreshToken')
+  const hasSsoError = urlParams.has('ssoError')
+
+  // 处理 SSO 错误（用户未注册等）
+  if (hasSsoError) {
+    const ssoError = urlParams.get('ssoError')
+    const message = urlParams.get('message') || 'SSO登录失败'
+    const ssoUserId = urlParams.get('ssoUserId')
+    
+    console.error('[SSO] SSO错误:', ssoError, 'message:', message, 'ssoUserId:', ssoUserId)
+    
+    // 清理重定向状态
+    SsoAuth.setRedirecting(false)
+    
+    // 复用全局重新登录弹框机制
+    if (!isRelogin.show) {
+      isRelogin.show = true
+      
+      // 构建提示消息
+      let alertMessage = decodeURIComponent(message)
+      if (ssoError === 'USER_NOT_REGISTERED' && ssoUserId) {
+        alertMessage += `\n\n单点账号ID：${ssoUserId}\n请将此信息提供给系统管理员`
+      }
+      
+      import('element-plus').then(({ ElMessageBox }) => {
+        ElMessageBox.confirm(
+          alertMessage,
+          ssoError === 'USER_NOT_REGISTERED' ? '无权限访问' : 'SSO登录失败',
+          {
+            confirmButtonText: '重新登录',
+            cancelButtonText: '取消',
+            type: 'warning',
+            closeOnClickModal: false,
+            showClose: false
+          }
+        ).then(() => {
+          // 点击重新登录，清理状态并刷新页面
+          // 注意：后端已经注销了单点平台session，所以刷新后会重新跳转到单点登录页
+          isRelogin.show = false
+          SsoAuth.setRedirecting(false)  // 清理重定向状态
+          window.history.replaceState({}, '', window.location.pathname)
+          window.location.href = window.location.pathname
+        }).catch(() => {
+          // 点击取消，清理状态并停留在当前页面
+          isRelogin.show = false
+          SsoAuth.setRedirecting(false)  // 清理重定向状态
+          window.history.replaceState({}, '', window.location.pathname)
+          // 显示一个提示信息
+          import('element-plus').then(({ ElMessage }) => {
+            ElMessage.info('请联系管理员开通系统权限后重新登录')
+          })
+        })
+      })
+    }
+    
+    next(false) // 取消本次导航，等待用户点击弹框
+    return
+  }
 
   if (hasAccessToken && hasRefreshToken) {
-    console.log('[SSO] 检测到SSO token参数，开始保存')
     const success = SsoAuth.handleSsoCallback()
-    console.log('[SSO] Token保存结果:', success, '当前token:', getAccessToken())
 
     if (success) {
       // Token已保存成功，清理URL后重新导航到目标路径（不带查询参数）
-      console.log('[SSO] Token保存成功，重新导航到:', to.path)
-      // 使用 replace: true 替换当前历史记录，避免产生新的标签页
-      console.log('[路由守卫] 执行 next() 到干净的路径')
       next({ path: to.path, replace: true })
       return
     } else {
       console.error('[SSO] Token保存失败')
-      console.log('[路由守卫] 执行 next("/login")')
       next('/login')
       return
     }
   }
 
   const currentToken = getAccessToken()
-  console.log('[路由守卫] 当前token状态:', currentToken ? '有token' : '无token', 'to.path:', to.path)
 
   if (currentToken) {
     if (to.path === '/login') {
-      console.log('[路由守卫] 已登录但访问login页，重定向到首页')
-      console.log('[路由守卫] 执行 next({ path: "/" })')
       next({ path: '/' })
     } else {
       // 获取所有字典
@@ -100,91 +139,88 @@ router.beforeEach(async (to, from, next) => {
       const userStore = useUserStoreWithOut()
       const permissionStore = usePermissionStoreWithOut()
       
-      console.log('[路由守卫] 检查字典状态:', dictStore.getIsSetDict)
       if (!dictStore.getIsSetDict) {
-        console.log('[路由守卫] 开始加载字典...')
         await dictStore.setDictMap()
-        console.log('[路由守卫] 字典加载完成')
       }
       
-      console.log('[路由守卫] 检查用户信息状态:', userStore.getIsSetUser)
       if (!userStore.getIsSetUser) {
-        console.log('[路由守卫] 用户信息未加载，开始加载...')
         isRelogin.show = true
         await userStore.setUserInfoAction()
         isRelogin.show = false
-        console.log('[路由守卫] 用户信息加载完成')
         
         // 后端过滤菜单
-        console.log('[路由守卫] 开始生成路由...')
         await permissionStore.generateRoutes()
-        console.log('[路由守卫] 路由生成完成，动态路由数量:', permissionStore.getAddRouters.length)
         
         permissionStore.getAddRouters.forEach((route) => {
           router.addRoute(route as unknown as RouteRecordRaw) // 动态添加可访问路由表
         })
         
         const redirectPath = from.query.redirect || to.path
-        // 修复跳转时不带参数的问题
         const redirect = decodeURIComponent(redirectPath as string)
         const { paramsObject: query } = parseURL(redirect)
         
-        console.log('[路由守卫] 准备跳转:', {
-          from_path: from.path,
-          to_path: to.path,
-          redirectPath: redirectPath,
-          redirect: redirect,
-          query: query,
-          isSamePath: to.path === redirect
-        })
-        
-        // 【修复】无论哪种情况都使用 replace: true 替换历史记录，避免产生重复标签页
+        // 无论哪种情况都使用 replace: true 替换历史记录，避免产生重复标签页
         const nextData = to.path === redirect ? { ...to, replace: true } : { path: redirect, query, replace: true }
-        console.log('[路由守卫] 执行 next() with:', nextData)
         next(nextData)
       } else {
-        console.log('[路由守卫] 用户信息已加载，直接放行')
-        console.log('[路由守卫] 执行 next()')
         next()
       }
     }
   } else {
-    console.log('[路由守卫] 无token，检查白名单')
     // SSO  白名单：这些路由允许在未登录状态下访问
     const ssoWhiteList = [
       '/login'
     ]
 
     if (ssoWhiteList.indexOf(to.path) !== -1) {
-      console.log('[路由守卫] 在白名单中，直接放行')
-      console.log('[路由守卫] 执行 next()')
       next()
     } else {
       // 未登录且不在白名单，触发SSO登录
+      // 如果正在重定向中但needSsoLogin返回false，可能是重定向标记未清理
+      // 强制检查重定向状态
+      const isRedirecting = SsoAuth.isRedirecting()
+      
       if (SsoAuth.needSsoLogin()) {
-        console.log('[路由守卫] 触发SSO重定向')
-        SsoAuth.redirectToSsoSync()
-        console.log('[路由守卫] 执行 next(false) - 取消本次导航')
-        next(false) // 取消本次导航
+        // 异步执行重定向，不阻塞路由守卫
+        SsoAuth.redirectToSso().catch((error) => {
+          console.error('[路由守卫] SSO重定向失败:', error)
+          SsoAuth.setRedirecting(false)
+          
+          // SSO失败后，显示错误页面
+          import('element-plus').then(({ ElMessageBox }) => {
+            ElMessageBox.alert(
+              'SSO单点登录服务暂时不可用，请稍后重试或联系系统管理员。',
+              '无法连接到登录服务',
+              {
+                confirmButtonText: '刷新页面',
+                type: 'error',
+                callback: () => {
+                  window.location.reload()
+                }
+              }
+            )
+          })
+        })
+        next(false) // 取消本次导航，等待 window.location.href 跳转到SSO或显示错误弹窗
         return
+      } else if (isRedirecting) {
+        // 正在重定向中，等待重定向完成或超时
+        next(false)
       } else {
-        console.log('[路由守卫] SSO正在重定向中，等待...')
-        console.log('[路由守卫] 执行 next(false) - 等待重定向')
+        // needSsoLogin返回false且不在重定向中，清理状态后重新触发SSO登录
+        console.warn('[路由守卫] SSO状态异常，清理后重新触发')
+        SsoAuth.setRedirecting(false)
+        SsoAuth.redirectToSso().catch((error) => {
+          console.error('[路由守卫] SSO重定向失败:', error)
+          SsoAuth.setRedirecting(false)
+        })
         next(false)
       }
     }
   }
-  
-  console.log('[路由守卫] ===== 结束 =====')
 })
 
 router.afterEach((to) => {
-  console.log('[路由守卫] afterEach 触发:', {
-    path: to.path,
-    fullPath: to.fullPath,
-    name: to.name,
-    meta: to.meta
-  })
   useTitle(to?.meta?.title as string)
   done() // 结束Progress
   loadDone()

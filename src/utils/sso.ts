@@ -5,17 +5,68 @@ import { getAccessToken, setToken, removeToken } from '@/utils/auth'
 import { ElMessage } from 'element-plus'
 import * as SsoApi from '@/api/login/sso'
 
-// SSO重定向状态管理
-let isRedirecting = false
+// SSO重定向状态key
+const SSO_REDIRECTING_KEY = 'sso_redirecting'
+const SSO_REDIRECT_TIMEOUT = 5000 // 5秒超时（从10秒改为5秒，更快响应）
 
 export const SsoAuth = {
+
+  /**
+   * 初始化SSO状态（在应用启动时调用）
+   */
+  init(): void {
+    const redirecting = localStorage.getItem(SSO_REDIRECTING_KEY)
+    if (redirecting) {
+      const timestamp = parseInt(redirecting, 10)
+      const now = Date.now()
+      const elapsed = now - timestamp
+      
+      // 如果有残留状态且已经超时，清理掉
+      if (elapsed > SSO_REDIRECT_TIMEOUT) {
+        console.warn('[SSO] 应用启动时发现残留的重定向状态，已清理')
+        localStorage.removeItem(SSO_REDIRECTING_KEY)
+      }
+    }
+  },
+
+  /**
+   * 检查是否正在重定向
+   */
+  isRedirecting(): boolean {
+    const redirecting = localStorage.getItem(SSO_REDIRECTING_KEY)
+    if (!redirecting) return false
+    
+    const timestamp = parseInt(redirecting, 10)
+    const now = Date.now()
+    const elapsed = now - timestamp
+    
+    // 如果超过5秒还没完成，认为重定向失败，清除状态
+    if (elapsed > SSO_REDIRECT_TIMEOUT) {
+      console.warn('[SSO] 重定向超时，清除状态')
+      localStorage.removeItem(SSO_REDIRECTING_KEY)
+      return false
+    }
+    
+    return true
+  },
+
+  /**
+   * 设置重定向状态
+   */
+  setRedirecting(redirecting: boolean): void {
+    if (redirecting) {
+      localStorage.setItem(SSO_REDIRECTING_KEY, Date.now().toString())
+    } else {
+      localStorage.removeItem(SSO_REDIRECTING_KEY)
+    }
+  },
 
   /**
    * 检查是否需要SSO登录
    */
   needSsoLogin(): boolean {
     // 如果正在重定向中，不需要再次触发
-    if (isRedirecting) {
+    if (this.isRedirecting()) {
       return false
     }
 
@@ -24,50 +75,40 @@ export const SsoAuth = {
     const urlParams = new URLSearchParams(window.location.search)
     const hasAccessToken = urlParams.has('accessToken')
     const hasRefreshToken = urlParams.has('refreshToken')
+    const hasSsoError = urlParams.has('ssoError')
     const isCallback = hasAccessToken && hasRefreshToken
 
-    return !token && !isCallback
+    return !token && !isCallback && !hasSsoError
   },
 
   /**
    * 重定向到SSO登录
    */
   async redirectToSso(): Promise<void> {
-    // 设置重定向标记
-    isRedirecting = true
-
+    this.setRedirecting(true)
 
     try {
       const response = await SsoApi.getSsoLoginUrl()
       const loginUrl = response?.data || response
 
       if (loginUrl) {
-        console.log('重定向到SSO:', loginUrl)
-        // 执行重定向，页面会跳转，标记会自动重置
+        console.log('[SSO] 重定向到SSO登录页:', loginUrl)
         window.location.href = loginUrl
       } else {
         throw new Error('未获取到SSO登录地址')
       }
-    } catch (error) {
-      console.error('SSO登录失败:', error)
-      ElMessage.error('SSO服务不可用，转为本地登录')
-      // 重置标记
-      isRedirecting = false
-      // 降级到本地登录
-      window.location.href = '/#/login'
+    } catch (error: any) {
+      console.error('[SSO] SSO服务不可用:', error)
+      this.setRedirecting(false)
+      
+      if (import.meta.env.DEV) {
+        ElMessage.warning('SSO未配置，请联系管理员')
+      } else {
+        ElMessage.error('SSO服务不可用，请联系管理员')
+      }
+      
+      throw error
     }
-  },
-
-  /**
-   * 同步方式重定向到SSO（用于路由守卫）
-   */
-  redirectToSsoSync(): void {
-    // 使用异步但不等待，避免阻塞路由守卫
-    this.redirectToSso().catch(() => {
-      // 如果失败，重置标记并跳转到登录页
-      isRedirecting = false
-      window.location.href = '/#/login'
-    })
   },
 
   /**
@@ -113,12 +154,15 @@ export const SsoAuth = {
           clientId: '', // SSO登录时不需要
           expiresTime: expiresTimeNum
         })
-        console.log('[SSO] Token保存完成，清理URL参数')
+        console.log('[SSO] Token保存完成，清理重定向状态和URL参数')
+        // 清理重定向状态
+        this.setRedirecting(false)
         this.clearUrlParams()
-        console.log('[SSO] URL参数清理完成')
+        console.log('[SSO] 清理完成')
         return true
       } catch (e) {
         console.error('[SSO] Token保存失败:', e)
+        this.setRedirecting(false)
         return false
       }
     }
@@ -134,12 +178,14 @@ export const SsoAuth = {
     try {
       await SsoApi.ssoLogout()
     } catch (error) {
-      console.error('SSO注销失败:', error)
+      console.error('[SSO] SSO注销失败:', error)
     } finally {
       removeToken()
-      // 注销后重定向到前端首页的Vue路由，保留当前路径前缀（如 /sxwjwypjc）
-      // 使用 location.pathname 保留路径前缀，只修改 hash
-      window.location.href = window.location.pathname + '#/'
+      // 清理重定向状态
+      this.setRedirecting(false)
+      // 注销后刷新页面，触发重新SSO登录
+      // 注意：使用 History 路由，不需要 hash
+      window.location.href = window.location.pathname
     }
   },
 

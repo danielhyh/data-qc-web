@@ -6,7 +6,10 @@ import request from '@/config/axios'
  * 获取SSO登录地址
  */
 export const getSsoLoginUrl = () => {
-  return request.get({ url: '/system/auth/sso/login-url' })
+  return request.get({ 
+    url: '/system/auth/sso/login-url',
+    timeout: 10000  // 10秒超时
+  })
 }
 
 /**

@@ -96,7 +96,7 @@
                 >
                   <Icon icon="ep:document" class="mr-5px" /> 模板
                 </el-button>
-                <el-button type="danger" @click="toggleExpandAll">
+                <el-button type="danger" @click="toggleExpandAll" v-if="!useLazyLoad">
                   <Icon icon="ep:sort" class="mr-5px" /> 展开/折叠
                 </el-button>
                 <el-button type="success" @click="openSyncModal">
@@ -113,6 +113,9 @@
               v-loading="loading"
               :data="list"
               row-key="id"
+              :lazy="useLazyLoad"
+              :load="loadChildren"
+              :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
               :default-expand-all="isExpandAll"
             >
               <el-table-column prop="name" label="机构名称" min-width="230">
@@ -311,11 +314,13 @@ const queryParams = reactive({
   pageSize: -1,
   name: undefined,
   status: undefined,
-  areaCode: undefined // 使用areaCode匹配后端接口
+  areaCode: undefined, // 使用areaCode匹配后端接口
+  parentId: 0 // 懒加载：首次只加载根节点
 })
 const queryFormRef = ref() // 搜索的表单
 const isExpandAll = ref(false) // 是否展开，默认不全部展开，避免一次性渲染过多节点
 const refreshTable = ref(true) // 重新渲染表格状态
+const useLazyLoad = ref(true) // 是否使用懒加载模式
 const userList = ref<UserApi.UserVO[]>([]) // 用户列表
 const selectedRegionId = ref<string | undefined>() // 选中的地区Code
 const selectedRegionCode = ref<string | undefined>() // 选中的地区代码
@@ -445,16 +450,48 @@ watch(
 const getList = async () => {
   loading.value = true
   try {
-    const data = await DeptApi.getDeptPage(queryParams)
-    const treeData = handleTree(data)
-    refreshTable.value = false
-    await nextTick()
-    list.value = treeData
+    // 判断是否使用懒加载模式
+    // 有搜索条件时不使用懒加载，直接展示所有匹配的数据
+    const hasSearchCondition = queryParams.name || queryParams.status !== undefined
+    useLazyLoad.value = !hasSearchCondition
+    
+    if (hasSearchCondition) {
+      // 有搜索条件：不使用懒加载，查询所有匹配数据并构建树
+      const params = { ...queryParams, parentId: undefined }
+      const data = await DeptApi.getDeptPage(params)
+      const treeData = handleTree(data)
+      refreshTable.value = false
+      await nextTick()
+      list.value = treeData
+    } else {
+      // 无搜索条件：使用懒加载，只查询根节点
+      queryParams.parentId = 0
+      const data = await DeptApi.getDeptPage(queryParams)
+      refreshTable.value = false
+      await nextTick()
+      list.value = data // 直接使用数据，不构建树
+    }
+    
     editingSortCache.clear()
     refreshTable.value = true
   } finally {
     refreshTable.value = true
     loading.value = false
+  }
+}
+
+/** 懒加载子节点 */
+const loadChildren = async (row: any, _treeNode: any, resolve: any) => {
+  try {
+    const params = {
+      ...queryParams,
+      parentId: row.id
+    }
+    const data = await DeptApi.getDeptPage(params)
+    resolve(data)
+  } catch (error) {
+    console.error('加载子节点失败:', error)
+    resolve([])
   }
 }
 
@@ -465,6 +502,7 @@ const handleRegionNodeClick = async (row) => {
   selectedRegionCode.value = row.code
   selectedRegion.value = row
   queryParams.areaCode = row.code
+  queryParams.parentId = 0 // 切换地区时重置为根节点
 
   // 重置无法上报机构数量（切换地区时清零，等待子组件重新加载）
   unableReportCount.value = 0
@@ -480,6 +518,7 @@ const handleClearRegion = () => {
   selectedRegionCode.value = undefined
   queryParams.areaCode = undefined
   queryParams.pageNo = 1
+  queryParams.parentId = 0 // 重置为根节点
   // 清除树的选中状态
   regionTreeRef.value?.clearSelection()
   // 重置无法上报机构数量
@@ -523,6 +562,8 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value.resetFields()
+  // 重置时恢复懒加载模式
+  queryParams.parentId = 0
   // 重置不清除地区选择，保持地区筛选条件
   handleQuery()
 }

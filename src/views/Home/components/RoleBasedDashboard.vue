@@ -208,7 +208,7 @@ const getSystemColor = (systemId: number): string => {
 
 // 页面配置
 const dashboardConfig = computed(() => ({
-  title: '药品使用监测质量控制平台',
+  title: '陕西省药品使用监测管理系统',
   description: '实时监控药品数据导入、质控状态和数据质量,确保医疗机构药品使用数据的准确性和完整性'
 }))
 
