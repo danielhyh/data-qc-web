@@ -125,7 +125,7 @@
                   <Icon icon="ep:edit" class="mr-1" />
                   编辑
                 </el-button>
-                <el-button
+<!--                <el-button
                   type="danger"
                   size="small"
                   @click="handleDelete(scope.row.id)"
@@ -133,7 +133,7 @@
                 >
                   <Icon icon="ep:delete" class="mr-1" />
                   删除
-                </el-button>
+                </el-button>-->
               </template>
             </el-table-column>
           </el-table>
@@ -158,12 +158,12 @@
         <DrugCategoryManagement />
       </el-tab-pane>
 
-      <!-- 剂型分类 Tab -->
+      <!-- 剂型规格 Tab -->
       <el-tab-pane name="dosageCategory">
         <template #label>
           <span class="tab-label-wrapper">
             <Icon icon="ep:grid" class="tab-icon" />
-            <span>剂型分类</span>
+            <span>剂型规格</span>
           </span>
         </template>
         <DosageCategoryManagement />

@@ -347,7 +347,7 @@ const createDefaultFormState = (): ReportZoneFormState => ({
   zoneName: '',
   zoneCode: '',
   noticeContent: getDefaultNoticeContent(),
-  status: 0,
+  status: 1,
   remark: '',
   reportableOrgs: '',
   isTimeRestricted: true,

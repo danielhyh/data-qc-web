@@ -4,6 +4,7 @@ export interface ProfileVO {
   id: number
   username: string
   nickname: string
+  realName: string
   dept: {
     id: number
     name: string
@@ -33,6 +34,7 @@ export interface ProfileVO {
 
 export interface UserProfileUpdateReqVO {
   nickname?: string
+  realName?: string
   email?: string
   mobile?: string
   sex?: number

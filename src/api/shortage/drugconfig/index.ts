@@ -6,7 +6,7 @@ export interface DrugConfigVO {
   zoneId: number // 专区ID
   drugName: string // 药品名称
   drugCategory: string // 药品分类
-  dosageCategory: string // 剂型分类
+  dosageCategory: string // 剂型规格
   dosageForm: string // 剂型
   dosageUnit: string // 最小剂量单位
   status: number // 启动状态: 0-开启 1-停用

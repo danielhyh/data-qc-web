@@ -36,11 +36,11 @@ const institutionThemeConfig = {
   // 消息图标
   message: true,
   // 标签页
-  tagsView: false,
-  // 标签页
-  tagsViewImmerse: false,
+  tagsView: true,
+  // 标签页沉浸
+  tagsViewImmerse: true,
   // 标签页图标
-  tagsViewIcon: false,
+  tagsViewIcon: true,
   // logo
   logo: true,
   // 菜单手风琴

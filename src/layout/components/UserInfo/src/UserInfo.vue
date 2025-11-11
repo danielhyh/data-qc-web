@@ -24,7 +24,11 @@ const { getPrefixCls } = useDesign()
 const prefixCls = getPrefixCls('user-info')
 
 const avatar = computed(() => userStore.user.avatar || avatarImg)
-const userName = computed(() => userStore.user.nickname ?? 'Admin')
+const userName = computed(() => {
+  const nickname = userStore.user.nickname ?? 'Admin'
+  const realName = userStore.user.realName
+  return realName ? `${nickname}（${realName}）` : nickname
+})
 
 // 获取用户角色名称（优先使用后端返回的 roleName）
 const userRole = computed(() => {

@@ -14,6 +14,39 @@
       content="病案首页质量控制平台 基于 vue3 + CompositionAPI + typescript + vite3 + element plus 的后台开源免费管理系统！"
     /> -->
     <title>%VITE_APP_TITLE%</title>
+
+    <!-- 关键 CSS 变量预加载：确保在任何组件渲染前就可用 -->
+    <style>
+      :root {
+        /* 圆角系统 */
+        --border-radius-small: 6px;
+        --border-radius-base: 8px;
+        --border-radius-medium: 10px;
+        --border-radius-large: 12px;
+        --border-radius-xlarge: 18px;
+
+        /* 科技感主题颜色 */
+        --tech-primary-color: #5B8DEF;
+        --tech-secondary-color: #7c3aed;
+        --tech-gradient-primary: linear-gradient(135deg, #5B8DEF 0%, #7c3aed 100%);
+
+        /* 边框和阴影 */
+        --tech-light-border: rgba(91, 141, 239, 0.1);
+        --tech-shadow-sm: 0 2px 8px rgba(91, 141, 239, 0.08);
+        --tech-shadow-md: 0 4px 16px rgba(91, 141, 239, 0.12);
+        --tech-shadow-lg: 0 8px 24px rgba(91, 141, 239, 0.16);
+
+        /* 悬停和激活效果 */
+        --tech-hover-bg: rgba(91, 141, 239, 0.06);
+        --tech-active-bg: rgba(91, 141, 239, 0.12);
+
+        /* 文字颜色 */
+        --tech-text-primary: #1e293b;
+        --tech-text-secondary: #64748b;
+        --tech-text-tertiary: #94a3b8;
+      }
+    </style>
+
     <!-- 主题预加载脚本：在页面渲染前读取缓存的主题配置，避免白屏闪烁 -->
     <script>
       (function() {

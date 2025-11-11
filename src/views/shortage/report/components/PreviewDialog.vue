@@ -152,7 +152,7 @@
             <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
           </template>
         </el-table-column>
-        <el-table-column
+        <!-- <el-table-column
           label="预计可用天数"
           width="120"
           align="center"
@@ -164,12 +164,12 @@
               <span>{{ calculateStockDays(scope.row) }}</span>
             </div>
           </template>
-        </el-table-column>
+        </el-table-column> -->
       </el-table>
     </div>
 
     <!-- 底部说明 -->
-    <div class="footer-tips">
+    <!-- <div class="footer-tips">
       <el-alert type="info" :closable="false">
         <template #title>
           <div class="tips-content">
@@ -179,7 +179,7 @@
           </div>
         </template>
       </el-alert>
-    </div>
+    </div> -->
 
     <template #footer>
       <el-button @click="handleExport" type="primary">

@@ -2,7 +2,7 @@
   <Dialog
     v-model="innerVisible"
     title="配置可填报机构"
-    width="1280px"
+    width="1080px"
     class="report-zone-org-selector"
   >
     <div class="selector-body">
@@ -112,7 +112,7 @@
                 size="small"
                 @change="handleSelectAllChange"
               >
-                全选所有机构
+                全选当前机构
               </el-checkbox>
               <el-checkbox-group
                 v-model="selectedLevels"
@@ -143,63 +143,48 @@
               v-else-if="deptTreeLoading"
             />
 
-            <div v-else class="table-container">
-              <el-table
-                ref="deptTableRef"
-                :data="filteredDeptTree"
-                row-key="id"
-                empty-text="该地区暂无机构"
-                class="dept-table"
-                height="400"
-                @selection-change="handleSelectionChange"
-              >
-                <el-table-column type="selection" width="55" :reserve-selection="true" />
-              <el-table-column prop="name" label="机构名称" min-width="200">
-                <template #default="{ row }">
-                  <div class="dept-node">
-                    <el-tooltip
-                      :content="getInstitutionCategoryLabel(row.institutionCategory)"
-                      placement="top"
-                    >
-                      <DictIcon
-                        :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
-                        :value="row.institutionCategory ?? ''"
-                        :size="16"
-                        default-color="#5b8def"
-                        class="dept-icon"
-                      />
-                    </el-tooltip>
-                    <span class="dept-name">{{ row.name }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="hospitalLevel" label="机构等级" width="100">
-                <template #default="{ row }">
+            <el-tree
+              v-else
+              ref="deptTreeRef"
+              :data="filteredDeptTree"
+              :props="deptTreeProps"
+              node-key="id"
+              show-checkbox
+              :check-strictly="true"
+              :default-checked-keys="checkedIds"
+              :expand-on-click-node="false"
+              :lazy="useLazyLoad"
+              :load="loadDeptNode"
+              empty-text="该地区暂无机构"
+              class="dept-tree"
+              @check="handleOrgCheck"
+              @node-click="handleNodeClick"
+            >
+              <template #default="{ node, data }">
+                <div class="dept-node">
+                  <el-tooltip
+                    :content="getInstitutionCategoryLabel(data.institutionCategory)"
+                    placement="top"
+                  >
+                    <DictIcon
+                      :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
+                      :value="data.institutionCategory ?? ''"
+                      :size="16"
+                      default-color="#5b8def"
+                      class="dept-icon"
+                    />
+                  </el-tooltip>
+                  <span class="dept-name" :title="node.label">{{ node.label }}</span>
                   <dict-tag
-                    v-if="row.hospitalLevel != null"
+                    v-if="data.hospitalLevel != null"
                     :type="DICT_TYPE.INSTITUTION_LEVEL"
-                    :value="row.hospitalLevel"
+                    :value="data.hospitalLevel"
+                    class="ml-8px"
                     size="small"
                   />
-                </template>
-              </el-table-column>
-              <el-table-column prop="regionPathName" label="所在地区" min-width="180" show-overflow-tooltip />
-            </el-table>
-            <!-- 分页组件 -->
-            <div class="pagination-wrapper">
-              <el-pagination
-                v-if="total > 0"
-                v-model:current-page="pageNo"
-                v-model:page-size="pageSize"
-                :total="total"
-                :page-sizes="[10, 20, 50, 100]"
-                layout="total, sizes, prev, pager, next, jumper"
-                small
-                @size-change="handleSizeChange"
-                @current-change="handlePageChange"
-              />
-            </div>
-            </div>
+                </div>
+              </template>
+            </el-tree>
           </div>
         </div>
       </div>
@@ -278,7 +263,7 @@ const innerVisible = computed({
 })
 
 const areaTreeRef = ref()
-const deptTableRef = ref()
+const deptTreeRef = ref()
 
 const areaTreeLoading = ref(false)
 const deptTreeLoading = ref(false)
@@ -294,11 +279,6 @@ const defaultExpandedAreaCodes = ref<string[]>([])
 const deptTree = ref<DeptTreeNode[]>([])
 const filteredDeptTree = ref<DeptTreeNode[]>([])
 const checkedIds = ref<number[]>([])
-
-// 分页相关
-const pageNo = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
 
 const levelOptions = computed(() => {
   return getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL) || []
@@ -320,9 +300,9 @@ const deptTreeProps = {
   isLeaf: (data: DeptTreeNode) => !data.hasChildren
 }
 
-// 是否使用懒加载（无筛选条件时使用懒加载）- 分页模式下不使用懒加载
+// 是否使用懒加载（无筛选条件时使用懒加载）
 const useLazyLoad = computed(() => {
-  return false
+  return !orgKeyword.value.trim() && selectedLevels.value.length === 0
 })
 
 const loadAreaTree = async () => {
@@ -424,7 +404,6 @@ const handleAreaSearch = () => {
 const handleAreaClick = async (data: RegionTreeNode) => {
   if (!data || data.code === activeAreaCode.value) return
   activeAreaCode.value = data.code
-  selectAll.value = false // 切换地区时重置全选状态
   await loadDeptTree(data.code)
 }
 
@@ -437,191 +416,269 @@ const loadDeptTree = async (areaCode: string) => {
   }
   deptTreeLoading.value = true
   try {
-    // 构建分页查询参数
-    const params: DeptApi.DeptPageParam = {
-      areaCode,
-      pageNo: pageNo.value,
-      pageSize: pageSize.value
+    // 判断是否有搜索或筛选条件
+    const hasFilter = orgKeyword.value.trim() || selectedLevels.value.length > 0
+
+    // 清空当前数据
+    deptTree.value = []
+    filteredDeptTree.value = []
+
+    if (hasFilter) {
+      // 有筛选条件时，查询所有匹配数据并构建树形结构
+      const response = await DeptApi.getDeptPage({
+        areaCode,
+        pageSize: -1
+        // 不限制 parentId，获取所有数据
+      } as DeptApi.DeptPageParam)
+
+      console.log('Response with filter:', response)
+      console.log('Response type:', typeof response)
+      console.log('Is array?:', Array.isArray(response))
+      console.log('Has data field?:', response?.data)
+      console.log('Has list field?:', response?.list)
+
+      // 正确处理响应数据 - 支持 data、list 或直接数组
+      const list: DeptTreeNode[] = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.list)
+        ? response.list
+        : []
+
+      console.log('Extracted list:', list)
+      console.log('List length:', list.length)
+
+      // 使用 handleTree 构建树形结构
+      const treeData = handleTree(list, 'id', 'parentId', 'children')
+      console.log('Tree data after handleTree:', treeData)
+      deptTree.value = treeData
+
+      // 应用过滤条件
+      filteredDeptTree.value = applyDeptFilters(treeData)
+      console.log('Filtered tree data:', filteredDeptTree.value)
+    } else {
+      // 无筛选条件时，使用懒加载，只查询根节点
+      const response = await DeptApi.getDeptPage({
+        areaCode,
+        pageSize: -1,
+        parentId: 0 // 只查询根节点
+      } as DeptApi.DeptPageParam)
+
+      console.log('Response without filter:', response)
+      console.log('Response type:', typeof response)
+      console.log('Is array?:', Array.isArray(response))
+      console.log('Has data field?:', response?.data)
+      console.log('Has list field?:', response?.list)
+
+      // 正确处理响应数据 - 支持 data、list 或直接数组
+      const list: DeptTreeNode[] = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.list)
+        ? response.list
+        : []
+
+      console.log('Extracted list:', list)
+      console.log('List length:', list.length)
+
+      deptTree.value = list
+      filteredDeptTree.value = list
+      console.log('filteredDeptTree', filteredDeptTree.value)
     }
-
-    // 添加搜索条件
-    if (orgKeyword.value.trim()) {
-      params.name = orgKeyword.value.trim()
-    }
-
-    // 添加等级筛选
-    if (selectedLevels.value.length > 0) {
-      params.hospitalLevel = selectedLevels.value[0]?.toString()
-    }
-
-    // 查询分页数据
-    const response = await DeptApi.getDeptPage(params)
-
-    console.log('Page response:', response)
-
-    // 处理响应数据
-    const list: DeptTreeNode[] = response.list || []
-    total.value = response.total || 0
-
-    deptTree.value = list
-    filteredDeptTree.value = list
-    console.log('filteredDeptTree', filteredDeptTree.value)
 
     await nextTick()
     syncCheckedKeys()
-    // 不需要调用 updateSelectAllState，因为下次加载数据时会调用
+    updateSelectAllState()
   } finally {
     deptTreeLoading.value = false
   }
 }
 
-// 收集所有节点的ID（支持列表数据）
-const collectAllDeptIds = (nodes: DeptTreeNode[]): number[] => {
-  return nodes.map(item => item.id)
+
+// 懒加载子节点
+const loadDeptNode = async (node: any, resolve: (data: DeptTreeNode[]) => void) => {
+  try {
+    const parentId = node.data?.id
+    if (!parentId) {
+      resolve([])
+      return
+    }
+
+    // 加载子节点（只传 parentId，不限制 areaCode）
+    const response = await DeptApi.getDeptPage({
+      parentId: parentId,
+      pageSize: -1
+    } as DeptApi.DeptPageParam)
+
+    console.log('Lazy load response:', response)
+    console.log('Lazy load type:', typeof response)
+
+    // 正确处理响应数据 - 支持 data、list 或直接数组
+    const children: DeptTreeNode[] = Array.isArray(response)
+      ? response
+      : Array.isArray(response?.data)
+      ? response.data
+      : Array.isArray(response?.list)
+      ? response.list
+      : []
+
+    console.log('Lazy load children:', children)
+
+    // 更新节点的 children 属性，这样树结构就保持完整
+    if (node.data) {
+      node.data.children = children
+    }
+
+    resolve(children)
+  } catch (error) {
+    console.error('加载子节点失败:', error)
+    resolve([])
+  }
 }
 
-const handleSelectAllChange = async (checked: boolean) => {
-  if (checked) {
-    // 全选：获取所有符合条件的机构ID
-    const params: DeptApi.DeptPageParam = {
-      areaCode: activeAreaCode.value,
-      pageNo: 1,
-      pageSize: 10
-    }
+const applyDeptFilters = (nodes: DeptTreeNode[]): DeptTreeNode[] => {
+  const keyword = orgKeyword.value.trim().toLowerCase()
+  const levelFilters = new Set(selectedLevels.value)
+  const useAll = levelFilters.size === 0
 
-    // 添加搜索条件
-    if (orgKeyword.value.trim()) {
-      params.name = orgKeyword.value.trim()
-    }
-
-    // 添加等级筛选
-    if (selectedLevels.value.length > 0) {
-      params.hospitalLevel = selectedLevels.value[0]?.toString()
-    }
-
-    try {
-      const allIds = await DeptApi.getAllDeptIds(params)
-      checkedIds.value = allIds
-    } catch (error) {
-      console.error('获取所有机构ID失败:', error)
-    }
-  } else {
-    // 取消全选：清空所有选中
-    checkedIds.value = []
+  const matchesLevel = (level: any) => {
+    if (useAll) return true
+    if (level === undefined || level === null || level === '') return false
+    return Array.from(levelFilters).some((item) => String(item) === String(level))
   }
 
-  await nextTick()
-  syncCheckedKeys()
-  updateSelectAllState()
+  // 递归过滤树形数据
+  const filterTree = (items: DeptTreeNode[]): DeptTreeNode[] => {
+    const result: DeptTreeNode[] = []
+
+    items.forEach((item) => {
+      const nameMatch = keyword ? item.name?.toLowerCase().includes(keyword) : true
+      const levelMatch = matchesLevel(item.hospitalLevel)
+
+      // 递归处理子节点
+      const filteredChildren = item.children ? filterTree(item.children) : []
+
+      // 如果当前节点匹配或者有匹配的子节点，则保留该节点
+      if ((nameMatch && levelMatch) || filteredChildren.length > 0) {
+        result.push({
+          ...item,
+          children: filteredChildren
+        })
+      }
+    })
+
+    return result
+  }
+
+  // 如果是列表数据（没有嵌套），直接过滤
+  if (nodes.length === 0 || !nodes.some(item => item.children && item.children.length > 0)) {
+    return nodes.filter((item) => {
+      const nameMatch = keyword ? item.name?.toLowerCase().includes(keyword) : true
+      const levelMatch = matchesLevel(item.hospitalLevel)
+      return nameMatch && levelMatch
+    })
+  }
+
+  // 如果是树形数据，递归过滤
+  return filterTree(nodes)
+}
+
+// 收集所有节点的ID（支持列表和树形数据）
+const collectAllDeptIds = (nodes: DeptTreeNode[]): number[] => {
+  const ids: number[] = []
+
+  const traverse = (items: DeptTreeNode[]) => {
+    items.forEach((item) => {
+      ids.push(item.id)
+      if (item.children && item.children.length > 0) {
+        traverse(item.children)
+      }
+    })
+  }
+
+  traverse(nodes)
+  return ids
+}
+
+const handleSelectAllChange = (checked: boolean) => {
+  const allIds = collectAllDeptIds(filteredDeptTree.value)
+  if (checked) {
+    // 全选：合并当前所有机构ID
+    const newChecked = new Set([...checkedIds.value, ...allIds])
+    checkedIds.value = Array.from(newChecked)
+  } else {
+    // 取消全选：移除当前所有机构ID
+    const idsToRemove = new Set(allIds)
+    checkedIds.value = checkedIds.value.filter((id) => !idsToRemove.has(id))
+  }
+  nextTick(() => {
+    syncCheckedKeys()
+    // 确保状态同步
+    updateSelectAllState()
+  })
 }
 
 const handleLevelChange = () => {
-  // 等级筛选变化时，重置页码并重新加载数据
-  pageNo.value = 1
+  // 等级筛选变化时，需要重新加载数据
   if (activeAreaCode.value) {
     loadDeptTree(activeAreaCode.value)
   }
 }
 
 // 更新全选框状态
-const updateSelectAllState = async () => {
-  // 检查是否选中了所有机构
-  if (!activeAreaCode.value) {
+const updateSelectAllState = () => {
+  const allIds = collectAllDeptIds(filteredDeptTree.value)
+  // 没有机构或选中列表为空时，取消全选
+  if (allIds.length === 0) {
     selectAll.value = false
     return
   }
-
-  const params: DeptApi.DeptPageParam = {
-    areaCode: activeAreaCode.value,
-    pageNo: 1,
-    pageSize: 10
-  }
-
-  // 添加搜索条件
-  if (orgKeyword.value.trim()) {
-    params.name = orgKeyword.value.trim()
-  }
-
-  // 添加等级筛选
-  if (selectedLevels.value.length > 0) {
-    params.hospitalLevel = selectedLevels.value[0]?.toString()
-  }
-
-  try {
-    const allIds = await DeptApi.getAllDeptIds(params)
-    const checkedSet = new Set(checkedIds.value)
-    selectAll.value = allIds.length > 0 && allIds.every((id) => checkedSet.has(id))
-  } catch (error) {
-    console.error('获取所有机构ID失败:', error)
-    selectAll.value = false
-  }
+  // 检查当前显示的所有机构是否都被选中
+  const checkedSet = new Set(checkedIds.value)
+  selectAll.value = allIds.length > 0 && allIds.every((id) => checkedSet.has(id))
 }
 
 const refreshOrgFilter = () => {
-  // 搜索关键词或等级筛选变化时，重置页码并重新加载数据
-  pageNo.value = 1
+  // 搜索关键词或等级筛选变化时，需要重新加载数据
   if (activeAreaCode.value) {
     loadDeptTree(activeAreaCode.value)
   }
-}
-
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  pageNo.value = 1
-  if (activeAreaCode.value) {
-    loadDeptTree(activeAreaCode.value)
-  }
-}
-
-const handlePageChange = (val: number) => {
-  pageNo.value = val
-  if (activeAreaCode.value) {
-    loadDeptTree(activeAreaCode.value)
-  }
-}
-
-const handleSelectionChange = (rows: DeptTreeNode[]) => {
-  // 更新当前页选中的ID
-  const currentPageIds = filteredDeptTree.value.map(item => item.id)
-  const selectedIds = rows.map(row => row.id)
-
-  // 移除当前页未选中的
-  const newCheckedIds = checkedIds.value.filter(id => !currentPageIds.includes(id))
-  // 添加当前页选中的
-  newCheckedIds.push(...selectedIds)
-
-  checkedIds.value = newCheckedIds
-  // 不调用updateSelectAllState，因为它现在是异步的
 }
 
 const syncCheckedKeys = () => {
-  // 同步表格选中状态
-  if (deptTableRef.value) {
-    filteredDeptTree.value.forEach(row => {
-      deptTableRef.value.toggleRowSelection(row, checkedIds.value.includes(row.id))
-    })
-  }
+  deptTreeRef.value?.setCheckedKeys(checkedIds.value ?? [])
 }
 
 const collectDetailsFromTree = (ids: number[]): any[] => {
   const details: any[] = []
   const idSet = new Set(ids)
 
-  // 从列表中收集数据
-  deptTree.value.forEach((node) => {
-    if (idSet.has(node.id)) {
-      details.push({
-        id: node.id,
-        name: node.name,
-        hospitalLevel: node.hospitalLevel,
-        regionName: node.regionName,
-        areaName: node.areaName,
-        regionPath: node.regionPath,
-        regionPathName: node.regionPathName || '' // 区域路径中文名称
-      })
-    }
-  })
+  const traverse = (nodes: DeptTreeNode[]) => {
+    nodes.forEach((node) => {
+      if (idSet.has(node.id)) {
+        details.push({
+          id: node.id,
+          name: node.name,
+          hospitalLevel: node.hospitalLevel,
+          regionName: node.regionName,
+          areaName: node.areaName,
+          regionPath: node.regionPath,
+          regionPathName: node.regionPathName || '' // 区域路径中文名称
+        })
+      }
+      if (node.children && node.children.length > 0) {
+        traverse(node.children)
+      }
+    })
+  }
 
+  // 从 deptTree 中收集数据（包括懒加载的子节点）
+  traverse(deptTree.value)
+
+  // 如果 deptTree 是扁平列表（懒加载时），确保能收集到所有已加载的数据
+  // 注意：在懒加载时，deptTree.value 会包含通过 loadDeptNode 加载的所有节点
   return details
 }
 
@@ -642,7 +699,26 @@ const mergeDetails = (ids: number[], source: any[]) => {
 
 const updateSelection = (ids: number[]) => {
   checkedIds.value = ids
-  // 不调用updateSelectAllState，因为它现在是异步的
+  updateSelectAllState()
+}
+
+const handleOrgCheck = (_: any, data: { checkedKeys: number[] }) => {
+  updateSelection(data.checkedKeys ?? [])
+}
+
+// 处理节点点击，切换选中状态
+const handleNodeClick = (data: DeptTreeNode) => {
+  const isChecked = checkedIds.value.includes(data.id)
+  if (isChecked) {
+    // 当前已选中，取消选中
+    deptTreeRef.value?.setChecked(data.id, false)
+    checkedIds.value = checkedIds.value.filter(id => id !== data.id)
+  } else {
+    // 当前未选中，选中
+    deptTreeRef.value?.setChecked(data.id, true)
+    checkedIds.value = [...checkedIds.value, data.id]
+  }
+  updateSelectAllState()
 }
 
 const handleCancel = () => {
@@ -675,8 +751,6 @@ watch(
       selectAll.value = false
       selectedLevels.value = []  // 重置等级筛选
       orgKeyword.value = ''      // 重置搜索关键词
-      pageNo.value = 1           // 重置页码
-      pageSize.value = 10        // 重置每页条数
 
       // 加载区域树（内部会自动加载机构树）
       await loadAreaTree()
@@ -684,7 +758,7 @@ watch(
       // 确保选中状态正确同步
       await nextTick()
       syncCheckedKeys()
-      // 不调用updateSelectAllState，因为数据加载时会自动处理
+      updateSelectAllState()
     }
   }
 )
@@ -768,12 +842,12 @@ watch(areaKeyword, () => {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
     &.area-panel {
-      flex: 0 0 35%;
+      flex: 0 0 40%;
       max-height: 100%;
     }
 
     &.org-panel {
-      flex: 1 1 65%;
+      flex: 1 1 0%;
       max-height: 100%;
     }
   }
@@ -847,26 +921,11 @@ watch(areaKeyword, () => {
 
   .panel-body {
     flex: 1 1 0%;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 12px;
     min-height: 0;
     max-height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .table-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .pagination-wrapper {
-    padding: 12px 0;
-    display: flex;
-    justify-content: center;
-    border-top: 1px solid #ebeef5;
   }
 
   .area-node {
@@ -1008,26 +1067,19 @@ watch(areaKeyword, () => {
   overflow: hidden;
 }
 
-// 机构表格样式
-.dept-table {
-  :deep(.el-table__header) {
-    th {
-      background-color: #f5f7fa;
+// 机构树节点样式
+.dept-tree {
+  :deep(.el-tree-node__content) {
+    border-radius: 6px;
+    margin: 2px 0;
+    padding: 6px 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    
+    &:hover {
+      background: rgba(22, 163, 74, 0.06);
+      transform: translateX(2px);
     }
-  }
-
-  .dept-node {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .dept-icon {
-    flex-shrink: 0;
-  }
-
-  .dept-name {
-    font-weight: 500;
   }
 }
 

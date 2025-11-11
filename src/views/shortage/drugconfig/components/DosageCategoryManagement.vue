@@ -17,10 +17,10 @@
           class="!w-240px"
         />
       </el-form-item>
-      <el-form-item label="剂型单位" prop="dosageUnit">
+      <el-form-item label="统计单位" prop="dosageUnit">
         <el-input
           v-model="queryParams.dosageUnit"
-          placeholder="请输入剂型单位"
+          placeholder="请输入统计单位"
           clearable
           @keyup.enter="handleQuery"
           class="!w-240px"
@@ -58,7 +58,7 @@
     <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
       <el-table-column label="序号" type="index" width="80" align="center" />
       <el-table-column
-        label="剂型分类"
+        label="剂型规格"
         align="center"
         prop="categoryName"
         min-width="150"
@@ -69,7 +69,7 @@
         </template>
       </el-table-column>
       <el-table-column
-        label="剂型单位"
+        label="统计单位"
         align="center"
         prop="dosageUnit"
         min-width="200"

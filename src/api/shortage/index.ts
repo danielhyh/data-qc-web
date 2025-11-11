@@ -94,7 +94,7 @@ export interface DrugConfigVO {
   id?: number
   zoneId: number
   drugName: string
-  dosageCategory: string // 剂型分类
+  dosageCategory: string // 剂型规格
   dosageForm: string
   dosageUnit: string
   status: number
@@ -107,7 +107,7 @@ export interface DrugConfigPageReqVO {
   pageSize?: number
   zoneId?: number
   drugName?: string
-  dosageCategory?: string // 剂型分类
+  dosageCategory?: string // 剂型规格
   dosageForm?: string
   status?: number
 }
@@ -158,8 +158,8 @@ export interface ReportRecordVO {
   drugName?: string        // drug_name 
   drugCategory?: string    // drug_category 药品分类
   dosageForm?: string      // dosage_form 剂型
-  dosageCategory?: string  // dosage_category 剂型分类
-  dosageUnit?: string      // dosage_unit 最小剂型单位
+  dosageCategory?: string  // dosage_category 剂型规格
+  dosageUnit?: string      // dosage_unit 最小统计单位
 }
 
 export interface ReportStatisticsReqVO {
@@ -200,7 +200,7 @@ export interface ReportStatisticsRespVO {
   supplyDistribution: SupplyStatusDistribution[]
   shortageDetails: ShortageDetail[]
   // 新增指标数据
-  dosageFormCount?: number         // 剂型分类统计
+  dosageFormCount?: number         // 剂型规格统计
   weeklyUsage?: number            // 本周使用量
   currentStock?: number           // 当日实时库存
   stockAlertCount?: number        // 库存预警数量

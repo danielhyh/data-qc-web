@@ -404,8 +404,9 @@ export default {
     user: {
       title: '个人信息',
       username: '用户名称',
-      nickname: '用户昵称',
+      nickname: '用户身份',
       name: '用户姓名',
+      realName: '真实姓名',
       mobile: '手机号码',
       email: '用户邮箱',
       dept: '所属机构',
@@ -423,6 +424,7 @@ export default {
     },
     rules: {
       nickname: '请输入用户昵称',
+      realName: '请输入真实姓名',
       name: '请输入用户姓名',
       mail: '请输入邮箱地址',
       truemail: '请输入正确的邮箱地址',

@@ -18,7 +18,7 @@ export interface StandardLibraryVO {
   licenseHolder: string // 上市许可持有人
   approvalNumber: string // 批准文号
   dosageForm: string // 剂型名称
-  dosageFormCode: string // 剂型分类码
+  dosageFormCode: string // 剂型规格码
   specification: string // 制剂规格
   standardSpecification: string // 规格标化
   dosageUnit: string // 制剂单位

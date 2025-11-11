@@ -6,7 +6,9 @@ export interface AreaNode {
   code: string
   name: string
   level: number
-  orgCount?: number
+  nodeType?: string
+  directOrgCount?: number
+  totalOrgCount?: number
   children?: AreaNode[]
 }
 
@@ -21,9 +23,22 @@ export interface OrgItem {
   userCount?: number
 }
 
-// 获取区域树
+// 获取区域树（完整树，包含所有子节点）
 export const getAreaTree = () => {
   return request.get<AreaNode[]>({ url: '/system/area-org/area-tree' })
+}
+
+// 获取区域树顶级节点（懒加载）
+export const getAreaTreeLazy = () => {
+  return request.get<AreaNode[]>({ url: '/system/area-org/area-tree-lazy' })
+}
+
+// 获取区域的子节点（懒加载）
+export const getAreaChildren = (areaCode: string) => {
+  return request.get<AreaNode[]>({
+    url: '/system/area-org/area-children',
+    params: { areaCode }
+  })
 }
 
 // 获取指定区域下的机构列表

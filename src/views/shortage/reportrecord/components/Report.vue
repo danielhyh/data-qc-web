@@ -108,7 +108,7 @@
           />
           <el-table-column label="药品名称" prop="drugName" width="200" class-name="header-bold" />
           <el-table-column
-            label="剂型分类"
+            label="剂型规格"
             prop="dosageCategory"
             width="150"
             class-name="header-bold"

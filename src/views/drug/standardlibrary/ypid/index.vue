@@ -245,7 +245,7 @@
           show-overflow-tooltip
         />
         <el-table-column label="批准文号" prop="approvalNumber" width="150" show-overflow-tooltip />
-        <el-table-column label="剂型分类" prop="dosageForm" width="100" />
+        <el-table-column label="剂型规格" prop="dosageForm" width="100" />
         <el-table-column
           label="药理/功效分类"
           prop="pharmacologyCategory"

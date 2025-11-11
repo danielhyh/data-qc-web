@@ -7,7 +7,7 @@
   >
     <!-- 骨架屏加载效果 -->
     <div v-if="formLoading && !formData.id" class="skeleton-container">
-      <div class="skeleton-item" v-for="i in 3" :key="i">
+      <div class="skeleton-item" v-for="i in 5" :key="i">
         <div class="skeleton-label"></div>
         <div class="skeleton-input"></div>
       </div>
@@ -50,6 +50,34 @@
               <span class="text-gray-400">%</span>
             </template>
           </el-input-number>
+        </el-form-item>
+
+        <el-form-item label="本周累计使用量" prop="weeklyUsage" class="form-item-modern">
+          <el-input
+            v-model="formData.weeklyUsage"
+            placeholder="请输入本周累计使用量"
+            class="!w-full"
+            :disabled="formLoading"
+            @input="formData.weeklyUsage = formData.weeklyUsage?.replace(/[^\d]/g, '')"
+          >
+            <template #suffix>
+              <span class="text-gray-400">最小剂量单位</span>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="当日实时库存量" prop="dailyStock" class="form-item-modern">
+          <el-input
+            v-model="formData.dailyStock"
+            placeholder="请输入当日实时库存量"
+            class="!w-full"
+            :disabled="formLoading"
+            @input="formData.dailyStock = formData.dailyStock?.replace(/[^\d]/g, '')"
+          >
+            <template #suffix>
+              <span class="text-gray-400">最小剂量单位</span>
+            </template>
+          </el-input>
         </el-form-item>
 
         <el-form-item label="备注" prop="remark" class="form-item-modern">
@@ -108,14 +136,20 @@ const formData = ref<{
   id?: number
   reportStatus: string | undefined
   completionRate: number | undefined
+  weeklyUsage: string | undefined
+  dailyStock: string | undefined
   remark: string | undefined
 }>({
   reportStatus: undefined,
   completionRate: undefined,
+  weeklyUsage: undefined,
+  dailyStock: undefined,
   remark: undefined,
 })
 const formRules = reactive({
   reportStatus: [{ required: true, message: '填报状态: 0-待填报 1-草稿 2-已提交不能为空', trigger: 'blur' }],
+  weeklyUsage: [{ required: true, message: '请输入本周累计使用量', trigger: 'blur' }],
+  dailyStock: [{ required: true, message: '请输入当日实时库存量', trigger: 'blur' }],
 })
 const formRef = ref() // 表单 Ref
 
@@ -129,7 +163,12 @@ const open = async (type: string, id?: number) => {
   if (id) {
     formLoading.value = true
     try {
-      formData.value = await ReportTaskApi.getReportTask(id)
+      const data = await ReportTaskApi.getReportTask(id)
+      formData.value = {
+        ...data,
+        weeklyUsage: data.weeklyUsage !== undefined ? String(data.weeklyUsage) : undefined,
+        dailyStock: data.dailyStock !== undefined ? String(data.dailyStock) : undefined,
+      }
     } finally {
       formLoading.value = false
     }
@@ -145,7 +184,11 @@ const submitForm = async () => {
   // 提交请求
   formLoading.value = true
   try {
-    const data = formData.value as unknown as ReportTaskVO
+    const data = {
+      ...formData.value,
+      weeklyUsage: formData.value.weeklyUsage ? Number(formData.value.weeklyUsage) : undefined,
+      dailyStock: formData.value.dailyStock ? Number(formData.value.dailyStock) : undefined,
+    } as unknown as ReportTaskVO
     if (formType.value === 'create') {
       await ReportTaskApi.createReportTask(data)
       message.success(t('common.createSuccess'))
@@ -166,6 +209,8 @@ const resetForm = () => {
   formData.value = {
     reportStatus: undefined,
     completionRate: undefined,
+    weeklyUsage: undefined,
+    dailyStock: undefined,
     remark: undefined,
   }
   formRef.value?.resetFields()
@@ -205,7 +250,7 @@ const resetForm = () => {
     animation: shimmer 1.5s infinite;
   }
 
-  &:nth-child(3) .skeleton-input {
+  &:nth-child(5) .skeleton-input {
     height: 80px;
   }
 }

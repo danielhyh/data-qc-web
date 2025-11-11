@@ -419,7 +419,7 @@ const drugMetrics = computed(() => {
     {
       label: '剂型种类',
       value: stats.formCount || 0,
-      description: '药品剂型分类总数',
+      description: '药品剂型规格总数',
       icon: 'ep:collection',
       color: '#909399',
       level: 'info'

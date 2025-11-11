@@ -6,8 +6,8 @@
     <ul class="list-group list-group-striped">
       <li class="list-group-item">
         <Icon class="mr-5px" icon="ep:user" />
-        {{ t('profile.user.username') }}
-        <div class="pull-right">{{ userInfo?.username }}</div>
+        {{ t('profile.user.nickname') }}
+        <div class="pull-right">{{ userInfo?.nickname }}</div>
       </li>
       <li class="list-group-item">
         <Icon class="mr-5px" icon="ep:phone" />

@@ -7,10 +7,10 @@
       :rules="formRules"
       label-width="100px"
     >
-      <el-form-item label="剂型分类" prop="categoryName">
-        <el-input v-model="formData.categoryName" placeholder="请输入剂型分类名称" />
+      <el-form-item label="剂型规格" prop="categoryName">
+        <el-input v-model="formData.categoryName" placeholder="请输入剂型规格名称" />
       </el-form-item>
-      <el-form-item label="剂型单位" prop="dosageUnit">
+      <el-form-item label="统计单位" prop="dosageUnit">
         <el-input v-model="formData.dosageUnit" placeholder="如：普通片剂(片)" />
         <div class="el-form-item__help">
           格式：剂型名称(单位)，如：普通片剂(片)、胶囊(粒)
@@ -65,15 +65,15 @@ const formData = ref({
 })
 
 const formRules = reactive({
-  categoryName: [{ required: true, message: '剂型分类名称不能为空', trigger: 'blur' }],
-  dosageUnit: [{ required: true, message: '剂型单位不能为空', trigger: 'blur' }],
+  categoryName: [{ required: true, message: '剂型规格名称不能为空', trigger: 'blur' }],
+  dosageUnit: [{ required: true, message: '统计单位不能为空', trigger: 'blur' }],
   status: [{ required: true, message: '状态不能为空', trigger: 'change' }]
 })
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
   dialogVisible.value = true
-  dialogTitle.value = type === 'create' ? '添加剂型分类' : '修改剂型分类'
+  dialogTitle.value = type === 'create' ? '添加剂型规格' : '修改剂型规格'
   formType.value = type
   resetForm()
   // 修改时，设置数据

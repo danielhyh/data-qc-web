@@ -1,90 +1,39 @@
 <template>
 
   <div class="flex h-full">
-    <!-- 左侧地区和机构选择器 -->
-    <div
-      ref="selectorPanel"
-      class="selector-panel"
-      :style="{ width: selectorWidth + 'px' }"
-    >
-      <ContentWrap
-        class="h-full selector-card">
-        <el-row :gutter="12" class="selector-content">
-          <!-- 左侧：地区树 -->
-          <el-col :span="12">
-            <div class="section-title">地区</div>
-            <RegionTree @node-click="handleRegionNodeClick" />
-          </el-col>
+    <!-- 左侧地区/机构树选择器 -->
+<!--    <RegionOrgTree
+      ref="regionOrgTreeRef"
+      :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
+      :auto-select-first="false"
+      :show-collapse-button="true"
+      @node-click="handleNodeClick"
+    />
 
-          <!-- 右侧：机构列表 -->
-          <el-col :span="12">
-            <div class="section-title">机构</div>
-
-            <!-- 机构搜索框 -->
-            <div v-if="selectedRegionId" class="org-search-box">
-              <el-input
-                v-model="orgSearchText"
-                placeholder="搜索机构名称"
-                clearable
-                size="small"
-                @input="handleOrgSearch"
-              >
-                <template #prefix>
-                  <Icon icon="ep:search" />
-                </template>
-              </el-input>
-            </div>
-
-            <div v-if="!selectedRegionId && orgList.length === 0 && !orgLoading" class="empty-state">
-              <Icon icon="ep:pointer" class="empty-icon" />
-              <p>请先选择左侧地区</p>
-            </div>
-
-            <div v-else-if="orgLoading" class="loading-state">
-              <el-skeleton :rows="3" animated />
-            </div>
-
-            <div v-else-if="selectedRegionId && orgList.length === 0" class="empty-state">
-              <Icon icon="ep:document-delete" class="empty-icon" />
-              <p>该地区暂无机构</p>
-            </div>
-
-            <div v-else-if="orgList.length > 0" class="org-list">
-              <div
-                v-for="org in filteredOrgList"
-                :key="org.id"
-                class="org-item"
-                :class="{ active: selectedOrgIds.includes(org.id) }"
-                @click="handleOrgClick(org)"
-              >
-                <div class="org-item-content">
-                  <el-tooltip
-                    :content="org.name"
-                    placement="top"
-                    :disabled="!isTextOverflow(org.name)"
-                  >
-                    <div class="org-name">{{ org.name }}</div>
-                  </el-tooltip>
-                  <div class="org-user-count">
-                    <Icon icon="ep:user" class="user-icon" />
-                    {{ org.userCount || 0 }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </el-col>
-        </el-row>
-      </ContentWrap>
-    </div>
-
-    <!-- 拖拽分隔条 -->
+    &lt;!&ndash; 拖拽分隔条 &ndash;&gt;
     <div
       class="resize-handle"
       @mousedown="startResize"
-    ></div>
+    ></div>-->
 
     <!-- 右侧内容区域 -->
     <div class="flex-1 ml-5 main-content">
+      <!-- 当前选择的地区/机构信息 - 始终显示 -->
+      <div class="mb-15px">
+        <el-tag
+          type="primary"
+          size="large"
+          class="selection-tag"
+          :closable="!!selectedNode"
+          @close="handleClearSelection"
+        >
+          <Icon
+            :icon="selectedNode?.nodeType === 'org' ? 'ep:office-building' : 'ep:location'"
+            class="mr-5px"
+          />
+          {{ getSelectionLabel() }}
+        </el-tag>
+      </div>
       <!-- 搜索 -->
       <ContentWrap>
         <el-form
@@ -291,16 +240,15 @@
 </template>
 <script lang="ts" setup>
 import { ElMessage } from 'element-plus'
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { DICT_TYPE, getIntDictOptions, getDictLabel } from '@/utils/dict'
 import { checkPermi } from '@/utils/permission'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { CommonStatusEnum } from '@/utils/constants'
 import * as UserApi from '@/api/system/user'
-import * as AreaOrgApi from '@/api/system/areaOrg'
 import UserForm from './UserForm.vue'
 import UserAssignRoleForm from './UserAssignRoleForm.vue'
-import RegionTree from './RegionTree.vue'
+import RegionOrgTree from './RegionOrgTree.vue'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
 
 defineOptions({ name: 'SystemUser' })
@@ -321,21 +269,21 @@ const queryParams = reactive({
   createTime: []
 })
 const queryFormRef = ref() // 搜索的表单
-const selectedRegionId = ref<number | undefined>() // 选中的地区ID
-const selectedOrgIds = ref<number[]>([]) // 选中的机构ID列表
-const orgList = ref<AreaOrgApi.OrgItem[]>([]) // 机构列表
-const orgLoading = ref(false) // 机构加载状态
-const orgSearchText = ref('') // 机构搜索文本
-const filteredOrgList = ref<AreaOrgApi.OrgItem[]>([]) // 过滤后的机构列表
+const selectedNode = ref<any>(null) // 选中的节点（地区或机构）
 const excelPreviewRef = ref() // Excel预览对话框引用
 
 // 面板拖拽相关
-const selectorPanel = ref<HTMLElement>()
-const selectorWidth = ref(320) // 默认宽度
+const regionOrgTreeRef = ref()
+const selectorWidth = ref(250) // 默认宽度设为最小宽度
 const isResizing = ref(false)
 
 /** 开始拖拽调整大小 */
 const startResize = (e: MouseEvent) => {
+  // 如果树处于折叠状态，禁用拖拽
+  if (regionOrgTreeRef.value?.isCollapsed) {
+    return
+  }
+
   isResizing.value = true
   const startX = e.clientX
   const startWidth = selectorWidth.value
@@ -362,6 +310,63 @@ const startResize = (e: MouseEvent) => {
   e.preventDefault()
 }
 
+/** 监听树折叠状态，自动调整宽度 */
+watch(
+  () => regionOrgTreeRef.value?.isCollapsed,
+  (collapsed) => {
+    if (collapsed) {
+      selectorWidth.value = 50 // 折叠状态宽度 - 只显示展开按钮
+    } else if (selectorWidth.value === 50) {
+      selectorWidth.value = 250 // 恢复默认宽度
+    }
+  }
+)
+
+/** 获取选择标签文本 */
+const getSelectionLabel = () => {
+  if (!selectedNode.value) {
+    return '全部用户'
+  }
+
+  if (selectedNode.value.nodeType === 'region') {
+    // 地区节点
+    const levelLabel = getDictLabel(DICT_TYPE.REGION_LEVEL, selectedNode.value.level)
+    return `当前地区：${selectedNode.value.name}(${levelLabel || ''})`
+  } else {
+    // 机构节点
+    return `当前机构：${selectedNode.value.name}`
+  }
+}
+
+/** 处理节点被点击 */
+const handleNodeClick = async (node: any) => {
+  selectedNode.value = node
+
+  if (node.nodeType === 'region') {
+    // 点击地区节点：查询该地区下所有机构的用户
+    // 这里需要获取该地区下所有机构的ID列表
+    // 暂时使用 areaCode 查询（如果后端支持的话）
+    queryParams.deptIds = undefined
+    // TODO: 可以考虑添加 areaCode 参数到 queryParams
+  } else if (node.nodeType === 'org') {
+    // 点击机构节点：查询该机构的用户
+    queryParams.deptIds = String(node.id)
+  }
+
+  // 刷新用户列表
+  await getList()
+}
+
+/** 清除选择 */
+const handleClearSelection = () => {
+  selectedNode.value = null
+  queryParams.deptIds = undefined
+  // 清除树的选中状态
+  regionOrgTreeRef.value?.clearSelection()
+  // 刷新用户列表（查询所有用户）
+  getList()
+}
+
 /** 查询列表 */
 const getList = async () => {
   loading.value = true
@@ -383,100 +388,12 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
-  // 重置地区和机构选择
-  selectedRegionId.value = undefined
-  selectedOrgIds.value = []
-  orgList.value = []
-  filteredOrgList.value = []
-  orgSearchText.value = ''
+  // 重置选择
+  selectedNode.value = null
   queryParams.deptIds = undefined
+  // 清除树的选中状态
+  regionOrgTreeRef.value?.clearSelection()
   handleQuery()
-}
-
-/** 加载机构列表 */
-const loadOrgList = async (areaCode: string) => {
-  orgLoading.value = true
-  try {
-    const res = await AreaOrgApi.getOrgListByArea(areaCode)
-    orgList.value = res || []
-    // 重置搜索和过滤
-    orgSearchText.value = ''
-    filteredOrgList.value = orgList.value
-    // 重置选中的机构
-    selectedOrgIds.value = []
-    queryParams.deptIds = undefined
-  } catch (error) {
-    console.error('加载机构列表失败:', error)
-    orgList.value = []
-    filteredOrgList.value = []
-  } finally {
-    orgLoading.value = false
-  }
-}
-
-/** 处理机构搜索 */
-const handleOrgSearch = () => {
-  if (!orgSearchText.value.trim()) {
-    filteredOrgList.value = orgList.value
-  } else {
-    filteredOrgList.value = orgList.value.filter(org =>
-      org.name.toLowerCase().includes(orgSearchText.value.toLowerCase())
-    )
-  }
-}
-
-/** 判断文本是否溢出 - 简单的长度判断 */
-const isTextOverflow = (text: string) => {
-  // 简单的长度判断，可根据实际容器宽度调整
-  return text.length > 3
-}
-
-/** 处理地区被点击 */
-const handleRegionNodeClick = async (row) => {
-  // 更robust的ID设置逻辑
-  selectedRegionId.value = row.id || row.code || row.value || 'selected'
-
-  // 加载该地区下的机构列表
-  if (row.code) {
-    await loadOrgList(row.code)
-    // 点击区域时，直接将该区域下的所有机构ids传递给查询接口
-    if (orgList.value.length > 0) {
-      const allOrgIds = orgList.value.map(org => org.id)
-      selectedOrgIds.value = allOrgIds
-      queryParams.deptIds = allOrgIds.join(',')
-    } else {
-      // 如果该地区下没有机构，传递一个不存在的ID，避免查询所有用户
-      selectedOrgIds.value = []
-      queryParams.deptIds = '-1'
-    }
-  } else {
-    selectedOrgIds.value = []
-    queryParams.deptIds = undefined
-  }
-  // 刷新用户列表
-  await getList()
-}
-
-/** 处理机构被点击 */
-const handleOrgClick = (org: AreaOrgApi.OrgItem) => {
-  const index = selectedOrgIds.value.indexOf(org.id)
-  if (index > -1) {
-    // 取消选中
-    selectedOrgIds.value.splice(index, 1)
-  } else {
-    // 选中
-    selectedOrgIds.value.push(org.id)
-  }
-
-  // 更新查询参数
-  if (selectedOrgIds.value.length > 0) {
-    queryParams.deptIds = selectedOrgIds.value.join(',')
-  } else {
-    queryParams.deptIds = undefined
-  }
-
-  // 刷新用户列表
-  getList()
 }
 
 /** 添加/修改操作 */
@@ -638,143 +555,34 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.selector-panel {
-  flex-shrink: 0;
-  min-width: 250px;
-  max-width: 600px;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.selector-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
 .resize-handle {
   width: 5px;
   background: var(--el-border-color-light);
   cursor: ew-resize;
   flex-shrink: 0;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     background: var(--el-color-primary);
+    width: 6px;
   }
 }
 
-.selector-content {
-  height: 100%;
-
-  .el-col {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; // 添加溢出隐藏
-  }
-}
-
-.section-title {
+// 选择标签美化
+.selection-tag {
+  padding: 10px 18px;
   font-size: 14px;
-  font-weight: 500;
-  color: var(--el-text-color-regular);
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+  transition: all 0.3s ease;
 
-.org-search-box {
-  margin-bottom: 12px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 500;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.org-list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 0;
-
-  .org-item {
-    padding: 12px;
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 13px;
-    color: var(--el-text-color-regular);
-    line-height: 1.4;
-
-    &:hover {
-      background-color: var(--el-fill-color-light);
-      border-color: var(--el-color-primary-light-7);
-    }
-
-    &.active {
-      background-color: var(--el-color-primary-light-9);
-      border-color: var(--el-color-primary);
-      color: var(--el-color-primary);
-    }
-
-    .org-item-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .org-name {
-      flex: 1;
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .org-user-count {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: var(--el-text-color-secondary);
-      flex-shrink: 0;
-
-      .user-icon {
-        font-size: 14px;
-      }
-    }
-  }
-}
-
-.empty-state,
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: var(--el-text-color-secondary);
-
-  .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    color: var(--el-border-color-darker);
+  &:hover {
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.25);
+    transform: translateY(-1px);
   }
 
-  p {
-    margin: 0;
-    font-size: 14px;
+  :deep(.el-icon) {
+    font-size: 16px;
   }
 }
 

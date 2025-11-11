@@ -35,6 +35,7 @@ export interface DeptVO {
   adminCategory?: string
   deptType?: string
   area?: string
+  hasChildren?: boolean // 是否有子节点
 }
 
 // 查询部门（精简)列表
@@ -44,13 +45,28 @@ export const getSimpleDeptList = async (regionId?: number): Promise<DeptVO[]> =>
 }
 
 export interface DeptPageParam extends PageParam {
+  name?: string
+  status?: number
   areaCode?: string
+  hospitalLevel?: string
+  institutionCategory?: string
+  excludeUnableReport?: boolean
   [key: string]: any
 }
 
-// 查询部门列表
-export const getDeptPage = async (params: DeptPageParam) => {
+// 查询部门列表（树形）
+export const getDeptList = async (params: any) => {
   return await request.get({ url: '/system/dept/list', params })
+}
+
+// 查询部门分页列表
+export const getDeptPage = async (params: DeptPageParam) => {
+  return await request.get({ url: '/system/dept/page', params })
+}
+
+// 获取所有符合条件的部门ID（用于全选）
+export const getAllDeptIds = async (params: DeptPageParam) => {
+  return await request.get({ url: '/system/dept/all-ids', params })
 }
 
 // 查询部门详情

@@ -111,7 +111,7 @@
           />
           <el-table-column label="药品名称" prop="drugName" width="200" class-name="header-bold" />
           <el-table-column
-            label="剂型分类"
+            label="剂型规格"
             prop="dosageCategory"
             width="150"
             class-name="header-bold"
@@ -148,13 +148,12 @@
           >
             <template #default="scope">
               <div class="usage-input">
-                <el-input-number
+                <el-input
                   v-model="scope.row.weekUsageAmount"
-                  :min="0"
-                  :precision="2"
                   :disabled="isReadOnly"
                   style="width: 100%"
-                  placeholder="按包装单位"
+                  placeholder="请输入本周累计使用量"
+                  @input="handleUsageInput(scope.row)"
                   @change="handleUsageChange(scope.row)"
                 />
               </div>
@@ -169,13 +168,12 @@
           >
             <template #default="scope">
               <div class="stock-input">
-                <el-input-number
+                <el-input
                   v-model="scope.row.currentStockAmount"
-                  :min="0"
-                  :precision="2"
                   :disabled="isReadOnly"
                   style="width: 100%"
-                  placeholder="按包装单位"
+                  placeholder="请输入当日实时库存量"
+                  @input="handleStockInput(scope.row)"
                   @change="handleStockChange(scope.row)"
                 />
               </div>
@@ -394,21 +392,19 @@ const handleCloseNotice = () => {
   noticeClosedByUser.value = true
 }
 
-// 是否有填写的数据
+// 是否有填写的数据 - 现在必须所有数据都填写
 const hasNoFilledData = computed(() => {
-  return reportList.value.every((item) => {
-    return (
-      (!item.weekUsageAmount || item.weekUsageAmount === 0) &&
-      (!item.currentStockAmount || item.currentStockAmount === 0) &&
-      (!item.supplyStatus || item.supplyStatus === 0)
-    )
+  return reportList.value.some((item) => {
+    const hasWeekUsage = item.weekUsageAmount !== undefined && item.weekUsageAmount !== null
+    const hasCurrentStock = item.currentStockAmount !== undefined && item.currentStockAmount !== null
+    return !hasWeekUsage || !hasCurrentStock
   })
 })
 
 // 保存草稿按钮提示
 const getSaveDraftTooltip = computed(() => {
   if (hasNoFilledData.value) {
-    return '请至少填写一项数据后再保存草稿'
+    return '请填写所有药品的本周累计使用量和当日实时库存量'
   }
   return '保存当前填写的数据为草稿'
 })
@@ -427,30 +423,60 @@ const getSubmitTooltip = computed(() => {
 // 验证数据完整性
 const validateData = (): { valid: boolean; message: string; incompleteItems: any[] } => {
   const incompleteItems: any[] = []
-  
+
   reportList.value.forEach((item, index) => {
-    // 使用相同的逻辑检查是否需要必填
-    const isRequired = getIsSupplyStatusRequired(item)
-    
-    // 如果需要必填，供应情况必须填写
-    if (isRequired && (!item.supplyStatus || item.supplyStatus === 0)) {
+    // 检查本周累计使用量和当日实时库存量是否都已填写
+    const hasWeekUsage = item.weekUsageAmount !== undefined && item.weekUsageAmount !== null
+    const hasCurrentStock = item.currentStockAmount !== undefined && item.currentStockAmount !== null
+
+    if (!hasWeekUsage || !hasCurrentStock) {
       incompleteItems.push({
         index: index + 1,
         drugName: item.drugName,
-        category: item.drugCategory
+        category: item.drugCategory,
+        missingWeekUsage: !hasWeekUsage,
+        missingCurrentStock: !hasCurrentStock
       })
     }
+
+    // 使用相同的逻辑检查是否需要必填供应情况
+    const isRequired = getIsSupplyStatusRequired(item)
+
+    // 如果需要必填，供应情况必须填写
+    if (isRequired && (!item.supplyStatus || item.supplyStatus === 0)) {
+      // 如果还没有记录这个项目，添加进去
+      const existingItem = incompleteItems.find(incomplete => incomplete.index === index + 1)
+      if (existingItem) {
+        existingItem.missingSupplyStatus = true
+      } else {
+        incompleteItems.push({
+          index: index + 1,
+          drugName: item.drugName,
+          category: item.drugCategory,
+          missingSupplyStatus: true
+        })
+      }
+    }
   })
-  
+
   if (incompleteItems.length > 0) {
     const firstItem = incompleteItems[0]
+    let message = `请完善第 ${firstItem.index} 项「${firstItem.drugName}」的数据：`
+    const missing = []
+
+    if (firstItem.missingWeekUsage) missing.push('本周累计使用量')
+    if (firstItem.missingCurrentStock) missing.push('当日实时库存量')
+    if (firstItem.missingSupplyStatus) missing.push('供应情况')
+
+    message += missing.join('、') + '未填写'
+
     return {
       valid: false,
-      message: `请完善供应情况信息！第 ${firstItem.index} 项「${firstItem.drugName}」需要填写供应情况`,
+      message,
       incompleteItems
     }
   }
-  
+
   return { valid: true, message: '', incompleteItems: [] }
 }
 
@@ -469,6 +495,32 @@ const getIsSupplyStatusRequired = (row: ReportRecordVO): boolean => {
 // 为了在模板中使用，创建一个方法
 const isSupplyStatusRequired = (row: ReportRecordVO): boolean => {
   return getIsSupplyStatusRequired(row)
+}
+
+// 处理用量输入 - 只允许数字
+const handleUsageInput = (row: ReportRecordVO) => {
+  // 将输入转换为字符串并过滤非数字字符
+  const strValue = String(row.weekUsageAmount || '')
+  const numValue = strValue.replace(/[^\d]/g, '')
+  // 空字符串保持为 undefined，非空才转为数字
+  if (numValue === '') {
+    row.weekUsageAmount = undefined
+  } else {
+    row.weekUsageAmount = Number(numValue)
+  }
+}
+
+// 处理库存输入 - 只允许数字
+const handleStockInput = (row: ReportRecordVO) => {
+  // 将输入转换为字符串并过滤非数字字符
+  const strValue = String(row.currentStockAmount || '')
+  const numValue = strValue.replace(/[^\d]/g, '')
+  // 空字符串保持为 undefined，非空才转为数字
+  if (numValue === '') {
+    row.currentStockAmount = undefined
+  } else {
+    row.currentStockAmount = Number(numValue)
+  }
 }
 
 // 处理用量变化
@@ -598,7 +650,13 @@ const loadDrugList = async () => {
       selectedZoneId.value,
       Number(taskId.value) // 传递taskId
     )
-    reportList.value = data
+
+    // 处理数据，将后端返回的0转换为undefined，让输入框显示为空
+    reportList.value = data.map(item => ({
+      ...item,
+      weekUsageAmount: item.weekUsageAmount === 0 ? undefined : item.weekUsageAmount,
+      currentStockAmount: item.currentStockAmount === 0 ? undefined : item.currentStockAmount
+    }))
 
     // 初始化第一个tab
     if (drugCategories.value.length > 0) {
@@ -663,13 +721,14 @@ const handleSubmit = async () => {
 
     submitting.value = true
 
-    // 过滤出需要提交的数据（有供应情况的记录）
-    const submitData = reportList.value
-      .filter((item) => item.supplyStatus !== undefined && item.supplyStatus !== null)
-      .map((item) => ({
-        ...item,
-        dosageUnit: item.dosageUnit // 确保包含 dosageUnit 字段
-      }))
+    // 提交所有数据
+    const submitData = reportList.value.map((item) => ({
+      ...item,
+      dosageUnit: item.dosageUnit, // 确保包含 dosageUnit 字段
+      // 保持原值，不设置默认0
+      weekUsageAmount: item.weekUsageAmount,
+      currentStockAmount: item.currentStockAmount
+    }))
 
     // 调用提交接口,传递taskId、reportWeek和completionRate
     await ReportRecordApi.submitReport({
@@ -691,40 +750,24 @@ const handleSubmit = async () => {
 
 // 保存草稿
 const handleSaveDraft = async () => {
-  // 检查是否有数据
-  if (hasNoFilledData.value) {
-    message.warning('请至少填写一项数据后再保存草稿')
+  // 验证数据完整性
+  const validation = validateData()
+  if (!validation.valid) {
+    message.warning(validation.message)
     return
   }
 
   try {
     savingDraft.value = true
 
-    // 过滤出有数据的记录
-    const draftData = reportList.value
-      .filter(
-        (item) =>
-          (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null && item.weekUsageAmount > 0) ||
-          (item.currentStockAmount !== undefined && item.currentStockAmount !== null && item.currentStockAmount > 0) ||
-          (item.supplyStatus !== undefined && item.supplyStatus !== null && item.supplyStatus > 0)
-      )
-      .map((item) => ({
-        ...item,
-        dosageUnit: item.dosageUnit
-      }))
-
-    // 验证数据完整性，给出提示但允许保存
-    const validation = validateData()
-    if (!validation.valid) {
-      const incompleteCount = validation.incompleteItems.length
-      const confirmMsg = `当前有 ${incompleteCount} 项数据的供应情况未填写，是否继续保存草稿？\n提示：填写了使用量或库存的药品需要填写供应情况`
-      
-      try {
-        await message.confirm(confirmMsg)
-      } catch {
-        return // 用户取消
-      }
-    }
+    // 过滤并格式化数据
+    const draftData = reportList.value.map((item) => ({
+      ...item,
+      dosageUnit: item.dosageUnit,
+      // 保持原值，不设置默认0
+      weekUsageAmount: item.weekUsageAmount,
+      currentStockAmount: item.currentStockAmount
+    }))
 
     // 调用保存草稿API,传递taskId、reportWeek和completionRate
     await ReportRecordApi.saveDraft({

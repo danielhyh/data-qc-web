@@ -1,12 +1,15 @@
 <!--填报记录管理页面-->
 <template>
-  <div class="flex h-full">
+  <div class="report-record-page">
+    <div class="flex record-container">
     <!-- 左侧地区树选择器 -->
-    <RegionTree 
+    <RegionTree
       ref="regionTreeRef"
-      :style="{ width: selectorWidth + 'px', flexShrink: 0 }"
+      :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
       :auto-select-first="false"
-      @node-click="handleRegionSelect" 
+      :show-org-count="true"
+      :show-collapse-button="true"
+      @node-click="handleRegionSelect"
     />
 
     <!-- 拖拽分隔条 -->
@@ -17,6 +20,20 @@
 
     <!-- 右侧内容区域 -->
     <div class="flex-1 ml-5 main-content">
+      <!-- 当前选择的地区信息 - 始终显示 -->
+      <div class="mb-15px">
+        <el-tag
+          type="primary"
+          size="large"
+          class="region-tag"
+          :closable="!!selectedRegion"
+          @close="handleClearRegion"
+        >
+          <Icon icon="ep:location" class="mr-5px" />
+          {{ selectedRegion ? `当前地区：${getRegionDisplayName(selectedRegion)}` : '全部机构' }}
+        </el-tag>
+      </div>
+
       <ContentWrap>
         <!-- 搜索工作栏 -->
         <el-form
@@ -77,14 +94,6 @@
         </el-form>
       </ContentWrap>
 
-      <!-- 当前选择的地区信息 -->
-      <div v-if="selectedRegion" class="my-15px">
-        <el-tag type="primary" size="large" class="region-tag" :closable="true" @close="handleClearRegion">
-          <Icon icon="ep:location" class="mr-5px" />
-          当前地区：{{ getRegionDisplayName(selectedRegion) }}
-        </el-tag>
-      </div>
-
       <!-- 列表 -->
       <ContentWrap>
         <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
@@ -94,9 +103,22 @@
               <span class="region-path">{{ scope.row.regionPath || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="机构名称" align="center" prop="deptName" min-width="150">
+          <el-table-column label="机构名称" align="center" prop="deptName" min-width="180">
             <template #default="scope">
-              <span class="font-bold">{{ scope.row.deptName }}</span>
+              <div class="institution-name-cell">
+                <el-tooltip
+                  :content="getInstitutionCategoryLabel(scope.row.institutionCategory)"
+                  placement="top"
+                >
+                  <DictIcon
+                    :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
+                    :value="scope.row.institutionCategory ?? ''"
+                    :size="18"
+                    default-color="#5b8def"
+                  />
+                </el-tooltip>
+                <span class="institution-name-text font-bold">{{ scope.row.deptName }}</span>
+              </div>
             </template>
           </el-table-column>
           <el-table-column label="联系人" align="center" prop="contactPerson" width="100" />
@@ -269,7 +291,7 @@
                   <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
                 </template>
               </el-table-column>
-              <el-table-column
+<!--              <el-table-column
                 label="预计可用天数"
                 width="120"
                 align="center"
@@ -281,7 +303,7 @@
                     <span>{{ calculateAvailableDays(scope.row) }}</span>
                   </div>
                 </template>
-              </el-table-column>
+              </el-table-column>-->
             </el-table>
           </div>
         </ContentWrap>
@@ -291,14 +313,16 @@
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </Dialog>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { getIntDictOptions, DICT_TYPE, getDictLabel } from '@/utils/dict'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { getIntDictOptions, DICT_TYPE, getDictLabel, getDictObj } from '@/utils/dict'
 import { ReportRecordApi, ReportZoneApi } from '@/api/shortage'
 import RegionTree from '@/views/system/user/RegionTree.vue'
+import DictIcon from '@/components/DictIcon'
 import { useMessage } from '@/hooks/web/useMessage'
 import { Dialog } from '@/components/Dialog'
 import { ContentWrap } from '@/components/ContentWrap'
@@ -339,8 +363,17 @@ const queryParams = reactive({
 })
 const queryFormRef = ref() // 搜索的表单
 
+const getInstitutionCategoryLabel = (value: string | number | boolean | undefined) => {
+  return getDictObj(DICT_TYPE.INSTITUTION_CATEGORY, value)?.label ?? '机构分类'
+}
+
 /** 开始拖拽调整大小 */
 const startResize = (e: MouseEvent) => {
+  // 如果地区树处于折叠状态，禁用拖拽
+  if (regionTreeRef.value?.isCollapsed) {
+    return
+  }
+
   isResizing.value = true
   const startX = e.clientX
   const startWidth = selectorWidth.value
@@ -366,6 +399,18 @@ const startResize = (e: MouseEvent) => {
   document.body.style.userSelect = 'none'
   e.preventDefault()
 }
+
+/** 监听地区树折叠状态，自动调整宽度 */
+watch(
+  () => regionTreeRef.value?.isCollapsed,
+  (collapsed) => {
+    if (collapsed) {
+      selectorWidth.value = 50 // 折叠状态宽度 - 只显示展开按钮
+    } else if (selectorWidth.value === 50) {
+      selectorWidth.value = 250 // 恢复默认宽度
+    }
+  }
+)
 
 /** 查询列表 */
 const getList = async () => {
@@ -584,15 +629,30 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+/* 容器高度自适应 */
+.record-container {
+  height: calc(100vh - 140px); /* 减去头部导航和边距 */
+  min-height: 600px; /* 最小高度保证内容可见 */
+  overflow: hidden;
+}
+
 .resize-handle {
   width: 5px;
   background: var(--el-border-color-light);
   cursor: ew-resize;
   flex-shrink: 0;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     background: var(--el-color-primary);
+    width: 6px;
+  }
+
+  // 折叠状态下禁用拖拽（通过父组件判断）
+  &:has(~ .main-content) {
+    &:hover {
+      cursor: ew-resize;
+    }
   }
 }
 
@@ -618,6 +678,18 @@ onMounted(() => {
   :deep(.el-icon) {
     font-size: 16px;
   }
+}
+
+// 机构名称单元格样式
+.institution-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.institution-name-text {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 
 // 地区路径样式
