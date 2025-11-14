@@ -63,7 +63,7 @@
         <el-table-column
           label="序号"
           type="index"
-          width="60"
+          width="90"
           fixed
           align="center"
           class-name="header-bold"
@@ -104,6 +104,17 @@
           </template>
         </el-table-column>
         <el-table-column
+          label="本机构未使用此药品"
+          width="150"
+          align="center"
+          class-name="header-bold"
+        >
+          <template #default="scope">
+            <el-tag v-if="scope.row.notAvailable" type="info" size="small">是</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column
           label="本周累计使用量"
           prop="weekUsageAmount"
           width="180"
@@ -119,7 +130,8 @@
             </div>
           </template>
           <template #default="scope">
-            <span class="number-value usage">{{ formatNumber(scope.row.weekUsageAmount) }}</span>
+            <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+            <span v-else class="number-value usage">{{ formatNumber(scope.row.weekUsageAmount) }}</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -138,7 +150,8 @@
             </div>
           </template>
           <template #default="scope">
-            <span class="number-value stock">{{ formatNumber(scope.row.currentStockAmount) }}</span>
+            <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+            <span v-else class="number-value stock">{{ formatNumber(scope.row.currentStockAmount) }}</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -149,7 +162,8 @@
           class-name="header-bold"
         >
           <template #default="scope">
-            <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
+            <span v-if="scope.row.notAvailable" class="not-available-text">-</span>
+            <dict-tag v-else :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
           </template>
         </el-table-column>
         <!-- <el-table-column
@@ -182,10 +196,10 @@
     </div> -->
 
     <template #footer>
-      <el-button @click="handleExport" type="primary">
+<!--      <el-button @click="handleExport" type="primary">
         <Icon icon="ep:download" class="mr-1" />
         导出数据
-      </el-button>
+      </el-button>-->
       <el-button @click="dialogVisible = false">关闭</el-button>
     </template>
   </Dialog>
@@ -211,24 +225,43 @@ const displayData = ref<ReportRecordVO[]>([])
 const statistics = computed((): Statistics | null => {
   if (!displayData.value.length) return null
 
+  // 排除标记为"本机构未使用此药品"的数据进行供应情况统计
+  const availableData = displayData.value.filter(item => !item.notAvailable)
+
   return {
     totalDrugs: displayData.value.length,
-    sufficientCount: displayData.value.filter(
+    sufficientCount: availableData.filter(
       (item) => item.supplyStatus === 1 || item.supplyStatus === 2
     ).length,
-    shortageCount: displayData.value.filter((item) => item.supplyStatus === 3).length,
-    severeShortageCount: displayData.value.filter((item) => item.supplyStatus === 4).length
+    shortageCount: availableData.filter((item) => item.supplyStatus === 3).length,
+    severeShortageCount: availableData.filter((item) => item.supplyStatus === 4).length
   }
 })
 
 // 打开对话框
 const open = (data: ReportRecordVO[] = []) => {
-  // 根据用量和库存字段来判断用户是否填报了数据（大于0）
+  // 包含已填报的数据（包括0）或标记为"本机构未使用此药品"的数据
   const filteredData = data.filter(item => 
-    (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null && item.weekUsageAmount > 0) ||
-    (item.currentStockAmount !== undefined && item.currentStockAmount !== null && item.currentStockAmount > 0)
+    item.notAvailable || // 标记为"本机构未使用此药品"
+    (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null) ||
+    (item.currentStockAmount !== undefined && item.currentStockAmount !== null)
   )
-  displayData.value = [...filteredData]
+  
+  // 按照药品分类、药品名称排序，确保相同药品名称的数据连续显示
+  const sortedData = [...filteredData].sort((a, b) => {
+    // 先按药品分类排序
+    const categoryCompare = (a.drugCategory || '').localeCompare(b.drugCategory || '', 'zh-CN')
+    if (categoryCompare !== 0) return categoryCompare
+    
+    // 同一分类内按药品名称排序
+    const nameCompare = (a.drugName || '').localeCompare(b.drugName || '', 'zh-CN')
+    if (nameCompare !== 0) return nameCompare
+    
+    // 同一药品名称按剂型排序
+    return (a.dosageCategory || '').localeCompare(b.dosageCategory || '', 'zh-CN')
+  })
+  
+  displayData.value = sortedData
   dialogVisible.value = true
 }
 
@@ -288,10 +321,53 @@ const getRowClassName = ({ row }: { row: ReportRecordVO }): string => {
 
 // 表格合并单元格方法
 const previewSpanMethod = ({ row, column, rowIndex, columnIndex }) => {
-  // 只对药品分类列进行合并（第2列，因为第1列是序号）
+  const dataList = displayData.value
+  
+  // 对序号列（第1列）和药品名称列（第3列）进行合并 - 按药品名称分组
+  if (columnIndex === 0 || columnIndex === 2) {
+    const currentDrugName = row.drugName
+
+    if (!currentDrugName || !dataList.length) {
+      return { rowspan: 1, colspan: 1 }
+    }
+
+    // 找到当前药品名称在数据中第一次出现的位置
+    let startIndex = -1
+    for (let i = 0; i < dataList.length; i++) {
+      if (dataList[i].drugName === currentDrugName) {
+        startIndex = i
+        break
+      }
+    }
+
+    // 如果当前行是该药品名称的第一行
+    if (rowIndex === startIndex) {
+      // 计算相同药品名称的连续行数
+      let count = 0
+      for (let i = startIndex; i < dataList.length; i++) {
+        if (dataList[i].drugName === currentDrugName) {
+          count++
+        } else {
+          break
+        }
+      }
+      
+      return {
+        rowspan: count,
+        colspan: 1
+      }
+    } else if (dataList[rowIndex]?.drugName === currentDrugName && rowIndex > startIndex) {
+      // 如果当前行药品名称与前面的相同，且不是第一行，则隐藏
+      return {
+        rowspan: 0,
+        colspan: 0
+      }
+    }
+  }
+  
+  // 对药品分类列进行合并（第2列）
   if (columnIndex === 1) {
     const currentCategory = row.drugCategory
-    const dataList = displayData.value
 
     if (!currentCategory || !dataList.length) {
       return { rowspan: 1, colspan: 1 }
@@ -310,13 +386,11 @@ const previewSpanMethod = ({ row, column, rowIndex, columnIndex }) => {
     const categoryCount = dataList.filter((item) => item.drugCategory === currentCategory).length
 
     if (rowIndex === startIndex) {
-      // 第一行显示合并的单元格
       return {
         rowspan: categoryCount,
         colspan: 1
       }
     } else if (dataList[rowIndex]?.drugCategory === currentCategory) {
-      // 同一分类的其他行不显示
       return {
         rowspan: 0,
         colspan: 0
@@ -473,6 +547,13 @@ defineExpose({ open })
 
 .number-value.stock {
   color: #67c23a;
+}
+
+/* 未使用文本样式 */
+.not-available-text {
+  color: #909399;
+  font-size: 14px;
+  font-style: italic;
 }
 
 /* 库存天数样式 */

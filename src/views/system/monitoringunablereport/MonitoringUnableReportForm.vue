@@ -24,7 +24,19 @@
         </el-select>
       </el-form-item>
       <el-form-item label="无法上报原因" prop="unableReportReason">
-        <el-input v-model="formData.unableReportReason" type="textarea" placeholder="请输入无法上报原因" />
+        <el-select
+          v-model="formData.unableReportReason"
+          placeholder="请选择无法上报原因"
+          clearable
+          class="!w-240px"
+        >
+          <el-option
+            v-for="dict in getStrDictOptions(DICT_TYPE.UNABLE_REPORT_REASON)"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="备注说明" prop="remark">
         <el-input v-model="formData.remark" type="textarea" placeholder="请输入备注说明" />
@@ -48,7 +60,7 @@
   </Dialog>
 </template>
 <script setup lang="ts">
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { DICT_TYPE, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
 import { MonitoringUnableReportApi, MonitoringUnableReportVO } from '@/api/system/monitoringunablereport'
 import { getSimpleDeptList, DeptVO } from '@/api/system/dept'
 

@@ -12,22 +12,8 @@
           class="config-section"
         >
           <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
-            <el-form-item label="专区编码" prop="zoneCode">
-              <el-input v-model="formData.zoneCode" placeholder="自动生成" :disabled="true" />
-            </el-form-item>
             <el-form-item label="专区名称" prop="zoneName">
               <el-input v-model="formData.zoneName" placeholder="请输入专区名称" />
-            </el-form-item>
-            <el-form-item label="状态" prop="status">
-              <el-radio-group v-model="formData.status">
-                <el-radio
-                  v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-                  :key="dict.value"
-                  :value="dict.value"
-                >
-                  {{ dict.label }}
-                </el-radio>
-              </el-radio-group>
             </el-form-item>
             <el-form-item prop="noticeContent">
               <template #label>
@@ -64,24 +50,7 @@
           class="config-section"
         >
           <el-form ref="timeFormRef" :model="formData" :rules="timeFormRules" label-width="120px">
-            <el-form-item prop="isTimeRestricted">
-              <template #label>
-                <Tooltip
-                  title="时间限制"
-                  message="启用后，用户只能在指定的时间段内进行数据填报"
-                  icon="ep:info-filled"
-                />
-              </template>
-              <el-switch
-                v-model="formData.isTimeRestricted"
-                active-text="启用时间限制"
-                inactive-text="不限制时间"
-                active-color="#13ce66"
-                inactive-color="#ff4949"
-              />
-            </el-form-item>
-
-            <div v-if="formData.isTimeRestricted" class="time-config-section">
+            <div class="time-config-section">
               <el-form-item label="填报日期" prop="reportTimeConfig.dayOfWeek">
                 <el-select
                   v-model="formData.reportTimeConfig.dayOfWeek"
@@ -155,15 +124,6 @@
                 show-icon
               />
             </div>
-
-            <el-alert
-              v-else
-              title="不限制填报时间，用户可在任何时间进行数据填报"
-              type="warning"
-              :closable="false"
-              class="mb-4"
-              show-icon
-            />
           </el-form>
         </ContentWrap>
 
@@ -313,12 +273,9 @@ const formType = ref('') // 表单的类型：create - 新增；update - 修改
 type ReportZoneFormState = {
   id?: number
   zoneName: string
-  zoneCode: string
   noticeContent: string
-  status: number
   remark: string
   reportableOrgs: string
-  isTimeRestricted: boolean
   reportTimeConfig: ReportTimeConfigVO
 }
 
@@ -345,12 +302,9 @@ const createDefaultTimeConfig = (): ReportTimeConfigVO => ({
 const createDefaultFormState = (): ReportZoneFormState => ({
   id: undefined,
   zoneName: '',
-  zoneCode: '',
   noticeContent: getDefaultNoticeContent(),
-  status: 1,
   remark: '',
   reportableOrgs: '',
-  isTimeRestricted: true,
   reportTimeConfig: createDefaultTimeConfig()
 })
 
@@ -477,8 +431,6 @@ const getEndDisabledMinutes = (hour: number) => {
 
 // 获取时间配置显示文本
 const getTimeConfigDisplay = () => {
-  if (!formData.value.isTimeRestricted) return ''
-
   const dayLabel =
     dayOptions.find((d) => d.value === formData.value.reportTimeConfig.dayOfWeek)?.label || ''
   const { startTime, endTime } = formData.value.reportTimeConfig
@@ -587,9 +539,7 @@ const handleOrgSelectorConfirm = (payload: OrgSelectorConfirmPayload) => {
 }
 
 const formRules = reactive({
-  zoneName: [{ required: true, message: '专区名称不能为空', trigger: 'blur' }],
-  zoneCode: [{ required: true, message: '专区编码不能为空', trigger: 'blur' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+  zoneName: [{ required: true, message: '专区名称不能为空', trigger: 'blur' }]
 })
 
 // 时间配置验证规则
@@ -651,61 +601,6 @@ const loadOrgDetailsByIds = async (orgIds: number[]) => {
     selectedOrgDetails.value = mergeOrgDetails(orgIds)
   }
 }
-const generateZoneCode = async () => {
-  const maxRetries = 5
-  let attempt = 0
-
-  while (attempt < maxRetries) {
-    try {
-      // 获取当前时间信息
-      const now = new Date()
-      const year = now.getFullYear().toString().slice(-2)
-      const month = String(now.getMonth() + 1).padStart(2, '0')
-      const day = String(now.getDate()).padStart(2, '0')
-      const hour = String(now.getHours()).padStart(2, '0')
-      const minute = String(now.getMinutes()).padStart(2, '0')
-
-      // 生成随机数（3位）
-      const randomNum = Math.floor(Math.random() * 1000)
-        .toString()
-        .padStart(3, '0')
-
-      // 组合编码：ZONE_年月日时分_随机数
-      const baseCode = `ZONE_${year}${month}${day}${hour}${minute}_${randomNum}`
-
-      // 检查编码是否已存在
-      const existingData = await ReportZoneApi.getPage({
-        pageNo: 1,
-        pageSize: 1,
-        zoneCode: baseCode
-      })
-
-      // 如果不存在，返回此编码
-      if (!existingData.list || existingData.list.length === 0) {
-        return baseCode
-      }
-
-      // 如果存在，增加尝试次数继续生成
-      attempt++
-
-      // 添加短暂延时避免连续生成相同时间戳
-      await new Promise((resolve) => setTimeout(resolve, 100))
-    } catch (error) {
-      console.warn(`生成专区编码失败，尝试次数：${attempt + 1}`, error)
-      attempt++
-
-      // 最后一次尝试失败时，使用纯时间戳 + UUID 后4位
-      if (attempt === maxRetries) {
-        const timestamp = Date.now().toString()
-        const uuid = crypto.randomUUID().replace(/-/g, '').slice(-4).toUpperCase()
-        return `ZONE_${timestamp}_${uuid}`
-      }
-    }
-  }
-
-  // 兜底方案：使用完整时间戳
-  return `ZONE_${Date.now()}_${Math.random().toString(36).slice(-4).toUpperCase()}`
-}
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
@@ -737,9 +632,6 @@ const open = async (type: string, id?: number) => {
         }
       }
 
-      // 如果有时间限制字段则回显，否则使用默认值
-      formData.value.isTimeRestricted = data.isTimeRestricted ?? true
-
       // 如果有选择的机构，设置到selectedOrgIds中并加载详情
       if (data.reportableOrgs) {
         const deptIds = data.reportableOrgs
@@ -753,9 +645,6 @@ const open = async (type: string, id?: number) => {
     } finally {
       formLoading.value = false
     }
-  } else {
-    // 新增时自动生成专区编码
-    formData.value.zoneCode = await generateZoneCode()
   }
 }
 
@@ -770,11 +659,15 @@ const submitForm = async () => {
   const valid = await formRef.value.validate().catch(() => {})
   if (!valid) return
 
-  // 如果启用时间限制，需要验证时间配置
-  if (formData.value.isTimeRestricted) {
-    if (!timeFormRef.value) return
-    const timeValid = await timeFormRef.value.validate().catch(() => {})
-    if (!timeValid) return
+  // 校验时间配置（必填）
+  if (!timeFormRef.value) return
+  const timeValid = await timeFormRef.value.validate().catch(() => {})
+  if (!timeValid) return
+
+  // 校验机构选择（必填）
+  if (selectedOrgIds.value.length === 0) {
+    message.warning('请至少选择一个可填报机构')
+    return
   }
 
   // 提交请求
@@ -782,7 +675,7 @@ const submitForm = async () => {
   try {
     const data = { ...formData.value } as ReportZoneVO
 
-    // 处理可填报机构ID列表 - 使用selectedOrgIds而不是从树组件获取
+    // 处理可填报机构ID列表
     data.reportableOrgs = selectedOrgIds.value.join(',')
 
     if (formType.value === 'create') {
@@ -792,6 +685,7 @@ const submitForm = async () => {
       await ReportZoneApi.update(data)
       message.success('更新成功')
     }
+
     dialogVisible.value = false
     // 发送操作成功的事件
     emit('success')

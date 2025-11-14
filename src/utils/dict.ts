@@ -216,6 +216,9 @@ export enum DICT_TYPE {
   // ========== 短缺药品模块 ==========
   SUPPLY_STATUS = 'supply_status', // 供应状态
 
+  // ========== 监测无法上报模块 ==========
+  UNABLE_REPORT_REASON = 'unable_report_reason', // 无法上报原因
+
   // ========== 填报模块 ==========
   REPORT_STATUS_TYPE = 'report_status_type', // 填报任务状态
   REPORT_PROGRESS = 'report_progress', // 上报进度

@@ -14,6 +14,13 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
+          <el-form-item label="真实姓名" prop="realName">
+            <el-input v-model="formData.realName" placeholder="请输入真实姓名" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="12">
           <el-form-item label="归属机构" prop="deptId">
             <el-tree-select
               v-model="formData.deptId"
@@ -115,6 +122,7 @@ const formLoading = ref(false) // 表单的加载中：1）修改时的数据加
 const formType = ref('') // 表单的类型：create - 新增；update - 修改
 const formData = ref({
   nickname: '',
+  realName: '',
   deptId: '',
   mobile: '',
   email: '',
@@ -202,6 +210,7 @@ const submitForm = async () => {
 const resetForm = () => {
   formData.value = {
     nickname: '',
+    realname: '',
     deptId: '',
     mobile: '',
     email: '',

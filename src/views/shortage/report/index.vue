@@ -71,16 +71,30 @@
           </template>
         </el-table-column>
         <el-table-column label="年份" align="center" prop="year" width="80px" />
-        <el-table-column label="填报周期" align="center" prop="reportWeek" width="100px" />
-        <el-table-column label="截止时间" align="center" width="150px">
+        <el-table-column label="统计时间范围" align="center" prop="currentPeriodRange" width="200px">
+          <template #default="scope">
+            <el-tag type="success" effect="plain" v-if="scope.row.currentPeriodRange">
+              <Icon icon="ep:calendar" class="mr-1" />
+              {{ scope.row.currentPeriodRange }}
+            </el-tag>
+            <span v-else class="text-gray-400">未配置</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="填报周期" align="center" prop="reportWeek" width="120px" />
+        <el-table-column label="任务截止时间" align="center" width="150px">
           <template #default="scope">
             {{ formatDeadlineTime(scope.row.deadlineTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="剩余时间" align="center" width="150px">
+        <el-table-column label="任务剩余时间" align="center" width="150px">
           <template #default="scope">
             <!-- 已逾期状态直接显示已逾期 -->
             <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已逾期</span>
+            <!-- 准备中状态显示距开始剩余时间 -->
+            <span v-else-if="scope.row.reportStatus === 4" :class="getRemainingTimeClass(scope.row.startTime)">
+              {{ calculateRemainingTime(scope.row.startTime, true) }}
+            </span>
+            <!-- 其他状态显示距截止剩余时间 -->
             <span v-else :class="getRemainingTimeClass(scope.row.deadlineTime)">
               {{ calculateRemainingTime(scope.row.deadlineTime) }}
             </span>
@@ -106,7 +120,7 @@
       <el-table-column label="操作" align="center" width="200px" fixed="right">
         <template #default="scope">
           <div class="action-links">
-            <!-- 待填报或草稿状态：显示填报按钮 -->
+            <!-- 填报中或草稿状态：显示填报按钮 -->
             <el-button
               v-if="scope.row.reportStatus === 0 || scope.row.reportStatus === 1"
               type="primary"
@@ -139,6 +153,18 @@
             >
               <Icon icon="ep:warning" class="mr-1" />
               逾期查看
+            </el-button>
+            
+            <!-- 准备中状态：显示查看按钮 -->
+            <el-button
+              v-if="scope.row.reportStatus === 4"
+              type="info"
+              size="small"
+              plain
+              @click="handleView(scope.row.id)"
+            >
+              <Icon icon="ep:view" class="mr-1" />
+              预览
             </el-button>
           </div>
         </template>
@@ -258,14 +284,21 @@ const formatDeadlineTime = (deadlineTime: string) => {
 }
 
 /** 计算剩余时间 */
-const calculateRemainingTime = (deadlineTime: string) => {
-  if (!deadlineTime) return '-'
+const calculateRemainingTime = (targetTime: string, isStartTime: boolean = false) => {
+  if (!targetTime) return '-'
 
   const now = new Date()
-  const deadline = new Date(deadlineTime)
-  const diff = deadline.getTime() - now.getTime()
+  const target = new Date(targetTime)
+  const diff = target.getTime() - now.getTime()
   const absDiff = Math.abs(diff)
-  const prefix = diff <= 0 ? '逾期' : '剩余'
+  
+  // 根据是否是开始时间，决定前缀
+  let prefix = ''
+  if (isStartTime) {
+    prefix = diff <= 0 ? '已开始' : '距开始'
+  } else {
+    prefix = diff <= 0 ? '逾期' : '剩余'
+  }
 
   const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))

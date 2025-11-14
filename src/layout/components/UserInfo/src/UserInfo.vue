@@ -101,7 +101,7 @@ const toDocument = () => {
 </script>
 
 <template>
-  <ElDropdown class="custom-hover" :class="prefixCls" trigger="click">
+  <ElDropdown :class="prefixCls" trigger="click">
     <div class="tech-user-info">
       <!-- 用户头像 -->
       <div class="avatar-container">
@@ -151,46 +151,19 @@ const toDocument = () => {
 <style scoped lang="scss">
 $prefix-cls: #{$namespace}-user-info;
 
-/* 科技感用户信息容器 */
+/* 用户信息容器 */
 .tech-user-info {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 6px 16px 6px 12px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-
-  /* 渐变边框效果 */
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 24px;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.5), rgba(147, 51, 234, 0.5));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
+  transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(0, 212, 255, 0.3);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15);
-
-    &::before {
-      opacity: 1;
-    }
-
+    background: var(--tech-hover-bg);
+    
     .dropdown-arrow {
       transform: rotate(180deg);
     }
@@ -205,9 +178,6 @@ $prefix-cls: #{$namespace}-user-info;
   .user-avatar {
     width: 36px;
     height: 36px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s;
   }
 }
 
@@ -302,22 +272,11 @@ $prefix-cls: #{$namespace}-user-info;
     gap: 10px;
 
     &:hover {
-      background: linear-gradient(
-        135deg,
-        rgba(0, 212, 255, 0.15),
-        rgba(147, 51, 234, 0.15)
-      ) !important;
-      color: #00d4ff !important;
-      transform: translateX(4px);
-
-      .icon {
-        color: #00d4ff !important;
-      }
+      background: var(--tech-hover-bg) !important;
     }
 
     .icon {
       font-size: 16px;
-      transition: color 0.2s;
     }
 
     div {

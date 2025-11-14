@@ -38,12 +38,20 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="剂型规格" prop="dosageCategory">
+      <el-form-item prop="dosageCategory">
+        <template #label>
+          <Tooltip
+            title="剂型规格"
+            message="可选字段，选择剂型规格后可继续选择统计单位"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-select
           v-model="formData.dosageCategory"
-          placeholder="请选择剂型规格"
+          placeholder="请选择剂型规格（可不选）"
           @change="handleDosageCategoryChange"
           style="width: 100%"
+          clearable
         >
           <el-option
             v-for="category in dosageCategories"
@@ -53,13 +61,21 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="统计单位" prop="dosageForm">
+      <el-form-item prop="dosageForm">
+        <template #label>
+          <Tooltip
+            title="统计单位"
+            message="可选字段，选择剂型规格后可选择统计单位"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-select
           v-model="formData.dosageForm"
-          placeholder="请先选择剂型规格"
+          placeholder="请先选择剂型规格（可不选）"
           :disabled="!formData.dosageCategory"
           style="width: 100%"
           filterable
+          clearable
         >
           <el-option
             v-for="unit in availableDosageUnits"
@@ -137,8 +153,6 @@ const availableDosageUnits = ref<string[]>([])
 const formRules = reactive({
   drugCategory: [{ required: true, message: '请选择药品分类', trigger: 'change' }],
   drugName: [{ required: true, message: '请选择药品名称', trigger: 'change' }],
-  dosageCategory: [{ required: true, message: '请选择剂型规格', trigger: 'change' }],
-  dosageForm: [{ required: true, message: '请选择统计单位', trigger: 'change' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }],
 })
 
@@ -230,17 +244,19 @@ const open = async (type: string, id?: number) => {
     formLoading.value = true
     try {
       const data = await DrugConfigApi.get(id)
-      Object.assign(formData.value, data)
-
-      // 如果有药品分类，加载对应的药品列表
+      
+      // 先加载药品分类对应的药品列表，再设置值
       if (data.drugCategory) {
         await handleDrugCategoryChange(data.drugCategory)
       }
-
-      // 如果有剂型规格，加载对应的统计单位列表
+      
+      // 先加载剂型规格对应的统计单位列表，再设置值
       if (data.dosageCategory) {
         await handleDosageCategoryChange(data.dosageCategory)
       }
+      
+      // 最后设置表单数据（这样下拉选项已经加载完成）
+      Object.assign(formData.value, data)
     } finally {
       formLoading.value = false
     }

@@ -44,4 +44,9 @@ export const DrugConfigApi = {
   exportExcel: async (params) => {
     return await request.download({ url: `/shortage/drug-config/export-excel`, params })
   },
+
+  // 从药品分类批量导入
+  batchImportFromCategory: async (data: { zoneId: number; categoryName: string }) => {
+    return await request.post({ url: `/shortage/drug-config/batch-import`, data })
+  }
 }

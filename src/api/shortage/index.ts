@@ -84,6 +84,10 @@ export const ReportZoneApi = {
   getOptions: () =>
     request.get({ url: '/shortage/report-zone/options' }),
 
+  // 开启填报专区并生成首批任务
+  enableZone: (id: number) =>
+    request.post({ url: `/shortage/report-zone/enable/${id}` }),
+
   // 导出Excel
   exportExcel: (params: ReportZonePageReqVO) =>
     request.download({ url: '/shortage/report-zone/export-excel', params })
@@ -107,6 +111,7 @@ export interface DrugConfigPageReqVO {
   pageSize?: number
   zoneId?: number
   drugName?: string
+  drugCategory?: string // 药品分类
   dosageCategory?: string // 剂型规格
   dosageForm?: string
   status?: number
@@ -132,14 +137,28 @@ export const DrugConfigApi = {
   // 删除
   delete: (id: number) => 
     request.delete({ url: `/shortage/drug-config/delete?id=${id}` }),
+
+  // 更新状态
+  updateStatus: async (id: number, status: number) => {
+    return await request.put({ url: `/shortage/drug-config/update-status`, data: { id, status } })
+  },
+
+  // 更新排序
+  updateSortOrder: async (id: number, sortOrder: number) => {
+    return await request.put({ url: `/shortage/drug-config/update-sort-order`, data: { id, sortOrder } })
+  },
   
-  // 批量导入
+  // 批量导入（文件上传）
   batchImport: (zoneId: number, file: File) => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('zoneId', zoneId.toString())
     return request.upload({ url: '/shortage/drug-config/import', data: formData })
-  }
+  },
+  
+  // 从药品分类批量导入
+  batchImportFromCategory: (data: { zoneId: number; categoryName: string }) =>
+    request.post({ url: '/shortage/drug-config/batch-import', data })
 }
 
 // ========== 填报记录 ==========

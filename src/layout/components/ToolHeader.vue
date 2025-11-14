@@ -87,22 +87,8 @@ $prefix-cls: #{$namespace}-tool-header;
 .#{$prefix-cls} {
   transition: left var(--transition-time-02);
   background: transparent;
-  border-bottom: 1px solid var(--tech-light-border);
-  box-shadow: 0 2px 8px rgba(91, 141, 239, 0.06);
   position: relative;
   z-index: 99;
-  
-  /* 顶部渐变装饰条 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--tech-gradient-primary);
-    opacity: 0.3;
-  }
   
   /* 工具项悬停效果 */
   :deep(.custom-hover) {
@@ -111,20 +97,6 @@ $prefix-cls: #{$namespace}-tool-header;
     
     &:hover {
       background: var(--tech-hover-bg);
-      transform: translateY(-1px);
-    }
-  }
-  
-  /* 用户信息区域增强 */
-  :deep(.v-user-info) {
-    .el-dropdown {
-      transition: var(--tech-transition);
-      border-radius: 8px;
-      padding: 4px 12px;
-      
-      &:hover {
-        background: var(--tech-hover-bg);
-      }
     }
   }
 }

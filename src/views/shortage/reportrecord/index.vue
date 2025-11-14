@@ -227,9 +227,17 @@
               border
               max-height="450"
               :row-class-name="getDetailRowClassName"
+              :span-method="detailSpanMethod"
               class="detail-table"
             >
               <el-table-column label="序号" type="index" width="90" align="center" class-name="header-bold" />
+              <el-table-column
+                label="药品分类"
+                prop="drugCategory"
+                width="150"
+                class-name="header-bold category-column"
+                show-overflow-tooltip
+              />
               <el-table-column
                 label="药品名称"
                 prop="drugName"
@@ -535,7 +543,22 @@ const handleDetail = async (row: any) => {
   try {
     // 获取填报明细数据
     const data = await ReportRecordApi.getReportRecordDetail(row.taskId)
-    detailRecords.value = data || []
+    
+    // 按照药品分类、药品名称、剂型排序，确保相同药品名称的数据连续显示
+    const sortedData = [...(data || [])].sort((a, b) => {
+      // 先按药品分类排序
+      const categoryCompare = (a.drugCategory || '').localeCompare(b.drugCategory || '', 'zh-CN')
+      if (categoryCompare !== 0) return categoryCompare
+      
+      // 同一分类内按药品名称排序
+      const nameCompare = (a.drugName || '').localeCompare(b.drugName || '', 'zh-CN')
+      if (nameCompare !== 0) return nameCompare
+      
+      // 同一药品名称按剂型排序
+      return (a.dosageCategory || '').localeCompare(b.dosageCategory || '', 'zh-CN')
+    })
+    
+    detailRecords.value = sortedData
   } catch (error) {
     console.error('加载填报明细失败:', error)
     message.error('加载填报明细失败')
@@ -598,6 +621,90 @@ const getDetailRowClassName = ({ row }: { row: any }): string => {
   return ''
 }
 
+/** 详情表格合并单元格方法 */
+const detailSpanMethod = ({ row, column, rowIndex, columnIndex }: any) => {
+  const dataList = detailRecords.value
+  
+  // 对序号列（第1列）和药品名称列（第3列）进行合并 - 按药品名称分组
+  if (columnIndex === 0 || columnIndex === 2) {
+    const currentDrugName = row.drugName
+
+    if (!currentDrugName || !dataList.length) {
+      return { rowspan: 1, colspan: 1 }
+    }
+
+    // 找到当前药品名称在数据中第一次出现的位置
+    let startIndex = -1
+    for (let i = 0; i < dataList.length; i++) {
+      if (dataList[i].drugName === currentDrugName) {
+        startIndex = i
+        break
+      }
+    }
+
+    // 如果当前行是该药品名称的第一行
+    if (rowIndex === startIndex) {
+      // 计算相同药品名称的连续行数
+      let count = 0
+      for (let i = startIndex; i < dataList.length; i++) {
+        if (dataList[i].drugName === currentDrugName) {
+          count++
+        } else {
+          break
+        }
+      }
+      
+      return {
+        rowspan: count,
+        colspan: 1
+      }
+    } else if (dataList[rowIndex]?.drugName === currentDrugName && rowIndex > startIndex) {
+      // 如果当前行药品名称与前面的相同，且不是第一行，则隐藏
+      return {
+        rowspan: 0,
+        colspan: 0
+      }
+    }
+  }
+  
+  // 对药品分类列（第2列）进行合并 - 按药品分类分组
+  if (columnIndex === 1) {
+    const currentCategory = row.drugCategory
+
+    if (!currentCategory || !dataList.length) {
+      return { rowspan: 1, colspan: 1 }
+    }
+
+    // 找到当前分类的第一行
+    let startIndex = -1
+    for (let i = 0; i < dataList.length; i++) {
+      if (dataList[i].drugCategory === currentCategory) {
+        startIndex = i
+        break
+      }
+    }
+
+    // 计算当前分类的总行数（整个数据集中该分类的所有行）
+    const categoryCount = dataList.filter((item) => item.drugCategory === currentCategory).length
+
+    if (rowIndex === startIndex) {
+      return {
+        rowspan: categoryCount,
+        colspan: 1
+      }
+    } else if (dataList[rowIndex]?.drugCategory === currentCategory) {
+      return {
+        rowspan: 0,
+        colspan: 0
+      }
+    }
+  }
+
+  return {
+    rowspan: 1,
+    colspan: 1
+  }
+}
 
 /** 加载填报周期选项 */
 const loadReportWeekOptions = async () => {
@@ -751,6 +858,14 @@ onMounted(() => {
   :deep(.header-bold .cell) {
     font-weight: 600;
     color: #303133;
+  }
+
+  :deep(.category-column .cell) {
+    background: #fafbfc;
+    font-weight: 600;
+    color: #409eff;
+    font-size: 14px;
+    vertical-align: middle;
   }
 
   // 行样式

@@ -314,13 +314,14 @@
     }
   }
   
-  /* 子菜单展开样式 */
+  /* 子菜单展开样式 - 支持多层级缩进 */
   .el-menu {
     background: transparent !important;
     border-radius: 0;
     margin: 0;
     padding: 4px 0;
     
+    /* 二级菜单 */
     .el-menu-item {
       padding-left: 48px !important;
       background: transparent !important;
@@ -357,6 +358,51 @@
       &.is-active::before {
         background: white;
         box-shadow: 0 0 0 2px var(--tech-primary-color);
+      }
+    }
+    
+    /* 三级菜单及其父级 */
+    .el-menu {
+      .el-sub-menu__title {
+        padding-left: 48px !important;
+      }
+      
+      .el-menu-item {
+        padding-left: 68px !important;
+        
+        &::before {
+          left: 44px;
+        }
+      }
+      
+      /* 四级菜单及其父级 */
+      .el-menu {
+        .el-sub-menu__title {
+          padding-left: 68px !important;
+        }
+        
+        .el-menu-item {
+          padding-left: 88px !important;
+          
+          &::before {
+            left: 64px;
+          }
+        }
+        
+        /* 五级菜单及其父级（如果需要） */
+        .el-menu {
+          .el-sub-menu__title {
+            padding-left: 88px !important;
+          }
+          
+          .el-menu-item {
+            padding-left: 108px !important;
+            
+            &::before {
+              left: 84px;
+            }
+          }
+        }
       }
     }
   }

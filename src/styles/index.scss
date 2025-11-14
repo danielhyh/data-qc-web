@@ -41,10 +41,6 @@
    全局增强样式 - 科技感优化
    ============================================ */
 
-/* ============================================
-   现代化字体系统
-   ============================================ */
-
 /* 字体族定义 */
 :root {
   /* 主字体 - 优先使用系统 UI 字体 */
@@ -921,33 +917,33 @@ small, .text-muted {
 }
 
 /* ============================================
-   模态框遮罩层毛玻璃效果
+   模态框遮罩层毛玻璃效果 - 高透明度便于参考背景内容
    ============================================ */
 
 /* Element Plus 模态框遮罩层 - Dialog/Drawer/MessageBox 等 */
 .el-overlay {
-  background-color: rgba(0, 0, 0, 0.3) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(150%);
-  backdrop-filter: blur(10px) saturate(150%);
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(110%);
+  backdrop-filter: blur(4px) saturate(110%);
 }
 
 /* 兼容旧版本的遮罩层 */
 .v-modal {
-  background-color: rgba(0, 0, 0, 0.3) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(150%);
-  backdrop-filter: blur(10px) saturate(150%);
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(110%);
+  backdrop-filter: blur(4px) saturate(110%);
 }
 
 /* Drawer 抽屉遮罩层 */
 .el-drawer__overlay {
-  -webkit-backdrop-filter: blur(10px) saturate(150%);
-  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(4px) saturate(110%);
+  backdrop-filter: blur(4px) saturate(110%);
 }
 
 /* Dialog 对话框遮罩层增强 */
 .el-dialog__wrapper {
-  -webkit-backdrop-filter: blur(10px) saturate(150%);
-  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(4px) saturate(110%);
+  backdrop-filter: blur(4px) saturate(110%);
 }
 
 /* 空状态优化 */

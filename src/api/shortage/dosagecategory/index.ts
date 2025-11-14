@@ -37,6 +37,16 @@ export const DosageCategoryApi = {
     return await request.delete({ url: `/shortage/dosage-category/delete?id=` + id })
   },
 
+  // 更新剂型规格状态
+  updateStatus: async (id: number, status: number) => {
+    return await request.put({ url: `/shortage/dosage-category/update-status`, data: { id, status } })
+  },
+
+  // 更新剂型规格排序
+  updateSortOrder: async (id: number, sortOrder: number) => {
+    return await request.put({ url: `/shortage/dosage-category/update-sort-order`, data: { id, sortOrder } })
+  },
+
   // 获取所有剂型规格名称
   getCategoryNames: async () => {
     return await request.get({ url: `/shortage/dosage-category/category-names` })

@@ -18,8 +18,12 @@
         </div>
         <div class="header-right" v-if="zoneInfo">
           <div class="meta-item">
-            <span class="meta-label">专区编码：</span>
-            <span class="meta-value">{{ zoneInfo.zoneCode || `ZONE_${zoneInfo.id}` }}</span>
+            <span class="meta-label">统计时间范围：</span>
+            <el-tag type="success" effect="plain" v-if="zoneInfo.currentPeriodRange">
+              <Icon icon="ep:calendar" class="mr-1" />
+              {{ zoneInfo.currentPeriodRange }}
+            </el-tag>
+            <span v-else class="meta-value text-gray-400">未配置</span>
           </div>
           <div class="meta-divider"></div>
           <div class="meta-item">
@@ -30,88 +34,88 @@
       </div>
     </ContentWrap>
 
-    <!-- 搜索工作栏 -->
-    <ContentWrap>
-      <el-form
-        class="-mb-15px"
-        :model="queryParams"
-        ref="queryFormRef"
-        :inline="true"
-        label-width="68px"
-      >
-        <el-form-item label="药品名称" prop="drugName">
-          <el-input
-            v-model="queryParams.drugName"
-            placeholder="请输入药品名称"
-            clearable
-            @keyup.enter="handleQuery"
-            class="!w-240px"
-          />
-        </el-form-item>
-        <el-form-item label="药品分类" prop="drugCategory">
-          <el-input
-            v-model="queryParams.drugCategory"
-            placeholder="请输入药品分类"
-            clearable
-            @keyup.enter="handleQuery"
-            class="!w-240px"
-          />
-        </el-form-item>
-        <el-form-item label="剂型" prop="dosageForm">
-          <el-input
-            v-model="queryParams.dosageForm"
-            placeholder="请输入剂型"
-            clearable
-            @keyup.enter="handleQuery"
-            class="!w-240px"
-          />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select
-            v-model="queryParams.status"
-            placeholder="请选择状态"
-            clearable
-            class="!w-240px"
-          >
-            <el-option
-              v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="handleQuery">
-            <Icon icon="ep:search" class="mr-5px" />
-            搜索
-          </el-button>
-          <el-button @click="resetQuery">
-            <Icon icon="ep:refresh" class="mr-5px" />
-            重置
-          </el-button>
-          <el-button
-            type="primary"
-            @click="openForm('create')"
-            v-hasPermi="['shortage:drug-config:create']"
-          >
-            <Icon icon="ep:plus" class="mr-5px" />
-            新增药品
-          </el-button>
-          <el-button
-            type="success"
-            @click="handleBatchImport"
-            v-hasPermi="['shortage:drug-config:create']"
-          >
-            <Icon icon="ep:upload" class="mr-5px" />
-            批量导入
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </ContentWrap>
+    <!-- Tab 标签页 -->
+    <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
+      <el-tab-pane label="全部" name="all" />
+      <el-tab-pane
+        v-for="category in categoryTabs"
+        :key="category"
+        :label="category"
+        :name="category"
+      />
 
-    <!-- 列表 -->
-    <ContentWrap>
+      <!-- 搜索工作栏 -->
+      <ContentWrap>
+        <el-form
+          class="-mb-15px"
+          :model="queryParams"
+          ref="queryFormRef"
+          :inline="true"
+          label-width="68px"
+        >
+          <el-form-item label="药品名称" prop="drugName">
+            <el-input
+              v-model="queryParams.drugName"
+              placeholder="请输入药品名称"
+              clearable
+              @keyup.enter="handleQuery"
+              class="!w-240px"
+            />
+          </el-form-item>
+          <el-form-item label="统计单位" prop="dosageForm">
+            <el-input
+              v-model="queryParams.dosageForm"
+              placeholder="请输入统计单位"
+              clearable
+              @keyup.enter="handleQuery"
+              class="!w-240px"
+            />
+          </el-form-item>
+          <el-form-item label="状态" prop="status">
+            <el-select
+              v-model="queryParams.status"
+              placeholder="请选择状态"
+              clearable
+              class="!w-240px"
+            >
+              <el-option
+                v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button @click="handleQuery">
+              <Icon icon="ep:search" class="mr-5px" />
+              搜索
+            </el-button>
+            <el-button @click="resetQuery">
+              <Icon icon="ep:refresh" class="mr-5px" />
+              重置
+            </el-button>
+            <el-button
+              type="primary"
+              @click="openForm('create')"
+              v-hasPermi="['shortage:drug-config:create']"
+            >
+              <Icon icon="ep:plus" class="mr-5px" />
+              新增药品
+            </el-button>
+            <el-button
+              type="success"
+              @click="handleBatchImport"
+              v-hasPermi="['shortage:drug-config:create']"
+            >
+              <Icon icon="ep:upload" class="mr-5px" />
+              批量导入
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </ContentWrap>
+
+      <!-- 列表 -->
       <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
         <el-table-column label="序号" type="index" width="80" align="center" />
         <el-table-column
@@ -130,17 +134,40 @@
             {{ scope.row.drugCategory || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="剂型" align="center" prop="dosageForm" width="120">
+        <el-table-column label="剂型规格" align="center" prop="dosageCategory" width="120">
           <template #default="scope">
-            {{ scope.row.dosageForm }}
+            {{ scope.row.dosageCategory || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="状态" align="center" prop="status" width="80">
+        <el-table-column label="统计单位" align="center" prop="dosageForm" width="150">
           <template #default="scope">
-            <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />
+            <el-tag v-if="scope.row.dosageForm" size="small">{{ scope.row.dosageForm }}</el-tag>
+            <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="排序" align="center" prop="sortOrder" width="80" />
+        <el-table-column label="状态" align="center" prop="status" width="100">
+          <template #default="scope">
+            <el-switch
+              v-model="scope.row.status"
+              :active-value="0"
+              :inactive-value="1"
+              @change="handleStatusChange(scope.row)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="排序" align="center" prop="sortOrder" width="140">
+          <template #default="scope">
+            <el-input-number
+              v-model="scope.row.sortOrder"
+              :min="0"
+              :max="9999"
+              :controls="false"
+              size="small"
+              @change="handleSortOrderChange(scope.row)"
+              style="width: 100px"
+            />
+          </template>
+        </el-table-column>
         <el-table-column
           label="创建时间"
           align="center"
@@ -151,7 +178,7 @@
         <el-table-column label="操作" align="center" width="180px">
           <template #default="scope">
             <el-button
-              type="primary"
+              type="success"
               size="small"
               @click="openForm('update', scope.row.id)"
               v-hasPermi="['shortage:drug-config:update']"
@@ -178,8 +205,7 @@
         v-model:limit="queryParams.pageSize"
         @pagination="getList"
       />
-    </ContentWrap>
-
+    </el-tabs>
     <!-- 表单弹窗：添加/修改 -->
     <DrugConfigForm ref="formRef" @success="getList" :zone-id="currentZoneId" />
 
@@ -193,7 +219,7 @@ import { dateFormatter } from '@/utils/formatTime'
 import { DrugConfigApi, ReportZoneApi, type DrugConfigVO, type ReportZoneVO } from '@/api/shortage'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import DrugConfigForm from './DrugConfigForm.vue'
-import BatchImportDialog from './BatchImportDialog.vue'
+import BatchImportDialog from './components/BatchImportDialog.vue'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
 /** 专区药品配置 列表 */
@@ -208,13 +234,15 @@ const list = ref<DrugConfigVO[]>([]) // 列表的数据
 const total = ref(0) // 列表的总页数
 const zoneInfo = ref<ReportZoneVO>()
 const currentZoneId = ref<number>()
+const activeTab = ref('all') // 当前激活的tab
+const categoryTabs = ref<string[]>([]) // 分类标签列表
 
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
   zoneId: undefined as number | undefined,
   drugName: '',
-  drugCategory: '',
+  drugCategory: '', // 由 activeTab 控制
   dosageCategory: '',
   dosageForm: '',
   status: undefined as number | undefined
@@ -257,18 +285,56 @@ const initZoneInfo = async () => {
   }
 }
 
+/** 加载分类标签 */
+const loadCategoryTabs = async () => {
+  if (!currentZoneId.value) return
+
+  try {
+    // 获取该专区配置的所有药品的分类列表
+    const data = await DrugConfigApi.getPage({
+      zoneId: currentZoneId.value,
+      pageNo: 1,
+      pageSize: -1 // 获取所有数据
+    })
+
+    // 提取唯一的分类名称
+    const categories = new Set<string>()
+    data.list.forEach((item: any) => {
+      if (item.drugCategory) {
+        categories.add(item.drugCategory)
+      }
+    })
+    categoryTabs.value = Array.from(categories)
+  } catch (error) {
+    console.error('加载分类标签失败:', error)
+  }
+}
+
 /** 查询列表 */
 const getList = async () => {
   if (!currentZoneId.value) return
 
   loading.value = true
   try {
-    const data = await DrugConfigApi.getPage(queryParams)
+    // 构建查询参数
+    const params = {
+      ...queryParams,
+      drugCategory: activeTab.value === 'all' ? undefined : activeTab.value
+    }
+    
+    const data = await DrugConfigApi.getPage(params)
     list.value = data.list
     total.value = data.total
   } finally {
     loading.value = false
   }
+}
+
+/** Tab切换处理 */
+const handleTabChange = (tabName: string) => {
+  activeTab.value = tabName
+  queryParams.pageNo = 1
+  getList()
 }
 
 /** 搜索按钮操作 */
@@ -280,11 +346,35 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryParams.drugName = ''
-  queryParams.drugCategory = ''
   queryParams.dosageCategory = ''
   queryParams.dosageForm = ''
   queryParams.status = undefined
   handleQuery()
+}
+
+/** 修改状态 */
+const handleStatusChange = async (row: DrugConfigVO) => {
+  try {
+    const text = row.status === 0 ? '启用' : '停用'
+    await message.confirm('确认要"' + text + '""' + row.drugName + '"吗?')
+    await DrugConfigApi.updateStatus(row.id!, row.status)
+    message.success('修改成功')
+    await getList()
+  } catch {
+    // 取消后，恢复状态
+    row.status = row.status === 0 ? 1 : 0
+  }
+}
+
+/** 修改排序 */
+const handleSortOrderChange = async (row: DrugConfigVO) => {
+  try {
+    await DrugConfigApi.updateSortOrder(row.id!, row.sortOrder)
+    message.success('排序修改成功')
+  } catch (error) {
+    message.error('排序修改失败')
+    await getList()
+  }
 }
 
 /** 添加/修改操作 */
@@ -306,12 +396,15 @@ const handleDelete = async (id: number) => {
     await DrugConfigApi.delete(id)
     message.success('删除成功')
     await getList()
+    // 重新加载分类标签（可能删除后某个分类为空了）
+    await loadCategoryTabs()
   } catch {}
 }
 
 /** 初始化 **/
 onMounted(async () => {
   await initZoneInfo()
+  await loadCategoryTabs()
   getList()
 })
 </script>
@@ -319,7 +412,6 @@ onMounted(async () => {
 <style scoped>
 .app-container {
   padding: 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
   min-height: 100vh;
 }
 
@@ -451,7 +543,7 @@ onMounted(async () => {
   .header-content {
     flex-wrap: wrap;
   }
-  
+
   .header-right {
     width: 100%;
     justify-content: flex-start;

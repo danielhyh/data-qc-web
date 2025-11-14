@@ -70,7 +70,15 @@
         <ContentWrap>
           <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
             <el-table-column label="序号" type="index" width="80" align="center" />
-            <el-table-column label="专区编码" align="center" prop="zoneCode" width="120px" />
+            <el-table-column label="统计时间范围" align="center" prop="currentPeriodRange" width="200px">
+              <template #default="scope">
+                <el-tag type="success" effect="plain" v-if="scope.row.currentPeriodRange">
+                  <Icon icon="ep:calendar" class="mr-1" />
+                  {{ scope.row.currentPeriodRange }}
+                </el-tag>
+                <span v-else class="text-gray-400">未配置</span>
+              </template>
+            </el-table-column>
             <el-table-column label="专区名称" align="center" prop="zoneName" width="180px">
               <template #default="scope">
                 <span class="font-bold">{{ scope.row.zoneName }}</span>
@@ -238,9 +246,17 @@ const handleStatusChange = async (row: ReportZoneVO) => {
     // 修改状态的二次确认
     const text = row.status === CommonStatusEnum.ENABLE ? '启用' : '停用'
     await message.confirm('确认要"' + text + '""' + row.zoneName + '"专区吗?')
-    // 发起修改状态
-    await ReportZoneApi.updateStatus(row.id, row.status)
-    message.success('修改成功')
+
+    // 如果是开启状态(0)，调用 enableZone 接口（会生成首批任务并创建定时任务）
+    if (row.status === CommonStatusEnum.ENABLE) {
+      await ReportZoneApi.enableZone(row.id)
+      message.success('专区已开启，已生成首批填报任务')
+    } else {
+      // 如果是停用状态(1)，只调用 updateStatus
+      await ReportZoneApi.updateStatus(row.id, row.status)
+      message.success('修改成功')
+    }
+
     // 刷新列表
     await getList()
   } catch {

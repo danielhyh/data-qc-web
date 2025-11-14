@@ -1,20 +1,54 @@
 <template>
-  <Dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
+  <Dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
     <el-form
       ref="formRef"
       v-loading="formLoading"
       :model="formData"
       :rules="formRules"
-      label-width="100px"
+      label-width="120px"
     >
-      <el-form-item label="剂型规格" prop="categoryName">
-        <el-input v-model="formData.categoryName" placeholder="请输入剂型规格名称" />
+      <!-- 新增时显示添加模式选择 -->
+      <el-form-item label="添加模式" prop="addMode" v-if="formType === 'create'">
+        <el-radio-group v-model="formData.addMode" @change="handleAddModeChange">
+          <el-radio :value="1">新增剂型规格</el-radio>
+          <el-radio :value="2">选择已有剂型规格添加统计单位</el-radio>
+        </el-radio-group>
       </el-form-item>
-      <el-form-item label="统计单位" prop="dosageUnit">
+
+      <!-- 剂型规格：新增模式为输入框，选择模式为下拉框 -->
+      <el-form-item label="剂型规格" prop="categoryName">
+        <el-input 
+          v-if="formType === 'update' || formData.addMode === 1"
+          v-model="formData.categoryName" 
+          placeholder="请输入剂型规格名称"
+          :disabled="formType === 'update'"
+        />
+        <el-select
+          v-else
+          v-model="formData.categoryName"
+          placeholder="请选择剂型规格"
+          filterable
+          style="width: 100%"
+        >
+          <el-option
+            v-for="category in existingCategories"
+            :key="category"
+            :label="category"
+            :value="category"
+          />
+        </el-select>
+      </el-form-item>
+
+      <!-- 只在模式2（选择已有剂型规格）或编辑时显示统计单位 -->
+      <el-form-item prop="dosageUnit" v-if="formType === 'update' || formData.addMode === 2">
+        <template #label>
+          <Tooltip
+            title="统计单位"
+            message="格式：剂型名称(单位)，如：普通片剂(片)、胶囊(粒)"
+            icon="ep:info-filled"
+          />
+        </template>
         <el-input v-model="formData.dosageUnit" placeholder="如：普通片剂(片)" />
-        <div class="el-form-item__help">
-          格式：剂型名称(单位)，如：普通片剂(片)、胶囊(粒)
-        </div>
       </el-form-item>
       <el-form-item label="排序" prop="sortOrder">
         <el-input-number v-model="formData.sortOrder" :min="0" :max="999" />
@@ -56,19 +90,53 @@ const formLoading = ref(false)
 const formType = ref('')
 const formRef = ref()
 
+// 已有的剂型规格列表
+const existingCategories = ref<string[]>([])
+
 const formData = ref({
   id: undefined,
+  addMode: 1, // 1-新增剂型规格，2-选择已有剂型规格
   categoryName: '',
   dosageUnit: '',
   sortOrder: 0,
   status: 0
 })
 
-const formRules = reactive({
-  categoryName: [{ required: true, message: '剂型规格名称不能为空', trigger: 'blur' }],
-  dosageUnit: [{ required: true, message: '统计单位不能为空', trigger: 'blur' }],
-  status: [{ required: true, message: '状态不能为空', trigger: 'change' }]
+const formRules = computed(() => {
+  const rules: any = {
+    addMode: [{ required: true, message: '请选择添加模式', trigger: 'change' }],
+    categoryName: [{ required: true, message: '剂型规格名称不能为空', trigger: 'blur' }],
+    status: [{ required: true, message: '状态不能为空', trigger: 'change' }]
+  }
+  
+  // 模式2（选择已有剂型规格）或编辑时，统计单位为必填
+  if (formType.value === 'update' || formData.value.addMode === 2) {
+    rules.dosageUnit = [{ required: true, message: '统计单位不能为空', trigger: 'blur' }]
+  }
+  
+  return rules
 })
+
+/** 加载已有的剂型规格列表 */
+const loadExistingCategories = async () => {
+  try {
+    existingCategories.value = await DosageCategoryApi.getCategoryNames()
+  } catch (error) {
+    console.error('加载剂型规格列表失败:', error)
+  }
+}
+
+/** 处理添加模式变化 */
+const handleAddModeChange = (mode: number) => {
+  // 清空剂型规格和统计单位选择
+  formData.value.categoryName = ''
+  formData.value.dosageUnit = ''
+  
+  // 如果是选择已有剂型规格模式，加载列表
+  if (mode === 2) {
+    loadExistingCategories()
+  }
+}
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
@@ -76,6 +144,7 @@ const open = async (type: string, id?: number) => {
   dialogTitle.value = type === 'create' ? '添加剂型规格' : '修改剂型规格'
   formType.value = type
   resetForm()
+  
   // 修改时，设置数据
   if (id) {
     formLoading.value = true
@@ -85,6 +154,9 @@ const open = async (type: string, id?: number) => {
     } finally {
       formLoading.value = false
     }
+  } else {
+    // 新增时加载已有剂型规格列表（为模式2准备）
+    await loadExistingCategories()
   }
 }
 
@@ -95,7 +167,14 @@ const submitForm = async () => {
   if (!valid) return
   formLoading.value = true
   try {
-    const data = formData.value as unknown as DosageCategoryVO
+    const data = {
+      id: formData.value.id,
+      categoryName: formData.value.categoryName,
+      dosageUnit: formData.value.dosageUnit,
+      sortOrder: formData.value.sortOrder,
+      status: formData.value.status
+    } as DosageCategoryVO
+    
     if (formType.value === 'create') {
       await DosageCategoryApi.create(data)
       message.success('新增成功')
@@ -114,6 +193,7 @@ const submitForm = async () => {
 const resetForm = () => {
   formData.value = {
     id: undefined,
+    addMode: 1,
     categoryName: '',
     dosageUnit: '',
     sortOrder: 0,
@@ -125,10 +205,3 @@ const resetForm = () => {
 defineExpose({ open })
 </script>
 
-<style scoped>
-.el-form-item__help {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
-}
-</style>

@@ -13,7 +13,10 @@
           <div class="header-divider"></div>
           <div class="header-info">
             <h2 class="page-title">{{ zoneInfo?.zoneName || '药品短缺填报' }}</h2>
-            <p class="page-subtitle">{{ displayWeek }} 填报周期</p>
+            <p class="page-subtitle" v-if="zoneInfo?.currentPeriodRange">
+              <Icon icon="ep:calendar" class="mr-1" />
+              统计时间范围: {{ zoneInfo.currentPeriodRange }}
+            </p>
           </div>
         </div>
         <div class="header-right">
@@ -100,15 +103,13 @@
           border
           class="report-table"
           :row-class-name="getRowClassName"
+          :span-method="objectSpanMethod"
         >
-          <el-table-column label="序号" type="index" width="80" fixed class-name="header-bold" />
-          <el-table-column
-            label="药品分类"
-            prop="drugCategory"
-            width="150"
-            class-name="header-bold"
-            show-overflow-tooltip
-          />
+          <el-table-column label="序号" width="80" fixed class-name="header-bold" align="center">
+            <template #default="scope">
+              <span v-if="scope.row.showDrugName">{{ scope.row.drugIndex }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="药品名称" prop="drugName" width="200" class-name="header-bold" />
           <el-table-column
             label="剂型规格"
@@ -116,27 +117,30 @@
             width="150"
             class-name="header-bold"
             show-overflow-tooltip
-          />
-          <el-table-column
-            label="最小剂量单位"
-            prop="dosageUnit"
-            width="200"
-            class-name="header-bold"
           >
             <template #default="scope">
-              <el-select
-                v-model="scope.row.dosageUnit"
+              {{ scope.row.dosageCategory || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            label="统计单位"
+            prop="dosageUnit"
+            width="150"
+            class-name="header-bold"
+            show-overflow-tooltip
+          >
+            <template #default="scope">
+              {{ scope.row.dosageUnit || '-' }}
+            </template>
+          </el-table-column>
+
+          <el-table-column label="本机构未使用此药品" width="180" align="center" class-name="header-bold">
+            <template #default="scope">
+              <el-checkbox
+                v-model="scope.row.notAvailable"
                 :disabled="isReadOnly"
-                style="width: 100%"
-                placeholder="请选择"
-              >
-                <el-option
-                  v-for="unit in scope.row.dosageUnitOptions || []"
-                  :key="unit.value"
-                  :label="unit.label"
-                  :value="unit.value"
-                />
-              </el-select>
+                @change="handleNotAvailableChange(scope.row)"
+              />
             </template>
           </el-table-column>
 
@@ -150,7 +154,7 @@
               <div class="usage-input">
                 <el-input
                   v-model="scope.row.weekUsageAmount"
-                  :disabled="isReadOnly"
+                  :disabled="isReadOnly || scope.row.notAvailable"
                   style="width: 100%"
                   placeholder="请输入本周累计使用量"
                   @input="handleUsageInput(scope.row)"
@@ -170,7 +174,7 @@
               <div class="stock-input">
                 <el-input
                   v-model="scope.row.currentStockAmount"
-                  :disabled="isReadOnly"
+                  :disabled="isReadOnly || scope.row.notAvailable"
                   style="width: 100%"
                   placeholder="请输入当日实时库存量"
                   @input="handleStockInput(scope.row)"
@@ -190,9 +194,10 @@
               <div class="supply-input-wrapper">
                 <el-select
                   v-model="scope.row.supplyStatus"
-                  :disabled="isReadOnly"
+                  :disabled="isReadOnly || scope.row.notAvailable"
                   style="width: 100%"
                   placeholder="请选择"
+                  clearable
                   :class="{ 'required-field': isSupplyStatusRequired(scope.row) }"
                   :key="`supply-${scope.$index}-${scope.row.weekUsageAmount}-${scope.row.currentStockAmount}`"
                 >
@@ -315,8 +320,8 @@ const routeZoneId = ref<string | undefined>(route.query.zoneId as string | undef
 const routeReportWeek = ref<string | undefined>(route.query.reportWeek as string | undefined)
 const reportStatus = ref<number>(route.query.reportStatus ? Number(route.query.reportStatus) : 0)
 
-// 根据填报状态判断是否为只读模式: 2-已提交/3-已逾期为只读
-const isReadOnly = computed(() => reportStatus.value === 2 || reportStatus.value === 3)
+// 根据填报状态判断是否为只读模式: 2-已提交/3-已逾期/4-准备中为只读
+const isReadOnly = computed(() => reportStatus.value === 2 || reportStatus.value === 3 || reportStatus.value === 4)
 
 // 药品分类Tab
 const activeDrugCategory = ref<string>('')
@@ -327,11 +332,58 @@ const drugCategories = computed(() => {
   return categories.filter((c) => c) // 过滤掉空值
 })
 
-// 根据当前选中的药品分类过滤数据
+// 根据当前选中的药品分类过滤数据并合并相同药品名称
 const filteredReportList = computed(() => {
-  if (!activeDrugCategory.value) return reportList.value
-  return reportList.value.filter((item) => item.drugCategory === activeDrugCategory.value)
+  let filtered = !activeDrugCategory.value 
+    ? reportList.value 
+    : reportList.value.filter((item) => item.drugCategory === activeDrugCategory.value)
+  
+  // 合并相同药品名称 - 直接使用原始对象引用，不创建新对象
+  const drugMap = new Map<string, any[]>()
+  
+  filtered.forEach(item => {
+    const drugName = item.drugName || ''
+    if (!drugMap.has(drugName)) {
+      drugMap.set(drugName, [])
+    }
+    drugMap.get(drugName)!.push(item)
+  })
+  
+  // 转换为合并列表 - 直接使用原始对象，添加临时显示属性
+  const result: any[] = []
+  let drugIndex = 1
+  
+  drugMap.forEach((items, drugName) => {
+    items.forEach((item, index) => {
+      // 直接在原始对象上添加显示属性（临时属性，不会被提交）
+      item.drugIndex = drugIndex
+      item.showDrugName = index === 0
+      item.rowspan = index === 0 ? items.length : 0
+      result.push(item)
+    })
+    drugIndex++
+  })
+  
+  return result
 })
+
+// 表格合并方法
+const objectSpanMethod = ({ row, column, rowIndex, columnIndex }: any) => {
+  // 合并序号列（第0列）和药品名称列（第1列）
+  if (columnIndex === 0 || columnIndex === 1) {
+    if (row.showDrugName) {
+      return {
+        rowspan: row.rowspan,
+        colspan: 1
+      }
+    } else {
+      return {
+        rowspan: 0,
+        colspan: 0
+      }
+    }
+  }
+}
 
 // 获取某个分类的数量
 const getCategoryCount = (category: string) => {
@@ -377,34 +429,113 @@ const timeConfigDisplay = ref('加载中...')
 
 // 通知标题（包含剩余时间信息）
 const noticeTitle = computed(() => {
-  if (!isReadOnly.value && isTimeRestricted.value && remainingTime.value) {
-    if (isInReportTime.value) {
-      return `填报通知（剩余时间：${remainingTime.value}）`
-    } else {
-      return `填报通知（${timeConfigDisplay.value}）`
-    }
+  // 准备中状态
+  if (reportStatus.value === 4 && taskDetail.value?.startTime) {
+    const timeToStart = calculateRemainingTimeFromTarget(taskDetail.value.startTime, true)
+    return `填报通知（${timeToStart}）`
   }
+  
+  // 填报中状态（reportStatus === 0 或 1） - 使用 taskDetail.deadlineTime 计算剩余时间
+  if ((reportStatus.value === 0 || reportStatus.value === 1) && taskDetail.value?.deadlineTime) {
+    const remaining = calculateRemainingTimeFromTarget(taskDetail.value.deadlineTime, false)
+    return `填报通知（${remaining}）`
+  }
+  
+  // 已提交状态 - 不显示剩余时间
+  if (reportStatus.value === 2) {
+    return '填报通知'
+  }
+  
+  // 已逾期状态
+  if (reportStatus.value === 3) {
+    return '填报通知（已逾期）'
+  }
+  
   return '填报通知'
 })
+
+// 计算距离目标时间的剩余时间
+const calculateRemainingTimeFromTarget = (targetTime: string, isStartTime: boolean = false): string => {
+  if (!targetTime) return isStartTime ? '即将开始' : '剩余时间未知'
+
+  const now = new Date()
+  const target = new Date(targetTime)
+  const diff = target.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    return isStartTime ? '填报已开始' : '已逾期'
+  }
+
+  const absDiff = Math.abs(diff)
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60))
+
+  const prefix = isStartTime ? '距填报开始还有' : '剩余时间：'
+
+  // 大于等于1天
+  if (days > 0) {
+    return `${prefix}${days}天${hours}小时`
+  }
+  // 大于等于1小时
+  if (hours > 0) {
+    return `${prefix}${hours}小时${minutes}分钟`
+  }
+  // 小于1小时
+  return `${prefix}${minutes}分钟`
+}
 
 // 关闭通知
 const handleCloseNotice = () => {
   noticeClosedByUser.value = true
 }
 
-// 是否有填写的数据 - 现在必须所有数据都填写
+// 计算距离开始的时间（用于准备中状态）
+const calculateTimeToStart = (startTime: string): string => {
+  if (!startTime) return '即将开始'
+
+  const now = new Date()
+  const start = new Date(startTime)
+  const diff = start.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    return '填报已开始'
+  }
+
+  const absDiff = Math.abs(diff)
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60))
+
+  // 大于等于1天
+  if (days > 0) {
+    return `距填报开始还有 ${days}天${hours}小时`
+  }
+  // 大于等于1小时
+  if (hours > 0) {
+    return `距填报开始还有 ${hours}小时${minutes}分钟`
+  }
+  // 小于1小时
+  return `距填报开始还有 ${minutes}分钟`
+}
+
+// 是否有填写的数据 - 只要有任意一项填写（包括0）或勾选了"本机构未使用此药品"就可以保存草稿
 const hasNoFilledData = computed(() => {
-  return reportList.value.some((item) => {
+  return !reportList.value.some((item) => {
+    // 勾选了"本机构未使用此药品"也算作已填写
+    if (item.notAvailable) {
+      return true
+    }
     const hasWeekUsage = item.weekUsageAmount !== undefined && item.weekUsageAmount !== null
     const hasCurrentStock = item.currentStockAmount !== undefined && item.currentStockAmount !== null
-    return !hasWeekUsage || !hasCurrentStock
+    return hasWeekUsage || hasCurrentStock
   })
 })
 
 // 保存草稿按钮提示
 const getSaveDraftTooltip = computed(() => {
   if (hasNoFilledData.value) {
-    return '请填写所有药品的本周累计使用量和当日实时库存量'
+    return '请至少填写一项数据或勾选"本机构未使用此药品"'
   }
   return '保存当前填写的数据为草稿'
 })
@@ -425,6 +556,11 @@ const validateData = (): { valid: boolean; message: string; incompleteItems: any
   const incompleteItems: any[] = []
 
   reportList.value.forEach((item, index) => {
+    // 跳过标记为"无此药品"的项
+    if (item.notAvailable) {
+      return
+    }
+    
     // 检查本周累计使用量和当日实时库存量是否都已填写
     const hasWeekUsage = item.weekUsageAmount !== undefined && item.weekUsageAmount !== null
     const hasCurrentStock = item.currentStockAmount !== undefined && item.currentStockAmount !== null
@@ -462,7 +598,7 @@ const validateData = (): { valid: boolean; message: string; incompleteItems: any
   if (incompleteItems.length > 0) {
     const firstItem = incompleteItems[0]
     let message = `请完善第 ${firstItem.index} 项「${firstItem.drugName}」的数据：`
-    const missing = []
+    const missing: string[] = []
 
     if (firstItem.missingWeekUsage) missing.push('本周累计使用量')
     if (firstItem.missingCurrentStock) missing.push('当日实时库存量')
@@ -486,6 +622,7 @@ const getIsSupplyStatusRequired = (row: ReportRecordVO): boolean => {
   const weekUsage = row.weekUsageAmount
   const stockAmount = row.currentStockAmount
 
+  // 只有用量或库存大于0时，才需要填供应情况（0值不需要必填）
   return (
     (weekUsage !== undefined && weekUsage !== null && weekUsage > 0) ||
     (stockAmount !== undefined && stockAmount !== null && stockAmount > 0)
@@ -497,6 +634,20 @@ const isSupplyStatusRequired = (row: ReportRecordVO): boolean => {
   return getIsSupplyStatusRequired(row)
 }
 
+// 处理"无此药品"状态变化
+const handleNotAvailableChange = (row: ReportRecordVO) => {
+  if (row.notAvailable) {
+    // 勾选"无此药品"时，清空所有填报数据
+    // @ts-ignore
+    row.weekUsageAmount = undefined
+    // @ts-ignore
+    row.currentStockAmount = undefined
+    // @ts-ignore
+    row.supplyStatus = undefined
+  }
+  // 如果取消勾选，不做任何操作，让用户重新填写
+}
+
 // 处理用量输入 - 只允许数字
 const handleUsageInput = (row: ReportRecordVO) => {
   // 将输入转换为字符串并过滤非数字字符
@@ -504,6 +655,7 @@ const handleUsageInput = (row: ReportRecordVO) => {
   const numValue = strValue.replace(/[^\d]/g, '')
   // 空字符串保持为 undefined，非空才转为数字
   if (numValue === '') {
+    // @ts-ignore - 允许清空为 undefined
     row.weekUsageAmount = undefined
   } else {
     row.weekUsageAmount = Number(numValue)
@@ -517,6 +669,7 @@ const handleStockInput = (row: ReportRecordVO) => {
   const numValue = strValue.replace(/[^\d]/g, '')
   // 空字符串保持为 undefined，非空才转为数字
   if (numValue === '') {
+    // @ts-ignore - 允许清空为 undefined
     row.currentStockAmount = undefined
   } else {
     row.currentStockAmount = Number(numValue)
@@ -535,10 +688,11 @@ const handleStockChange = (row: ReportRecordVO) => {
 
 // 检查并清空供应情况
 const checkAndClearSupplyStatus = (row: ReportRecordVO) => {
-  // 如果两个值都为0或未填写，清空供应情况
-  const weekUsage = row.weekUsageAmount || 0
-  const stockAmount = row.currentStockAmount || 0
+  // 如果两个值都未填写或都为0，清空供应情况
+  const weekUsage = row.weekUsageAmount ?? 0
+  const stockAmount = row.currentStockAmount ?? 0
 
+  // 只有当两个值都是0或都未填写时，才清空供应情况
   if (weekUsage === 0 && stockAmount === 0) {
     // @ts-ignore - 清空供应情况
     row.supplyStatus = undefined
@@ -550,10 +704,14 @@ const totalCount = computed(() => reportList.value.length)
 
 const completedCount = computed(() => {
   return reportList.value.filter((item) => {
-    // 判断逻辑与预览数据一致：用量或库存大于0才算填报
+    // 标记为"无此药品"算作已完成
+    if (item.notAvailable) {
+      return true
+    }
+    // 判断逻辑：用量或库存已填写（包括0）就算填报
     return (
-      (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null && item.weekUsageAmount > 0) ||
-      (item.currentStockAmount !== undefined && item.currentStockAmount !== null && item.currentStockAmount > 0)
+      (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null) ||
+      (item.currentStockAmount !== undefined && item.currentStockAmount !== null)
     )
   }).length
 })
@@ -651,11 +809,13 @@ const loadDrugList = async () => {
       Number(taskId.value) // 传递taskId
     )
 
-    // 处理数据，将后端返回的0转换为undefined，让输入框显示为空
+    // 处理后端返回的数据：null转为undefined让输入框显示为空，0值正常显示
     reportList.value = data.map(item => ({
       ...item,
-      weekUsageAmount: item.weekUsageAmount === 0 ? undefined : item.weekUsageAmount,
-      currentStockAmount: item.currentStockAmount === 0 ? undefined : item.currentStockAmount
+      weekUsageAmount: item.weekUsageAmount === null ? undefined : item.weekUsageAmount,
+      currentStockAmount: item.currentStockAmount === null ? undefined : item.currentStockAmount,
+      supplyStatus: item.supplyStatus === null ? undefined : item.supplyStatus,
+      notAvailable: item.notAvailable || false // 确保 notAvailable 有默认值
     }))
 
     // 初始化第一个tab
@@ -721,14 +881,18 @@ const handleSubmit = async () => {
 
     submitting.value = true
 
-    // 提交所有数据
-    const submitData = reportList.value.map((item) => ({
-      ...item,
-      dosageUnit: item.dosageUnit, // 确保包含 dosageUnit 字段
-      // 保持原值，不设置默认0
-      weekUsageAmount: item.weekUsageAmount,
-      currentStockAmount: item.currentStockAmount
-    }))
+    // 提交所有数据 - 过滤掉临时显示属性，undefined转为null
+    const submitData = reportList.value.map((item) => {
+      const { drugIndex, showDrugName, rowspan, ...cleanItem } = item as any
+      return {
+        ...cleanItem,
+        notAvailable: item.notAvailable || false,
+        supplyStatus: item.supplyStatus ?? null,
+        // undefined转为null，明确表示"未填写"或"已清空"
+        weekUsageAmount: item.weekUsageAmount ?? null,
+        currentStockAmount: item.currentStockAmount ?? null
+      }
+    })
 
     // 调用提交接口,传递taskId、reportWeek和completionRate
     await ReportRecordApi.submitReport({
@@ -750,24 +914,22 @@ const handleSubmit = async () => {
 
 // 保存草稿
 const handleSaveDraft = async () => {
-  // 验证数据完整性
-  const validation = validateData()
-  if (!validation.valid) {
-    message.warning(validation.message)
-    return
-  }
-
+  // 草稿保存不需要验证数据完整性，只要有数据就可以保存
   try {
     savingDraft.value = true
 
-    // 过滤并格式化数据
-    const draftData = reportList.value.map((item) => ({
-      ...item,
-      dosageUnit: item.dosageUnit,
-      // 保持原值，不设置默认0
-      weekUsageAmount: item.weekUsageAmount,
-      currentStockAmount: item.currentStockAmount
-    }))
+    // 过滤并格式化数据 - 过滤掉临时显示属性，undefined转为null
+    const draftData = reportList.value.map((item) => {
+      const { drugIndex, showDrugName, rowspan, ...cleanItem } = item as any
+      return {
+        ...cleanItem,
+        notAvailable: item.notAvailable || false,
+        supplyStatus: item.supplyStatus ?? null,
+        // undefined转为null，明确表示"未填写"或"已清空"
+        weekUsageAmount: item.weekUsageAmount ?? null,
+        currentStockAmount: item.currentStockAmount ?? null
+      }
+    })
 
     // 调用保存草稿API,传递taskId、reportWeek和completionRate
     await ReportRecordApi.saveDraft({
@@ -825,7 +987,6 @@ onMounted(async () => {
 <style scoped>
 .report-container {
   padding: 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
   min-height: 100vh;
 }
 

@@ -71,8 +71,6 @@ watch(
     >
       <!-- Logo 图标区域 -->
       <div class="logo-icon-box">
-        <!-- 动态光环 -->
-        <div class="logo-ring"></div>
         <!-- Logo 图片 -->
         <img class="logo-img" src="@/assets/imgs/logo.png" alt="Logo" />
       </div>
@@ -127,9 +125,8 @@ $prefix-cls: #{$namespace}-logo;
   text-decoration: none;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   border-radius: 0 10px 10px 0;
-  background: var(--tech-gradient-bg-1);
 
   // Top 布局 - 固定宽度，背景透明融入顶部栏
   &.#{$prefix-cls}__Top {
@@ -137,32 +134,11 @@ $prefix-cls: #{$namespace}-logo;
     max-width: 260px;
     flex-shrink: 0;
     border-radius: 0;
-    background: transparent;
   }
 
   // 悬停效果
   &:hover {
-    background: var(--tech-gradient-bg-2);
-    
-    // Top 布局悬停时也使用渐变
-    &.#{$prefix-cls}__Top {
-      background: var(--tech-hover-bg-light);
-    }
-    
-    transform: translateX(2px);
-
-    .logo-ring {
-      opacity: 0.6;
-      transform: rotate(90deg) scale(1.15);
-    }
-
-    .logo-img {
-      transform: scale(1.08);
-    }
-
-    .logo-title {
-      letter-spacing: 0.3px;
-    }
+    background: var(--tech-hover-bg);
   }
 }
 
@@ -183,72 +159,52 @@ $prefix-cls: #{$namespace}-logo;
   height: 30px;
   position: relative;
   z-index: 2;
-  transition: transform 0.3s ease;
-  filter: drop-shadow(0 2px 6px rgba(37, 99, 235, 0.25));
-}
-
-// 动态光环
-.logo-ring {
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    rgba(37, 99, 235, 0.3),
-    rgba(124, 58, 237, 0.3),
-    rgba(219, 39, 119, 0.3),
-    rgba(37, 99, 235, 0.3)
-  );
-  opacity: 0;
-  transform: rotate(0deg);
-  transition: all 0.5s ease;
-  z-index: 1;
-  filter: blur(4px);
-  animation: spin-ring 4s linear infinite;
 }
 
 // Logo 信息区
 .logo-info {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   margin-left: 10px;
   min-width: 0;
   flex: 1;
   overflow: hidden;
+  justify-content: center;
 }
 
 // 系统标题
 .logo-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-tight);
-  letter-spacing: var(--letter-spacing-wide);
-  white-space: nowrap;
+  line-height: 1.3;
+  letter-spacing: 0.3px;
+  // 允许最多显示两行
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: all 0.3s;
+  word-break: break-word;
+  transition: all 0.2s;
   background: linear-gradient(120deg, #2563eb, #7c3aed, #db2777);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.25));
 
   // Classic 布局
   &.logo-title-classic {
     color: var(--logo-title-text-color);
     background: none;
     -webkit-text-fill-color: var(--logo-title-text-color);
-    filter: none;
   }
 
   // Top 布局
   &.logo-title-top {
-    font-size: 15px;
+    font-size: 14px;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    filter: none;
   }
 }
 
@@ -307,16 +263,6 @@ $prefix-cls: #{$namespace}-logo;
   transform: translateX(-10px);
 }
 
-// 光环旋转动画
-@keyframes spin-ring {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 // 响应式
 @media (max-width: 768px) {
   .logo-container {
@@ -344,7 +290,7 @@ $prefix-cls: #{$namespace}-logo;
   }
 
   .logo-title {
-    font-size: 15px;
+    font-size: 14px;
 
     &.logo-title-top {
       font-size: 14px;

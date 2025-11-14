@@ -8,10 +8,10 @@
       :inline="true"
       label-width="68px"
     >
-      <el-form-item label="分类名称" prop="categoryName">
+      <el-form-item label="剂型名称" prop="categoryName">
         <el-input
           v-model="queryParams.categoryName"
-          placeholder="请输入分类名称"
+          placeholder="请输入剂型名称"
           clearable
           @keyup.enter="handleQuery"
           class="!w-240px"
@@ -47,7 +47,7 @@
         </el-button>
         <el-button type="primary" @click="openForm('create')">
           <Icon icon="ep:plus" class="mr-5px" />
-          新增分类
+          新增
         </el-button>
       </el-form-item>
     </el-form>
@@ -75,12 +75,29 @@
         min-width="200"
         show-overflow-tooltip
       />
-      <el-table-column label="状态" align="center" prop="status" width="80">
+      <el-table-column label="状态" align="center" prop="status" width="100">
         <template #default="scope">
-          <dict-tag :type="DICT_TYPE.COMMON_STATUS" :value="scope.row.status" />
+          <el-switch
+            v-model="scope.row.status"
+            :active-value="0"
+            :inactive-value="1"
+            @change="handleStatusChange(scope.row)"
+          />
         </template>
       </el-table-column>
-      <el-table-column label="排序" align="center" prop="sortOrder" width="80" />
+      <el-table-column label="排序" align="center" prop="sortOrder" width="140">
+        <template #default="scope">
+          <el-input-number
+            v-model="scope.row.sortOrder"
+            :min="0"
+            :max="999"
+            :controls="false"
+            size="small"
+            @change="handleSortOrderChange(scope.row)"
+            style="width: 100px"
+          />
+        </template>
+      </el-table-column>
       <el-table-column
         label="创建时间"
         align="center"
@@ -90,7 +107,7 @@
       />
       <el-table-column label="操作" align="center" width="180px">
         <template #default="scope">
-          <el-button type="primary" size="small" @click="openForm('update', scope.row.id)">
+          <el-button type="success" size="small" @click="openForm('update', scope.row.id)">
             <Icon icon="ep:edit" class="mr-1" />
             编辑
           </el-button>
@@ -169,6 +186,31 @@ const resetQuery = () => {
 const formRef = ref()
 const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
+}
+
+/** 修改状态 */
+const handleStatusChange = async (row: DosageCategoryVO) => {
+  try {
+    const text = row.status === 0 ? '启用' : '停用'
+    await message.confirm('确认要"' + text + '""' + row.categoryName + '"吗?')
+    await DosageCategoryApi.updateStatus(row.id, row.status)
+    message.success('修改成功')
+    await getList()
+  } catch {
+    // 取消后，恢复状态
+    row.status = row.status === 0 ? 1 : 0
+  }
+}
+
+/** 修改排序 */
+const handleSortOrderChange = async (row: DosageCategoryVO) => {
+  try {
+    await DosageCategoryApi.updateSortOrder(row.id, row.sortOrder)
+    message.success('排序修改成功')
+  } catch (error) {
+    message.error('排序修改失败')
+    await getList()
+  }
 }
 
 /** 删除按钮操作 */

@@ -43,10 +43,19 @@
           :inline="true"
           label-width="68px"
         >
-          <el-form-item label="用户名称" prop="username">
+          <el-form-item label="用户身份" prop="nickname">
             <el-input
-              v-model="queryParams.username"
-              placeholder="请输入用户名称"
+              v-model="queryParams.nickname"
+              placeholder="请输入用户身份"
+              clearable
+              @keyup.enter="handleQuery"
+              class="!w-240px"
+            />
+          </el-form-item>
+          <el-form-item label="真实姓名" prop="realName">
+            <el-input
+              v-model="queryParams.realName"
+              placeholder="请输入真实姓名"
               clearable
               @keyup.enter="handleQuery"
               class="!w-240px"
@@ -125,7 +134,7 @@
         <el-table v-loading="loading" :data="list">
           <el-table-column label="用户编号" align="center" key="id" prop="id" />
           <el-table-column
-            label="用户名称"
+            label="用户账号"
             align="center"
             prop="username"
             :show-overflow-tooltip="true"
@@ -135,9 +144,15 @@
             </template>
           </el-table-column>
           <el-table-column
-            label="用户昵称"
+            label="用户身份"
             align="center"
             prop="nickname"
+            :show-overflow-tooltip="true"
+          />
+          <el-table-column
+            label="真实姓名"
+            align="center"
+            prop="realName"
             :show-overflow-tooltip="true"
           />
           <el-table-column
@@ -263,6 +278,7 @@ const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
   username: undefined,
+  nickname: undefined,
   mobile: undefined,
   status: undefined,
   deptIds: undefined,

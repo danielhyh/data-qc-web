@@ -6,8 +6,10 @@ export interface ReportTaskVO {
   year: number // 年份
   zoneId?: number // 填报专区ID
   reportWeek: string // 填报周期(YYYY-WW)
-  reportStatus: number // 填报状态: 0-待填报 1-草稿 2-已提交
+  currentPeriodRange?: string // 统计时间范围范围（例如：11月10日-11月15日）
+  reportStatus: number // 填报状态: 0-填报中 1-草稿 2-已提交 3-已逾期 4-准备中
   submitTime?: string // 提交时间
+  startTime?: string // 填报开始时间
   deadlineTime?: string // 填报截止时间
   completionRate?: number // 填报完成度(%)
   remark?: string // 备注
