@@ -8,7 +8,7 @@
     />
 
     <!-- 统计概览 -->
-    <div class="stats-overview">
+    <!-- <div class="stats-overview">
       <el-row :gutter="16">
         <el-col :xs="12" :sm="6" :md="6" :lg="6">
           <StatCard title="总任务数" :value="statistics.total" icon="Files" color="#409eff" />
@@ -42,25 +42,25 @@
           />
         </el-col>
       </el-row>
-    </div>
+    </div> -->
 
     <!-- 操作区域 -->
     <el-card class="filter-card" shadow="never">
-      <el-row :gutter="20">
-        <el-col :span="16">
+      <el-row :gutter="20" align="middle">
+        <el-col :span="12">
           <!-- 创建任务按钮组 -->
-          <el-button type="primary" @click="createFromQc">
+          <!-- <el-button type="primary" @click="createFromQc">
             <Icon icon="ep:circle-check" />
             从质控结果创建
-          </el-button>
+          </el-button> -->
           <el-button type="success" @click="createFromTemplate">
             <Icon icon="ep:upload" />
             从模板导入创建
           </el-button>
-          <el-button type="success" @click="createFromTemplate2">
+          <!-- <el-button type="success" @click="createFromTemplate2">
             <Icon icon="ep:upload" />
             导入result
-          </el-button>
+          </el-button> -->
           <el-button @click="createFromStandardLibrary">
             <Icon icon="ep:folder" />
             标准库
@@ -70,7 +70,7 @@
             下载导入模板
           </el-button>
         </el-col>
-        <el-col :span="8" class="flex-row-end">
+        <el-col :span="12" class="flex-row-end">
           <!-- 查询条件 -->
           <!-- <el-input
             v-model="queryParams.keyword"
@@ -79,7 +79,7 @@
             class="w-200px"
             @keyup.enter="handleQuery"
           /> -->
-          <el-form-item label="状态筛选" prop="status">
+          <el-form-item label="状态筛选" prop="status" style="margin-right: 10px; margin-bottom: 0;">
             <el-select
               v-model="queryParams.status"
               placeholder="请选择任务状态"
@@ -92,7 +92,7 @@
               <el-option label="已取消" :value="3" />
             </el-select>
           </el-form-item>
-          <el-form-item>
+          <el-form-item style="margin-bottom: 0;">
             <el-button @click="handleQuery">
               <Icon icon="ep:search" class="mr-5px" />
               搜索
@@ -151,10 +151,12 @@
             <span>{{ row.autoApplyThreshold || 0 }}%</span>
           </template>
         </el-table-column>
-        <el-table-column label="比对进度" width="250">
+        <el-table-column label="比对进度" width="280">
           <template #default="{ row }">
             <div class="progress-wrapper">
               <el-progress
+                :text-inside="true"
+                :stroke-width="20"
                 :percentage="getMatchProgress(row)"
                 :status="getProgressStatus(row.status)"
               />
@@ -707,7 +709,8 @@ onMounted(() => {
 }
 
 .progress-wrapper {
-  display: flex;
+  display: grid;
+  grid-template-columns: 3fr 1fr;
   align-items: center;
   gap: 10px;
 }
