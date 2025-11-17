@@ -147,22 +147,42 @@ router.beforeEach(async (to, from, next) => {
         isRelogin.show = true
         await userStore.setUserInfoAction()
         isRelogin.show = false
-        
+
         // 后端过滤菜单
         await permissionStore.generateRoutes()
-        
+
         permissionStore.getAddRouters.forEach((route) => {
           router.addRoute(route as unknown as RouteRecordRaw) // 动态添加可访问路由表
         })
-        
+
+        // 检查用户信息完整性
+        const user = userStore.getUser
+
+        // 如果用户信息不完整或密码未修改,强制跳转到完善信息页面
+        if (!user.mobile || !user.realName || !user.passwordChanged) {
+          next({ path: '/complete-profile', replace: true })
+          return
+        }
+
         const redirectPath = from.query.redirect || to.path
         const redirect = decodeURIComponent(redirectPath as string)
         const { paramsObject: query } = parseURL(redirect)
-        
+
         // 无论哪种情况都使用 replace: true 替换历史记录，避免产生重复标签页
         const nextData = to.path === redirect ? { ...to, replace: true } : { path: redirect, query, replace: true }
         next(nextData)
       } else {
+        // 检查用户信息完整性(排除完善信息页面本身)
+        if (to.path !== '/complete-profile') {
+          const user = userStore.getUser
+
+          // 如果用户信息不完整或密码未修改,强制跳转到完善信息页面
+          if (!user.mobile || !user.realName || !user.passwordChanged) {
+            next({ path: '/complete-profile', replace: true })
+            return
+          }
+        }
+
         next()
       }
     }

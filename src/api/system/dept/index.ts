@@ -49,6 +49,7 @@ export interface DeptPageParam extends PageParam {
   status?: number
   areaCode?: string
   hospitalLevel?: string
+  hospitalLevels?: string[] // 支持多个等级筛选
   institutionCategory?: string
   excludeUnableReport?: boolean
   [key: string]: any

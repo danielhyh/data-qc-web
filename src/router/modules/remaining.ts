@@ -105,6 +105,17 @@ const remainingRouter: AppRouteRecordRaw[] = [
     ]
   },
   {
+    path: '/complete-profile',
+    component: () => import('@/views/Profile/CompleteProfile.vue'),
+    name: 'CompleteProfile',
+    meta: {
+      hidden: true,
+      title: '完善账户信息',
+      noTagsView: true,
+      canTo: true
+    }
+  },
+  {
     path: '/dict',
     component: Layout,
     name: 'dict',

@@ -126,29 +126,36 @@ service.interceptors.response.use(
         isRefreshToken = true
         // 1. 如果获取不到刷新令牌，则只能执行登出操作
         if (!getRefreshToken()) {
+          isRefreshToken = false
           return handleAuthorized()
         }
         // 2. 进行刷新访问令牌
         try {
+          console.log('[Token Refresh] 开始刷新token...')
           const refreshTokenRes = await refreshToken()
-          // 2.1 刷新成功，则回放队列的请求 + 当前请求
-          setToken((await refreshTokenRes).data.data)
+          // 2.1 刷新成功，保存新token
+          setToken(refreshTokenRes.data.data)
+          console.log('[Token Refresh] token刷新成功，新token已保存')
+
+          // 2.2 更新当前请求的token
           config.headers!.Authorization = 'Bearer ' + getAccessToken()
+
+          // 2.3 回放队列中等待的请求
+          console.log('[Token Refresh] 回放队列请求数量:', requestList.length)
           requestList.forEach((cb: any) => {
             cb()
           })
           requestList = []
+
           return service(config)
         } catch (e) {
           // 为什么需要 catch 异常呢？刷新失败时，请求因为 Promise.reject 触发异常。
-          // 2.2 刷新失败，只回放队列的请求
-          requestList.forEach((cb: any) => {
-            cb()
-          })
+          // 2.2 刷新失败，清空队列并登出（不要回放请求，避免无限循环）
+          console.error('[Token Refresh] token刷新失败:', e)
+          requestList = []
           // 提示是否要登出。即不回放当前请求！不然会形成递归
           return handleAuthorized()
         } finally {
-          requestList = []
           isRefreshToken = false
         }
       } else {

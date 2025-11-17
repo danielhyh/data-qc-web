@@ -30,6 +30,7 @@ export interface ProfileVO {
   loginIp: string
   loginDate: Date
   createTime: Date
+  passwordChanged: boolean // 是否已修改过密码
 }
 
 export interface UserProfileUpdateReqVO {

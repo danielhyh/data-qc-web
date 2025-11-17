@@ -172,6 +172,7 @@ export interface ReportRecordVO {
   weekUsageAmount: number
   currentStockAmount: number
   supplyStatus: number
+  notAvailable?: boolean // 本机构未使用此药品
   
   // 关联字段 - 更新字段名以匹配后端
   drugName?: string        // drug_name 
@@ -229,6 +230,10 @@ export const ReportRecordApi = {
   // 获取专区填报药品列表
   getReportListByZoneId: (zoneId: number, taskId?: number) =>
     request.get({ url: `/shortage/report-record/list`, params: { zoneId, taskId } }),
+
+  // 导出机构填报记录
+  exportReportRecord: (params: any) =>
+    request.download({ url: '/shortage/report-record/export-excel', params }),
 
   // 批量保存填报记录(提交)
   batchSave: (data: ReportRecordVO[]) =>

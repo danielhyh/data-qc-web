@@ -102,9 +102,9 @@
                 >
                   <Icon icon="ep:document" class="mr-5px" /> 模板
                 </el-button>
-                <el-button type="success" @click="openSyncModal">
+<!--                <el-button type="success" @click="openSyncModal">
                   <Icon icon="ep:download" class="mr-5px" /> 从标准库同步
-                </el-button>
+                </el-button>-->
               </el-form-item>
             </el-form>
           </ContentWrap>

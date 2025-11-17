@@ -104,6 +104,17 @@
           </template>
         </el-table-column>
         <el-table-column
+          label="本机构未使用此药品"
+          width="150"
+          align="center"
+          class-name="header-bold"
+        >
+          <template #default="scope">
+            <el-tag v-if="scope.row.notAvailable" type="info" size="small">是</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column
           label="本周累计使用量"
           prop="weekUsageAmount"
           width="180"
@@ -119,7 +130,10 @@
             </div>
           </template>
           <template #default="scope">
-            <span class="number-value usage">{{ formatNumber(scope.row.weekUsageAmount) }}</span>
+            <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+            <span v-else class="number-value usage">
+              {{ formatNumber(scope.row.weekUsageAmount) }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column
@@ -138,7 +152,10 @@
             </div>
           </template>
           <template #default="scope">
-            <span class="number-value stock">{{ formatNumber(scope.row.currentStockAmount) }}</span>
+            <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+            <span v-else class="number-value stock">
+              {{ formatNumber(scope.row.currentStockAmount) }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column
@@ -149,7 +166,8 @@
           class-name="header-bold"
         >
           <template #default="scope">
-            <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
+            <span v-if="scope.row.notAvailable" class="not-available-text">-</span>
+            <dict-tag v-else :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
           </template>
         </el-table-column>
         <el-table-column
@@ -159,7 +177,8 @@
           class-name="header-bold"
         >
           <template #default="scope">
-            <div class="stock-days" :class="getStockDaysClass(scope.row)">
+            <span v-if="scope.row.notAvailable" class="not-available-text">-</span>
+            <div v-else class="stock-days" :class="getStockDaysClass(scope.row)">
               <Icon :icon="getStockDaysIcon(scope.row)" class="days-icon" />
               <span>{{ calculateStockDays(scope.row) }}</span>
             </div>
@@ -211,22 +230,25 @@ const displayData = ref<ReportRecordVO[]>([])
 const statistics = computed((): Statistics | null => {
   if (!displayData.value.length) return null
 
+  const availableData = displayData.value.filter(item => !item.notAvailable)
+
   return {
     totalDrugs: displayData.value.length,
-    sufficientCount: displayData.value.filter(
+    sufficientCount: availableData.filter(
       (item) => item.supplyStatus === 1 || item.supplyStatus === 2
     ).length,
-    shortageCount: displayData.value.filter((item) => item.supplyStatus === 3).length,
-    severeShortageCount: displayData.value.filter((item) => item.supplyStatus === 4).length
+    shortageCount: availableData.filter((item) => item.supplyStatus === 3).length,
+    severeShortageCount: availableData.filter((item) => item.supplyStatus === 4).length
   }
 })
 
 // 打开对话框
 const open = (data: ReportRecordVO[] = []) => {
-  // 根据用量和库存字段来判断用户是否填报了数据（大于0）
-  const filteredData = data.filter(item => 
-    (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null && item.weekUsageAmount > 0) ||
-    (item.currentStockAmount !== undefined && item.currentStockAmount !== null && item.currentStockAmount > 0)
+  // 根据用量和库存字段来判断用户是否填报了数据，或标记本机构未使用此药品
+  const filteredData = data.filter(item =>
+    item.notAvailable ||
+    (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null) ||
+    (item.currentStockAmount !== undefined && item.currentStockAmount !== null)
   )
   displayData.value = [...filteredData]
   dialogVisible.value = true
@@ -473,6 +495,13 @@ defineExpose({ open })
 
 .number-value.stock {
   color: #67c23a;
+}
+
+/* 未使用文本样式 */
+.not-available-text {
+  color: #909399;
+  font-size: 14px;
+  font-style: italic;
 }
 
 /* 库存天数样式 */

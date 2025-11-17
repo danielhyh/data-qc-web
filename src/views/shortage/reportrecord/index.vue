@@ -90,6 +90,21 @@
               <Icon icon="ep:refresh" class="mr-5px" />
               重置
             </el-button>
+            <el-tooltip
+              placement="top"
+              content="请选择填报专区、填报周期，并筛选到已提交状态后再导出"
+            >
+                <el-button
+                  type="success"
+                  plain
+                  :disabled="!canExport"
+                  :loading="exportLoading"
+                  @click="handleExport"
+                >
+                  <Icon icon="ep:download" class="mr-5px" />
+                  导出机构数据
+                </el-button>
+            </el-tooltip>
           </el-form-item>
         </el-form>
       </ContentWrap>
@@ -267,6 +282,17 @@
                 </template>
               </el-table-column>
               <el-table-column
+                label="本机构未使用此药品"
+                width="150"
+                align="center"
+                class-name="header-bold"
+              >
+                <template #default="scope">
+                  <el-tag v-if="scope.row.notAvailable" type="info" size="small">是</el-tag>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
                 label="本周累计使用量"
                 prop="weekUsageAmount"
                 width="140"
@@ -274,7 +300,10 @@
                 class-name="header-bold"
               >
                 <template #default="scope">
-                  <span class="number-value usage">{{ formatNumber(scope.row.weekUsageAmount) }}</span>
+                  <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+                  <span v-else class="number-value usage">
+                    {{ formatNumber(scope.row.weekUsageAmount) }}
+                  </span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -285,7 +314,10 @@
                 class-name="header-bold"
               >
                 <template #default="scope">
-                  <span class="number-value stock">{{ formatNumber(scope.row.currentStockAmount) }}</span>
+                  <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+                  <span v-else class="number-value stock">
+                    {{ formatNumber(scope.row.currentStockAmount) }}
+                  </span>
                 </template>
               </el-table-column>
               <el-table-column
@@ -296,7 +328,8 @@
                 class-name="header-bold"
               >
                 <template #default="scope">
-                  <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
+                  <span v-if="scope.row.notAvailable" class="not-available-text">-</span>
+                  <dict-tag v-else :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
                 </template>
               </el-table-column>
 <!--              <el-table-column
@@ -326,9 +359,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { getIntDictOptions, DICT_TYPE, getDictLabel, getDictObj } from '@/utils/dict'
 import { ReportRecordApi, ReportZoneApi } from '@/api/shortage'
+import download from '@/utils/download'
 import RegionTree from '@/views/system/user/RegionTree.vue'
 import DictIcon from '@/components/DictIcon'
 import { useMessage } from '@/hooks/web/useMessage'
@@ -341,6 +375,7 @@ import dayjs from 'dayjs'
 defineOptions({ name: 'ReportRecordList' })
 
 const message = useMessage() // 消息弹窗
+const SUBMITTED_STATUS = 2
 
 const loading = ref(true) // 列表的加载中
 const list = ref<any[]>([]) // 列表的数据
@@ -348,6 +383,7 @@ const total = ref(0) // 列表的总页数
 const selectedRegion = ref<any>(null) // 选中的地区节点
 const reportWeekOptions = ref<string[]>([]) // 填报周期选项
 const zoneOptions = ref<any[]>([]) // 填报专区选项
+const exportLoading = ref(false) // 导出按钮加载状态
 
 // 详情弹窗相关
 const detailDialogVisible = ref(false)
@@ -464,6 +500,14 @@ const handleQuery = () => {
   getList()
 }
 
+/** 导出按钮可用状态 */
+const canExport = computed(() => {
+  if (!queryParams.zoneId || !queryParams.reportWeek) {
+    return false
+  }
+  return Number(queryParams.reportStatus) === SUBMITTED_STATUS
+})
+
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value.resetFields()
@@ -477,14 +521,21 @@ const formatDeadlineTime = (deadlineTime: string) => {
 }
 
 /** 计算剩余时间 */
-const calculateRemainingTime = (deadlineTime: string) => {
-  if (!deadlineTime) return '-'
+const calculateRemainingTime = (targetTime: string, isStartTime: boolean = false) => {
+  if (!targetTime) return '-'
 
   const now = new Date()
-  const deadline = new Date(deadlineTime)
-  const diff = deadline.getTime() - now.getTime()
+  const target = new Date(targetTime)
+  const diff = target.getTime() - now.getTime()
   const absDiff = Math.abs(diff)
-  const prefix = diff <= 0 ? '逾期' : '剩余'
+
+  // 根据是否是开始时间,决定前缀
+  let prefix = ''
+  if (isStartTime) {
+    prefix = diff <= 0 ? '已开始' : '距开始'
+  } else {
+    prefix = diff <= 0 ? '逾期' : '剩余'
+  }
 
   const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
@@ -575,6 +626,7 @@ const formatNumber = (value: number | undefined): string => {
 
 /** 计算库存可用天数 */
 const calculateAvailableDays = (row: any): string => {
+  if (row.notAvailable) return '-'
   const weekUsage = row.weekUsageAmount || 0
   const currentStock = row.currentStockAmount || 0
 
@@ -592,6 +644,7 @@ const calculateAvailableDays = (row: any): string => {
 
 /** 获取库存天数样式类 */
 const getAvailableDaysClass = (row: any): string => {
+  if (row.notAvailable) return ''
   const weekUsage = row.weekUsageAmount || 0
   const currentStock = row.currentStockAmount || 0
 
@@ -723,6 +776,28 @@ const loadZoneOptions = async () => {
     zoneOptions.value = data
   } catch (error) {
     console.error('加载填报专区选项失败:', error)
+  }
+}
+
+/** 导出机构填报数据 */
+const handleExport = async () => {
+  if (!canExport.value) {
+    message.warning('请先选择专区、填报周期并将状态筛选为已提交')
+    return
+  }
+  try {
+    await message.exportConfirm()
+    exportLoading.value = true
+    const params = {
+      regionCode: queryParams.regionCode,
+      zoneId: queryParams.zoneId,
+      reportWeek: queryParams.reportWeek,
+      reportStatus: SUBMITTED_STATUS
+    }
+    const data = await ReportRecordApi.exportReportRecord(params)
+    download.excel(data, '机构填报记录.xlsx')
+  } finally {
+    exportLoading.value = false
   }
 }
 
@@ -894,6 +969,13 @@ onMounted(() => {
   &.stock {
     color: #67c23a;
   }
+}
+
+/* 未使用提示样式 */
+.not-available-text {
+  color: #909399;
+  font-size: 14px;
+  font-style: italic;
 }
 
 // 库存天数样式

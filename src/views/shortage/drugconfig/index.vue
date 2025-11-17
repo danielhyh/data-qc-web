@@ -423,7 +423,7 @@ onMounted(async () => {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 20px;
-  z-index: 100;
+  z-index: 10;
   transition: all 0.3s ease;
 }
 

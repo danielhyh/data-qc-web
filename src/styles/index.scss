@@ -922,28 +922,24 @@ small, .text-muted {
 
 /* Element Plus 模态框遮罩层 - Dialog/Drawer/MessageBox 等 */
 .el-overlay {
-  background-color: rgba(0, 0, 0, 0.08) !important;
-  -webkit-backdrop-filter: blur(4px) saturate(110%);
-  backdrop-filter: blur(4px) saturate(110%);
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  backdrop-filter: blur(1.5px);
 }
 
 /* 兼容旧版本的遮罩层 */
 .v-modal {
-  background-color: rgba(0, 0, 0, 0.08) !important;
-  -webkit-backdrop-filter: blur(4px) saturate(110%);
-  backdrop-filter: blur(4px) saturate(110%);
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  backdrop-filter: blur(1.5px);
 }
 
 /* Drawer 抽屉遮罩层 */
 .el-drawer__overlay {
-  -webkit-backdrop-filter: blur(4px) saturate(110%);
-  backdrop-filter: blur(4px) saturate(110%);
+  backdrop-filter: blur(1.5px);
 }
 
 /* Dialog 对话框遮罩层增强 */
 .el-dialog__wrapper {
-  -webkit-backdrop-filter: blur(4px) saturate(110%);
-  backdrop-filter: blur(4px) saturate(110%);
+  backdrop-filter: blur(1.5px);
 }
 
 /* 空状态优化 */

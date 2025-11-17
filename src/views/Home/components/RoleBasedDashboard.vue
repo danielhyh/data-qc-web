@@ -5,83 +5,6 @@
     <PageHeader :title="dashboardConfig.title" :content="dashboardConfig.description" />
 -->
 
-    <!-- 手机号绑定提醒 -->
-    <transition name="slide-fade">
-      <div v-if="showMobileAlert" class="mobile-alert-card">
-        <div class="alert-icon-wrapper">
-          <el-icon class="alert-icon">
-            <Warning />
-          </el-icon>
-        </div>
-        <div class="alert-content">
-          <div class="alert-text">
-            <h4 class="alert-title">完善账户信息</h4>
-            <p class="alert-description">请完善实名信息并绑定手机号，以保障您的账户安全和实名制合规</p>
-          </div>
-          <div class="alert-actions">
-            <el-button type="primary" @click="goToProfile" class="bind-button">
-              <el-icon class="mr-1"><Phone /></el-icon>
-              立即完善
-            </el-button>
-            <el-button text class="later-button" @click="handleCloseMobileAlert">
-              稍后再说
-            </el-button>
-          </div>
-        </div>
-        <el-icon class="close-icon" @click="handleCloseMobileAlert">
-          <Close />
-        </el-icon>
-      </div>
-    </transition>
-
-    <!-- 统计概览 - 4个统计卡片 -->
-<!--
-    <div class="stats-section">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-          <StatCard
-            title="药品监测待处理任务"
-            :value="statisticsData.drugMonitoringPendingTasks || 0"
-            suffix="个"
-            icon="FolderAdd"
-            color="#409EFF"
-            description="待处理的任务数量"
-          />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-          <StatCard
-            title="药品监测本年上报数据"
-            :value="statisticsData.drugMonitoringYearData || 0"
-            suffix="条"
-            icon="DataLine"
-            color="#67C23A"
-            description="本年度上报数据量"
-          />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-          <StatCard
-            title="周报待处理任务"
-            :value="statisticsData.weeklyReportPendingTasks || 0"
-            suffix="个"
-            icon="Calendar"
-            color="#E6A23C"
-            description="季节性周报待处理"
-          />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
-          <StatCard
-            title="周报本年上报数据"
-            :value="statisticsData.weeklyReportYearData || 0"
-            suffix="条"
-            icon="Document"
-            color="#909399"
-            description="本年度周报上报数据量"
-          />
-        </el-col>
-      </el-row>
-    </div>
--->
-
     <!-- 系统入口卡片 -->
     <div class="systems-section" v-if="!selectedSystem">
       <h3 class="section-title">系统入口</h3>
@@ -142,7 +65,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, Warning, Phone, Close } from '@element-plus/icons-vue'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/modules/user'
 import { CACHE_KEY, useCache } from '@/hooks/web/useCache'
 import PageHeader from '@/components/PageHeader/index.vue'
@@ -153,7 +76,6 @@ import QuickActionCard from './QuickActionCard.vue'
 import PendingTasksCard from './PendingTasksCard.vue'
 import MessageCenterCard from './MessageCenterCard.vue'
 import { DashboardApi } from '@/api/system/dashboard'
-import { getUserProfile } from '@/api/system/user/profile'
 
 const { wsCache } = useCache()
 
@@ -189,10 +111,6 @@ interface SystemData {
 
 const router = useRouter()
 const userStore = useUserStore()
-
-// 手机号绑定提醒相关
-const MOBILE_ALERT_KEY = 'mobile-alert-closed'
-const showMobileAlert = ref(false)
 
 // 响应式数据
 const statisticsData = ref({
@@ -252,29 +170,7 @@ const dashboardConfig = computed(() => ({
 onMounted(() => {
   loadDashboardData()
   loadMenuSystems()
-  checkMobileBinding()
 })
-
-// 检查手机号绑定状态
-const checkMobileBinding = async () => {
-  try {
-    // 检查用户是否已经关闭过提醒
-    const alertClosed = localStorage.getItem(MOBILE_ALERT_KEY)
-    if (alertClosed) {
-      return
-    }
-
-    // 获取用户信息
-    const profile = await getUserProfile()
-
-    // 如果没有绑定手机号或没有填写实名，显示提醒
-    if (!profile.mobile || profile.mobile.trim() === '' || !profile.realName || profile.realName.trim() === '') {
-      showMobileAlert.value = true
-    }
-  } catch (error) {
-    console.error('Failed to check mobile binding:', error)
-  }
-}
 
 // 加载菜单系统
 const loadMenuSystems = () => {
@@ -436,228 +332,12 @@ const handleViewAllMessages = () => {
 const handleQuickActionClick = (action: any) => {
   router.push(action.path)
 }
-
-// 关闭手机号提醒
-const handleCloseMobileAlert = () => {
-  showMobileAlert.value = false
-  localStorage.setItem(MOBILE_ALERT_KEY, 'true')
-}
-
-// 跳转到个人中心
-const goToProfile = () => {
-  router.push('/user/profile')
-}
 </script>
 
 <style scoped>
 .role-dashboard {
   padding: 20px;
   min-height: calc(100vh - 50px);
-}
-
-/* 现代化通知卡片 */
-.mobile-alert-card {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 20px 24px;
-  margin-bottom: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
-  overflow: hidden;
-}
-
-/* 背景装饰 */
-.mobile-alert-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -10%;
-  width: 300px;
-  height: 300px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.mobile-alert-card::after {
-  content: '';
-  position: absolute;
-  bottom: -30%;
-  left: -5%;
-  width: 200px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-/* 图标容器 */
-.alert-icon-wrapper {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  z-index: 1;
-}
-
-.alert-icon {
-  font-size: 24px;
-  color: #fff;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-}
-
-/* 内容区域 */
-.alert-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  z-index: 1;
-}
-
-.alert-text {
-  color: #fff;
-}
-
-.alert-title {
-  margin: 0 0 8px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-  line-height: 1.4;
-}
-
-.alert-description {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.9);
-  max-width: 600px;
-}
-
-/* 操作按钮 */
-.alert-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.bind-button {
-  background: #fff !important;
-  color: #667eea !important;
-  border: none !important;
-  font-weight: 600;
-  padding: 10px 24px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.bind-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  background: #fff !important;
-}
-
-.bind-button .mr-1 {
-  margin-right: 4px;
-}
-
-.later-button {
-  color: rgba(255, 255, 255, 0.9) !important;
-  font-weight: 500;
-  padding: 10px 16px;
-  transition: all 0.3s ease;
-}
-
-.later-button:hover {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* 关闭按钮 */
-.close-icon {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  font-size: 20px;
-  color: rgba(255, 255, 255, 0.8);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 1;
-  padding: 4px;
-  border-radius: 4px;
-}
-
-.close-icon:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.2);
-  transform: rotate(90deg);
-}
-
-/* 动画效果 */
-.slide-fade-enter-active {
-  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.slide-fade-leave-active {
-  transition: all 0.3s ease-out;
-}
-
-.slide-fade-enter-from {
-  transform: translateY(-20px);
-  opacity: 0;
-}
-
-.slide-fade-leave-to {
-  transform: translateY(-10px);
-  opacity: 0;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .mobile-alert-card {
-    flex-direction: column;
-    padding: 16px;
-  }
-
-  .alert-content {
-    gap: 12px;
-  }
-
-  .alert-actions {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .bind-button,
-  .later-button {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .alert-description {
-    font-size: 13px;
-  }
 }
 
 .stats-section {

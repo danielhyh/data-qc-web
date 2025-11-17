@@ -11,6 +11,7 @@ export interface ReportRecordVO {
   weekUsageAmount: number // 本周累计使用量
   currentStockAmount: number // 当日实时库存量
   supplyStatus: number // 供应情况: 1-充足 2-较充足 3-短缺 4-严重短缺
+  notAvailable?: boolean // 本机构未使用此药品
 }
 
 // 药品填报记录 API

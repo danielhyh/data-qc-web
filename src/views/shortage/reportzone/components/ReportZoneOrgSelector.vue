@@ -86,74 +86,75 @@
 
         <!-- 右侧：机构选择 -->
         <div class="selector-panel org-panel">
-          <div class="panel-header panel-header-vertical theme-green">
-            <div class="org-header-row">
-              <div class="panel-title">
-                <Icon icon="ep:office-building" class="panel-icon" style="color: #16a34a" />
-                <span class="panel-title-text">机构选择</span>
+          <el-tabs v-model="activeTab" class="org-tabs">
+            <!-- Tab 1: 可选机构 -->
+            <el-tab-pane name="available">
+              <template #label>
+                <span class="tab-label">
+                  <Icon icon="ep:office-building" class="mr-4px" />
+                  可选机构
+                </span>
+              </template>
+
+              <div class="panel-header panel-header-vertical theme-green">
+                <div class="org-header-row">
+                  <el-input
+                    v-model="orgKeyword"
+                    size="small"
+                    placeholder="搜索机构名称"
+                    clearable
+                    style="width: 200px"
+                    @clear="refreshOrgFilter"
+                    @keyup.enter="refreshOrgFilter"
+                  >
+                    <template #prefix>
+                      <Icon icon="ep:search" class="text-16px text-gray-500" />
+                    </template>
+                  </el-input>
+                </div>
+                <div class="org-filter-row">
+                  <span class="filter-label">机构等级:</span>
+                  <el-checkbox-group
+                    v-model="selectedLevels"
+                    size="small"
+                    class="level-checkbox-group"
+                    @change="handleLevelChange"
+                  >
+                    <el-checkbox-button
+                      v-for="level in levelOptions"
+                      :key="level.value"
+                      :value="level.value"
+                    >
+                      {{ level.label }}
+                    </el-checkbox-button>
+                  </el-checkbox-group>
+                </div>
               </div>
-              <el-input
-                v-model="orgKeyword"
-                size="small"
-                placeholder="搜索机构名称"
-                clearable
-                style="width: 200px"
-                @clear="refreshOrgFilter"
-                @keyup.enter="refreshOrgFilter"
-              >
-                <template #prefix>
-                  <Icon icon="ep:search" class="text-16px text-gray-500" />
-                </template>
-              </el-input>
-            </div>
-            <div class="org-filter-row">
-              <el-checkbox
-                v-model="selectAll"
-                size="small"
-                @change="handleSelectAllChange"
-              >
-                全选所有机构
-              </el-checkbox>
-              <el-checkbox-group
-                v-model="selectedLevels"
-                size="small"
-                class="level-checkbox-group"
-                @change="handleLevelChange"
-              >
-                <el-checkbox-button
-                  v-for="level in levelOptions"
-                  :key="level.value"
-                  :value="level.value"
-                >
-                  {{ level.label }}
-                </el-checkbox-button>
-              </el-checkbox-group>
-            </div>
-          </div>
-          <div class="panel-body">
-            <div v-if="!activeAreaCode" class="org-empty-state">
-              <Icon icon="ep:pointer" class="empty-icon" />
-              <p>请先从左侧选择地区</p>
-            </div>
 
-            <el-skeleton
-              :loading="deptTreeLoading"
-              animated
-              :count="6"
-              v-else-if="deptTreeLoading"
-            />
+              <div class="panel-body">
+                <div v-if="!activeAreaCode" class="org-empty-state">
+                  <Icon icon="ep:pointer" class="empty-icon" />
+                  <p>请先从左侧选择地区</p>
+                </div>
 
-            <div v-else class="table-container">
-              <el-table
-                ref="deptTableRef"
-                :data="filteredDeptTree"
-                row-key="id"
-                empty-text="该地区暂无机构"
-                class="dept-table"
-                height="400"
-                @selection-change="handleSelectionChange"
-              >
-                <el-table-column type="selection" width="55" :reserve-selection="true" />
+                <el-skeleton
+                  :loading="deptTreeLoading"
+                  animated
+                  :count="6"
+                  v-else-if="deptTreeLoading"
+                />
+
+                <div v-else class="table-container">
+                  <el-table
+                    ref="deptTableRef"
+                    :data="filteredDeptTree"
+                    row-key="id"
+                    empty-text="该地区暂无机构"
+                    class="dept-table"
+                    height="400"
+                    @selection-change="handleSelectionChange"
+                  >
+                    <el-table-column type="selection" width="55" />
               <el-table-column prop="name" label="机构名称" min-width="200">
                 <template #default="{ row }">
                   <div class="dept-node">
@@ -200,7 +201,76 @@
               />
             </div>
             </div>
-          </div>
+              </div>
+            </el-tab-pane>
+
+            <!-- Tab 2: 已选机构 -->
+            <el-tab-pane name="selected">
+              <template #label>
+                <span class="tab-label">
+                  <Icon icon="ep:collection" class="mr-4px" />
+                  已选机构 ({{ checkedIds.length }})
+                </span>
+              </template>
+
+              <div class="panel-header theme-green">
+                <el-input
+                  v-model="selectedKeyword"
+                  size="small"
+                  placeholder="搜索已选机构"
+                  clearable
+                  style="width: 300px"
+                >
+                  <template #prefix>
+                    <Icon icon="ep:search" class="text-16px text-gray-500" />
+                  </template>
+                </el-input>
+              </div>
+
+              <div class="panel-body">
+                <div v-if="checkedIds.length === 0" class="org-empty-state">
+                  <Icon icon="ep:collection" class="empty-icon" />
+                  <p>暂未选择任何机构</p>
+                </div>
+
+                <div v-else class="selected-org-container">
+                  <el-table
+                    :data="selectedOrgList"
+                    height="400"
+                    empty-text="未找到匹配的机构"
+                    class="selected-org-table"
+                  >
+                    <el-table-column prop="name" label="机构名称" min-width="200" show-overflow-tooltip />
+                    <el-table-column prop="hospitalLevel" label="机构等级" width="100">
+                      <template #default="{ row }">
+                        <dict-tag
+                          v-if="row.hospitalLevel != null"
+                          :type="DICT_TYPE.INSTITUTION_LEVEL"
+                          :value="row.hospitalLevel"
+                          size="small"
+                        />
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="regionPathName" label="所在地区" min-width="180" show-overflow-tooltip />
+                    <el-table-column label="操作" width="80" fixed="right">
+                      <template #default="{ row }">
+                        <el-button link type="danger" size="small" @click="removeSelected(row.id)">
+                          移除
+                        </el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+
+                  <div class="selected-actions">
+                    <el-button type="danger" plain size="small" @click="clearAllSelected">
+                      <Icon icon="ep:delete" class="mr-4px" />
+                      清空所有
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
         </div>
       </div>
     </div>
@@ -286,7 +356,10 @@ const deptTreeLoading = ref(false)
 const areaKeyword = ref('')
 const orgKeyword = ref('')
 const selectedLevels = ref<(number | string)[]>([])
-const selectAll = ref(false)
+
+// Tab切换状态
+const activeTab = ref('available')
+const selectedKeyword = ref('') // 已选机构搜索关键词
 
 const areaTree = ref<RegionTreeNode[]>([])
 const activeAreaCode = ref<string>('')
@@ -295,6 +368,9 @@ const deptTree = ref<DeptTreeNode[]>([])
 const filteredDeptTree = ref<DeptTreeNode[]>([])
 const checkedIds = ref<number[]>([])
 
+// 内部维护的已选机构详情缓存
+const selectedDetailsCache = ref<Map<number, any>>(new Map())
+
 // 分页相关
 const pageNo = ref(1)
 const pageSize = ref(10)
@@ -302,6 +378,25 @@ const total = ref(0)
 
 const levelOptions = computed(() => {
   return getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL) || []
+})
+
+// 已选机构列表(用于"已选机构"Tab显示)
+const selectedOrgList = computed(() => {
+  // 根据 checkedIds 从缓存中获取详情
+  let list = checkedIds.value
+    .map(id => selectedDetailsCache.value.get(id))
+    .filter(Boolean) // 过滤掉undefined
+
+  // 如果有搜索关键词,进行筛选
+  if (selectedKeyword.value.trim()) {
+    const keyword = selectedKeyword.value.trim().toLowerCase()
+    list = list.filter(item =>
+      item.name?.toLowerCase().includes(keyword) ||
+      item.regionPathName?.toLowerCase().includes(keyword)
+    )
+  }
+
+  return list
 })
 
 // 获取机构类别标签
@@ -424,7 +519,6 @@ const handleAreaSearch = () => {
 const handleAreaClick = async (data: RegionTreeNode) => {
   if (!data || data.code === activeAreaCode.value) return
   activeAreaCode.value = data.code
-  selectAll.value = false // 切换地区时重置全选状态
   await loadDeptTree(data.code)
 }
 
@@ -432,7 +526,6 @@ const loadDeptTree = async (areaCode: string) => {
   if (!areaCode) {
     deptTree.value = []
     filteredDeptTree.value = []
-    selectAll.value = false
     return
   }
   deptTreeLoading.value = true
@@ -449,9 +542,10 @@ const loadDeptTree = async (areaCode: string) => {
       params.name = orgKeyword.value.trim()
     }
 
-    // 添加等级筛选
+    // 添加等级筛选 - 支持多个等级
     if (selectedLevels.value.length > 0) {
-      params.hospitalLevel = selectedLevels.value[0]?.toString()
+      // 如果后端支持数组,直接传数组;如果只支持单个,这里传逗号分隔的字符串
+      params.hospitalLevels = selectedLevels.value.map(String)
     }
 
     // 查询分页数据
@@ -467,22 +561,48 @@ const loadDeptTree = async (areaCode: string) => {
     filteredDeptTree.value = list
     console.log('filteredDeptTree', filteredDeptTree.value)
 
+    // 将当前页数据添加到缓存
+    list.forEach(item => {
+      selectedDetailsCache.value.set(item.id, {
+        id: item.id,
+        name: item.name,
+        hospitalLevel: item.hospitalLevel,
+        institutionCategory: item.institutionCategory,
+        regionName: item.regionName,
+        areaName: item.areaName,
+        regionPath: item.regionPath,
+        regionPathName: item.regionPathName || ''
+      })
+    })
+
     await nextTick()
     syncCheckedKeys()
-    // 不需要调用 updateSelectAllState，因为下次加载数据时会调用
   } finally {
     deptTreeLoading.value = false
   }
 }
 
-// 收集所有节点的ID（支持列表数据）
+// 收集所有节点的ID(支持列表数据)
 const collectAllDeptIds = (nodes: DeptTreeNode[]): number[] => {
   return nodes.map(item => item.id)
 }
 
-const handleSelectAllChange = async (checked: boolean) => {
-  if (checked) {
-    // 全选：获取所有符合条件的机构ID
+// 处理表格选择变化(单选、全选、取消全选)
+const handleSelectionChange = async (rows: DeptTreeNode[]) => {
+  // 如果正在同步状态,不处理(避免翻页时错误清空选中状态)
+  if (isSyncing.value) {
+    return
+  }
+
+  const currentPageIds = filteredDeptTree.value.map(item => item.id)
+  const selectedIds = rows.map(row => row.id)
+
+  // 判断是否是全选/取消全选操作
+  const isSelectAll = selectedIds.length === filteredDeptTree.value.length && filteredDeptTree.value.length > 0
+  const isUnselectAll = selectedIds.length === 0 && currentPageIds.length > 0
+
+  if (isSelectAll || isUnselectAll) {
+    // 全选/取消全选:获取所有符合当前筛选条件的机构ID
     const params: DeptApi.DeptPageParam = {
       areaCode: activeAreaCode.value,
       pageNo: 1,
@@ -494,66 +614,49 @@ const handleSelectAllChange = async (checked: boolean) => {
       params.name = orgKeyword.value.trim()
     }
 
-    // 添加等级筛选
+    // 添加等级筛选 - 支持多个等级
     if (selectedLevels.value.length > 0) {
-      params.hospitalLevel = selectedLevels.value[0]?.toString()
+      params.hospitalLevels = selectedLevels.value.map(String)
     }
 
     try {
       const allIds = await DeptApi.getAllDeptIds(params)
-      checkedIds.value = allIds
-    } catch (error) {
-      console.error('获取所有机构ID失败:', error)
-    }
-  } else {
-    // 取消全选：清空所有选中
-    checkedIds.value = []
-  }
+      const allIdsSet = new Set(allIds)
 
-  await nextTick()
-  syncCheckedKeys()
-  updateSelectAllState()
+      if (isSelectAll) {
+        // 全选:合并ID(使用Set自动去重)
+        const newIdsSet = new Set([...checkedIds.value, ...allIds])
+        checkedIds.value = Array.from(newIdsSet)
+      } else {
+        // 取消全选:移除符合条件的所有ID
+        checkedIds.value = checkedIds.value.filter(id => !allIdsSet.has(id))
+      }
+    } catch (error) {
+      console.error('全选操作失败:', error)
+      // 如果API调用失败,至少处理当前页
+      if (isSelectAll) {
+        const newIdsSet = new Set([...checkedIds.value, ...currentPageIds])
+        checkedIds.value = Array.from(newIdsSet)
+      } else {
+        checkedIds.value = checkedIds.value.filter(id => !currentPageIds.includes(id))
+      }
+    }
+
+    // 重新同步表格状态
+    await nextTick()
+    syncCheckedKeys()
+  } else {
+    // 单选/部分选择:只更新当前页
+    const otherPageIds = checkedIds.value.filter(id => !currentPageIds.includes(id))
+    checkedIds.value = [...otherPageIds, ...selectedIds]
+  }
 }
 
 const handleLevelChange = () => {
-  // 等级筛选变化时，重置页码并重新加载数据
+  // 等级筛选变化时,重置页码并重新加载数据
   pageNo.value = 1
   if (activeAreaCode.value) {
     loadDeptTree(activeAreaCode.value)
-  }
-}
-
-// 更新全选框状态
-const updateSelectAllState = async () => {
-  // 检查是否选中了所有机构
-  if (!activeAreaCode.value) {
-    selectAll.value = false
-    return
-  }
-
-  const params: DeptApi.DeptPageParam = {
-    areaCode: activeAreaCode.value,
-    pageNo: 1,
-    pageSize: 10
-  }
-
-  // 添加搜索条件
-  if (orgKeyword.value.trim()) {
-    params.name = orgKeyword.value.trim()
-  }
-
-  // 添加等级筛选
-  if (selectedLevels.value.length > 0) {
-    params.hospitalLevel = selectedLevels.value[0]?.toString()
-  }
-
-  try {
-    const allIds = await DeptApi.getAllDeptIds(params)
-    const checkedSet = new Set(checkedIds.value)
-    selectAll.value = allIds.length > 0 && allIds.every((id) => checkedSet.has(id))
-  } catch (error) {
-    console.error('获取所有机构ID失败:', error)
-    selectAll.value = false
   }
 }
 
@@ -580,27 +683,33 @@ const handlePageChange = (val: number) => {
   }
 }
 
-const handleSelectionChange = (rows: DeptTreeNode[]) => {
-  // 更新当前页选中的ID
-  const currentPageIds = filteredDeptTree.value.map(item => item.id)
-  const selectedIds = rows.map(row => row.id)
+// 防止在同步选中状态时触发selection-change
+const isSyncing = ref(false)
 
-  // 移除当前页未选中的
-  const newCheckedIds = checkedIds.value.filter(id => !currentPageIds.includes(id))
-  // 添加当前页选中的
-  newCheckedIds.push(...selectedIds)
-
-  checkedIds.value = newCheckedIds
-  // 不调用updateSelectAllState，因为它现在是异步的
-}
-
-const syncCheckedKeys = () => {
+const syncCheckedKeys = async () => {
   // 同步表格选中状态
-  if (deptTableRef.value) {
-    filteredDeptTree.value.forEach(row => {
-      deptTableRef.value.toggleRowSelection(row, checkedIds.value.includes(row.id))
-    })
-  }
+  if (!deptTableRef.value) return
+
+  isSyncing.value = true
+
+  // 等待DOM完全渲染
+  await nextTick()
+  await nextTick() // 双重确保
+
+  // 完全清空选中状态,避免状态累积
+  deptTableRef.value.clearSelection()
+
+  // 重新设置选中状态
+  filteredDeptTree.value.forEach(row => {
+    if (checkedIds.value.includes(row.id)) {
+      deptTableRef.value.toggleRowSelection(row, true)
+    }
+  })
+
+  // 延迟重置标志,确保所有事件处理完毕
+  setTimeout(() => {
+    isSyncing.value = false
+  }, 150)
 }
 
 const collectDetailsFromTree = (ids: number[]): any[] => {
@@ -642,7 +751,28 @@ const mergeDetails = (ids: number[], source: any[]) => {
 
 const updateSelection = (ids: number[]) => {
   checkedIds.value = ids
-  // 不调用updateSelectAllState，因为它现在是异步的
+}
+
+// 移除单个已选机构
+const removeSelected = async (id: number) => {
+  checkedIds.value = checkedIds.value.filter(checkedId => checkedId !== id)
+
+  // 如果当前在"可选机构"Tab,需要同步表格状态
+  if (activeTab.value === 'available') {
+    await nextTick()
+    syncCheckedKeys()
+  }
+}
+
+// 清空所有已选机构
+const clearAllSelected = async () => {
+  checkedIds.value = []
+
+  // 如果当前在"可选机构"Tab,需要同步表格状态
+  if (activeTab.value === 'available') {
+    await nextTick()
+    syncCheckedKeys()
+  }
 }
 
 const handleCancel = () => {
@@ -672,19 +802,27 @@ watch(
     if (visible) {
       // 先重置状态
       checkedIds.value = [...(props.selectedIds ?? [])]
-      selectAll.value = false
       selectedLevels.value = []  // 重置等级筛选
       orgKeyword.value = ''      // 重置搜索关键词
+      selectedKeyword.value = '' // 重置已选机构搜索
+      activeTab.value = 'available' // 重置到"可选机构"Tab
       pageNo.value = 1           // 重置页码
       pageSize.value = 10        // 重置每页条数
 
-      // 加载区域树（内部会自动加载机构树）
+      // 初始化缓存:从 props.selectedDetails 中加载已选机构详情
+      selectedDetailsCache.value = new Map()
+      props.selectedDetails.forEach(item => {
+        if (item && typeof item.id === 'number') {
+          selectedDetailsCache.value.set(item.id, item)
+        }
+      })
+
+      // 加载区域树(内部会自动加载机构树)
       await loadAreaTree()
 
       // 确保选中状态正确同步
       await nextTick()
       syncCheckedKeys()
-      // 不调用updateSelectAllState，因为数据加载时会自动处理
     }
   }
 )
@@ -827,6 +965,13 @@ watch(areaKeyword, () => {
     gap: 12px;
   }
 
+  .filter-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--el-text-color-regular);
+    white-space: nowrap;
+  }
+
   .panel-title {
     display: flex;
     align-items: center;
@@ -847,7 +992,7 @@ watch(areaKeyword, () => {
 
   .panel-body {
     flex: 1 1 0%;
-    overflow: hidden;
+    overflow-y: auto;
     padding: 12px;
     min-height: 0;
     max-height: 100%;
@@ -951,6 +1096,62 @@ watch(areaKeyword, () => {
     }
   }
 
+  // Tab相关样式
+  .org-tabs {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    :deep(.el-tabs__header) {
+      margin: 0;
+      padding: 12px 20px 0;
+      background: linear-gradient(
+        135deg,
+        rgba(22, 163, 74, 0.08) 0%,
+        rgba(134, 239, 172, 0.06) 50%,
+        rgba(240, 253, 244, 0.04) 100%
+      );
+    }
+
+    :deep(.el-tabs__content) {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :deep(.el-tab-pane) {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-label {
+      display: flex;
+      align-items: center;
+      font-weight: 500;
+    }
+  }
+
+  .selected-org-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .selected-org-table {
+    flex: 1;
+  }
+
+  .selected-actions {
+    padding: 12px;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #ebeef5;
+  }
+
   :deep(.el-skeleton) {
     flex: 1;
     padding: 0;
@@ -1002,10 +1203,6 @@ watch(areaKeyword, () => {
 
 :deep(.el-tree-node) {
   white-space: nowrap;
-}
-
-:deep(.el-tree-node > .el-tree-node__children) {
-  overflow: hidden;
 }
 
 // 机构表格样式

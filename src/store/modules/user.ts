@@ -17,6 +17,8 @@ interface UserVO {
   deptName?: string
   roleCode?: string
   roleName?: string
+  mobile?: string
+  passwordChanged?: boolean
 }
 
 interface UserInfoVO {
@@ -40,7 +42,9 @@ export const useUserStore = defineStore('admin-user', {
       deptId: 0,
       deptName: '',
       roleCode: '',
-      roleName: ''
+      roleName: '',
+      mobile: '',
+      passwordChanged: false
     }
   }),
   getters: {
@@ -118,7 +122,9 @@ export const useUserStore = defineStore('admin-user', {
         deptId: 0,
         deptName: '',
         roleCode: '',
-        roleName: ''
+        roleName: '',
+        mobile: '',
+        passwordChanged: false
       }
     }
   }
