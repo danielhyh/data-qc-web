@@ -156,7 +156,7 @@
             :show-overflow-tooltip="true"
           />
           <el-table-column
-            label="部门"
+            label="机构"
             align="center"
             key="deptName"
             prop="deptName"
