@@ -45,12 +45,13 @@ import VueDOMPurifyHTML from 'vue-dompurify-html' // 解决v-html 的安全隐�
 
 // 引入SSO工具
 import { SsoAuth } from '@/utils/sso'
-import { getAccessToken, removeToken } from '@/utils/auth'
+import { getAccessToken } from '@/utils/auth'
 import { isRelogin } from '@/config/axios/service'
 import { useI18n } from '@/hooks/web/useI18n'
-import * as SsoApi from '@/api/login/sso'
+import { useUserStore } from '@/store/modules/user'
+import { useTagsViewStore } from '@/store/modules/tagsView'
 
-const INACTIVITY_LIMIT = 10 * 60 * 1000 // 10 分钟
+const INACTIVITY_LIMIT = 1000 * 60 * 1000 // 10 分钟
 let inactivityTimer: number | null = null
 
 const clearInactivityTimer = () => {
@@ -60,16 +61,10 @@ const clearInactivityTimer = () => {
   }
 }
 
-const showInactivityLogoutConfirm = () => {
+const showInactivityLogoutConfirm = async () => {
   const { t } = useI18n()
-
-  // 先调用后端SSO注销接口并清除本地token
-  // 但不刷新页面，让弹框先显示
-  SsoApi.ssoLogout().catch((error) => {
-    console.error('[Inactivity] SSO注销失败:', error)
-  })
-  removeToken()
-  SsoAuth.setRedirecting(false)
+  const userStore = useUserStore()
+  const tagsViewStore = useTagsViewStore()
 
   // 显示弹框提示用户重新登录
   ElMessageBox.confirm(t('sys.api.timeoutMessage'), t('common.confirmTitle'), {
@@ -80,15 +75,18 @@ const showInactivityLogoutConfirm = () => {
     confirmButtonText: t('login.relogin'),
     type: 'warning'
   })
-    .then(() => {
+    .then(async () => {
+      // 执行完整的登出逻辑
+      await userStore.loginOut()
+      tagsViewStore.delAllViews()
       isRelogin.show = false
-      // 刷新页面，触发SSO登录流程
-      window.location.href = window.location.pathname
+      // 注意：userStore.loginOut() 内部会调用 SsoAuth.logout() 并刷新页面
     })
-    .catch(() => {
+    .catch(async () => {
+      // 即使用户尝试关闭弹框,也执行完整的登出逻辑
+      await userStore.loginOut()
+      tagsViewStore.delAllViews()
       isRelogin.show = false
-      // 即使用户尝试关闭弹框，也刷新页面强制重新登录
-      window.location.href = window.location.pathname
     })
 }
 
