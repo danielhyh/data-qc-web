@@ -349,7 +349,14 @@ export const StatisticsApi = {
     request.download({
       url: '/shortage/statistics/export-drugs-list',
       params
+    }),
+
+  exportRegionSummary: (params: StatisticsQueryVO) => {
+    return request.download({
+      url: '/shortage/statistics/export-region-summary',
+      params
     })
+  }
 }
 
 // ========== 工具函数 ==========

@@ -35,8 +35,8 @@
             </el-tooltip>
           </template>
         </el-step>
-        <el-step 
-          title="上传与校验" 
+        <el-step
+          title="上传与校验"
           @click="changeSteps(1)"
           :class="{ 'step-clickable': 1 <= currentTask.maxCurrentStep }"
         >
@@ -48,8 +48,8 @@
             </el-tooltip>
           </template>
         </el-step>
-        <el-step 
-          title="前置质控" 
+        <el-step
+          title="前置质控"
           @click="changeSteps(2)"
           :class="{ 'step-clickable': 2 <= currentTask.maxCurrentStep }"
         >
@@ -61,8 +61,8 @@
             </el-tooltip>
           </template>
         </el-step>
-        <el-step 
-          title="提交上报" 
+        <el-step
+          title="提交上报"
           @click="changeSteps(3)"
           :class="{ 'step-clickable': 3 <= currentTask.maxCurrentStep }"
         >
@@ -74,8 +74,8 @@
             </el-tooltip>
           </template>
         </el-step>
-        <el-step 
-          title="提交国家平台" 
+        <el-step
+          title="提交国家平台"
           @click="changeSteps(4)"
           :class="{ 'step-clickable': 4 <= currentTask.maxCurrentStep }"
         >
@@ -171,11 +171,11 @@
       <!-- 步骤1: 上传与校验 -->
       <div v-if="currentStep === 1" class="step-content">
         <h3 class="step-title">上传与校验</h3>
-        
+
         <!-- 总览卡片（整合进度信息） -->
-        <StepSummaryCard 
+        <StepSummaryCard
           :key="`step1-${stepSummaryKey}`"
-          :step-type="1" 
+          :step-type="1"
           :task-id="currentTask.taskId"
           :is-processing="isUploading"
           :current-phase="currentBatchPhase"
@@ -185,7 +185,7 @@
           @refresh="loadStepSummary"
           @close="handleSummaryClose"
         />
-        
+
         <div class="upload-section">
 
           <!-- 批量上传区域 -->
@@ -268,8 +268,8 @@
 
                     <!-- 操作按钮 -->
                     <div class="result-actions">
-                      <el-button 
-                        size="small" 
+                      <el-button
+                        size="small"
                         @click="downloadErrorSummary"
                         v-if="uploadResult.failedCount > 0"
                       >
@@ -286,12 +286,12 @@
           <!-- 文件列表（带上传统计和刷新按钮） -->
           <div class="table-header">
             <span class="table-title">文件列表</span>
-            
+
             <!-- 上传统计（始终显示） -->
             <div class="header-upload-stats">
               <span class="stats-label">上传进度：</span>
-              <el-progress 
-                :percentage="fileUploadPercentage" 
+              <el-progress
+                :percentage="fileUploadPercentage"
                 :color="getProgressColor(fileUploadPercentage)"
                 :stroke-width="6"
                 class="stats-progress"
@@ -300,7 +300,7 @@
                 {{ uploadedFileCount }}/{{ totalFileCount }}
               </span>
             </div>
-            
+
             <el-button
               type="primary"
               size="small"
@@ -340,7 +340,7 @@
                 <div class="progress-wrapper">
                   <!-- 正在上传：显示实时进度 -->
                   <template v-if="uploadingFiles.includes(row.fileType) && uploadProgress[row.fileType]">
-                    <el-progress 
+                    <el-progress
                       :percentage="uploadProgress[row.fileType]?.progress || 0"
                       :status="getProgressStatus(uploadProgress[row.fileType]?.status)"
                     />
@@ -350,7 +350,7 @@
                   </template>
                   <!-- 未上传或已完成：显示固定状态 -->
                   <template v-else>
-                    <el-progress 
+                    <el-progress
                       :percentage="row.uploadStatus === 2 ? 100 : 0"
                       :status="row.uploadStatus === 2 ? 'success' : undefined"
                     />
@@ -419,8 +419,8 @@
                   :show-file-list="false"
                   class="inline-upload"
                 >
-                  <el-button 
-                    :type="row.uploadStatus === 0 ? 'primary' : 'warning'" 
+                  <el-button
+                    :type="row.uploadStatus === 0 ? 'primary' : 'warning'"
                     size="small"
                     :loading="uploadingFiles.includes(row.fileType)"
                   >
@@ -437,7 +437,7 @@
               <el-icon class="mr-5px"><ArrowLeft /></el-icon>
               返回准备
             </el-button>
-            <el-tooltip 
+            <el-tooltip
               :content="!allFilesUploaded ? '请先完成所有文件的上传与基础校验' : '开始前置质控'"
               placement="top"
               :disabled="allFilesUploaded"
@@ -460,7 +460,7 @@
       <!-- 步骤2: 前置质控 -->
       <div v-if="currentStep === 2" class="step-content">
         <h3 class="step-title">前置质控结果</h3>
-        
+
         <!-- 🔥 质控进度条 -->
         <transition name="fade-slide">
           <div v-if="isQCProcessing" class="qc-progress-section">
@@ -474,19 +474,19 @@
                   <span class="progress-percent">{{ qcProgress }}%</span>
                 </div>
               </div>
-              
-              <el-progress 
-                :percentage="qcProgress" 
+
+              <el-progress
+                :percentage="qcProgress"
                 :color="getProgressColor(qcProgress)"
                 :stroke-width="12"
                 class="main-progress"
               />
-              
+
               <div class="qc-current-phase">
                 <el-icon class="phase-icon"><Document /></el-icon>
                 <span class="phase-text">{{ qcCurrentPhase }}</span>
               </div>
-              
+
               <!-- 文件进度列表 -->
               <div v-if="qcFileProgress.length > 0" class="qc-files-list">
                 <div v-for="(file, index) in qcFileProgress" :key="index" class="qc-file-item">
@@ -498,8 +498,8 @@
                     </el-icon>
                     <span class="file-name">{{ file.name }}</span>
                   </div>
-                  <el-progress 
-                    :percentage="file.progress" 
+                  <el-progress
+                    :percentage="file.progress"
                     :status="file.status === 'success' ? 'success' : undefined"
                     :stroke-width="6"
                     class="file-progress"
@@ -509,260 +509,50 @@
             </el-card>
           </div>
         </transition>
-        
+
         <!-- 总览卡片 -->
-        <StepSummaryCard 
+        <StepSummaryCard
           v-if="!isQCProcessing"
           :key="`step2-${stepSummaryKey}`"
-          :step-type="2" 
+          :step-type="2"
           :task-id="currentTask.taskId"
           @refresh="loadStepSummary"
           @close="handleSummaryClose"
         />
-        
+
         <div v-if="!isQCProcessing" class="qc-section">
-        <!-- 质控统计卡片 -->
-        <div class="qc-summary">
-          <div class="summary-card" :class="preQCResult.passed ? 'success' : 'warning'">
-            <div class="summary-icon">
-              <el-icon v-if="preQCResult.passed">
-                <CircleCheck />
-              </el-icon>
-              <el-icon v-else>
-                <Warning />
-              </el-icon>
-            </div>
-            <div class="summary-content">
-              <div class="summary-title">{{ preQCResult.passed ? '质控通过' : '质控未通过' }}</div>
-              <div class="summary-desc">
-                {{ preQCResult.passed ? '所有文件已通过前置质控，可以提交上报' : '部分文件存在问题，请修复后重新上传' }}
+          <!-- 质控统计卡片 -->
+          <div class="qc-summary">
+            <div class="summary-card" :class="preQCResult.passed ? 'success' : 'warning'">
+              <div class="summary-icon">
+                <el-icon v-if="preQCResult.passed">
+                  <CircleCheck />
+                </el-icon>
+                <el-icon v-else>
+                  <Warning />
+                </el-icon>
+              </div>
+              <div class="summary-content">
+                <div class="summary-title">{{ preQCResult.passed ? '质控通过' : '质控未通过' }}</div>
+                <div class="summary-desc">
+                  {{ preQCResult.passed ? '所有文件已通过前置质控，可以提交上报' : '部分文件存在问题，请修复后重新上传' }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- 质控详情表格 -->
-        <el-table
-          :data="preQCResult.details"
-          @selection-change="handleSelectionChange"
-          :show-overflow-tooltip="true"
-        >
-          <el-table-column
-            type="selection"
-            width="55"
-            align="center"
-            :selectable="checkboxDisabled"
-          />
-          <el-table-column label="序号" width="80" type="index" align="center" />
-          <el-table-column prop="fileType" label="文件类型" width="150" align="center">
-            <template #default="{ row }">
-              <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="row.fileType" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center">
-            <template #default="scope">
-              <span class="font-bold">{{ scope.row.standardFileName }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center">
-            <template #default="scope">
-              <span class="font-bold">{{ scope.row.originalFileName }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="uploadStatus" label="上传状态" width="120" align="center">
-            <template #default="{ row }">
-              <dict-tag :type="DICT_TYPE.UPLOAD_STATUS" :value="row.uploadStatus" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="qcStatus" label="质检状态" width="120" align="center">
-            <template #default="{ row }">
-              <dict-tag :type="DICT_TYPE.QC_STATUS" :value="row.qcStatus" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="fileSize" label="文件大小" width="120" align="center">
-            <template #default="{ row }">
-              {{ formatFileSize(row.fileSize) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="fileFormat" label="文件格式" width="120" align="center" />
-          <el-table-column prop="errorCount" label="错误数" width="100" align="center">
-            <template #default="{ row }">
-                  <span :class="row.errorCount > 0 ? 'error-count' : ''">
-                    {{ row.errorCount || 0 }}
-                  </span>
-            </template>
-          </el-table-column>
-          <el-table-column label="质控进度" width="180" align="center">
-            <template #default="{ row }">
-              <el-progress
-                :percentage="getQCProgress(row.qcStatus)"
-                :color="getQCProgressColor(row.qcStatus)"
-                :stroke-width="8"
-              />
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="220" fixed="right" align="center">
-            <template #default="{ row }">
-              <el-button
-                type="primary"
-                size="small"
-                @click="viewFileData(row)"
-              >
-                <el-icon class="mr-5px"><Document /></el-icon>
-                查看详情
-              </el-button>
-              <el-button
-                v-if="row.qcStatus === 4"
-                type="danger"
-                size="small"
-                @click="viewQCErrors(row)"
-              >
-                <el-icon class="mr-5px"><Warning /></el-icon>
-                查看错误
-              </el-button>
-              <el-button
-                v-if="row.qcStatus === 4"
-                type="warning"
-                size="small"
-                @click="fixAndReupload(row)"
-              >
-                <el-icon class="mr-5px"><RefreshRight /></el-icon>
-                修复重传
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="qc-actions">
-          <el-button @click="backToUpload">
-            <el-icon class="mr-5px"><ArrowLeft /></el-icon>
-            返回上传
-          </el-button>
-          <el-button
-            type="primary"
-            :disabled="!preQCResult.passed"
-            @click="startSubmitReport"
+          <!-- 质控详情表格 -->
+          <el-table
+            :data="preQCResult.details"
+            @selection-change="handleSelectionChange"
+            :show-overflow-tooltip="true"
           >
-            <el-icon class="mr-5px"><Promotion /></el-icon>
-            开始提交上报
-          </el-button>
-        </div>
-        </div>
-      </div>
-
-      <!-- 步骤3: 提交上报 -->
-      <div v-if="currentStep === 3" class="step-content">
-        <h3 class="step-title">提交上报</h3>
-        
-        <!-- 总览卡片 -->
-        <StepSummaryCard 
-          :key="`step3-${stepSummaryKey}`"
-          :step-type="3" 
-          :task-id="currentTask.taskId"
-          @refresh="loadStepSummary"
-          @close="handleSummaryClose"
-        />
-        
-        <div class="submit-section">
-        
-        <!-- 🔥 审核状态卡片 -->
-        <transition name="fade-slide">
-          <div v-if="reviewStatus !== null" class="review-status-section">
-            <el-card :class="['review-status-card', getReviewStatusClass()]">
-              <div class="review-status-header">
-                <div class="status-icon-wrapper">
-                  <el-icon :class="['status-icon', getReviewStatusClass()]">
-                    <Clock v-if="reviewStatus === 0" />
-                    <CircleCheckFilled v-else-if="reviewStatus === 1" />
-                    <CircleCloseFilled v-else-if="reviewStatus === 2" />
-                  </el-icon>
-                </div>
-                <div class="status-content">
-                  <h3 class="status-title">{{ getReviewStatusText() }}</h3>
-                  <p class="status-desc">{{ getReviewStatusDesc() }}</p>
-                </div>
-              </div>
-              
-              <!-- 审核信息 -->
-              <div v-if="reviewInfo" class="review-info">
-                <el-descriptions :column="2" border>
-                  <el-descriptions-item label="提交时间">
-                    {{ formatDateTime(reviewInfo.submitTime) }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="审核状态">
-                    <el-tag :type="getReviewTagType()">{{ getReviewStatusText() }}</el-tag>
-                  </el-descriptions-item>
-                  <el-descriptions-item v-if="reviewInfo.reviewTime" label="审核时间">
-                    {{ formatDateTime(reviewInfo.reviewTime) }}
-                  </el-descriptions-item>
-                  <el-descriptions-item v-if="reviewInfo.reviewer" label="审核人">
-                    {{ reviewInfo.reviewer }}
-                  </el-descriptions-item>
-                  <el-descriptions-item v-if="reviewInfo.reviewComment" label="审核意见" :span="2">
-                    <div class="review-comment">{{ reviewInfo.reviewComment }}</div>
-                  </el-descriptions-item>
-                  <el-descriptions-item v-if="reviewStatus === 2 && reviewInfo.rejectReason" label="驳回原因" :span="2">
-                    <div class="reject-reason">{{ reviewInfo.rejectReason }}</div>
-                  </el-descriptions-item>
-                </el-descriptions>
-              </div>
-              
-              <!-- 操作按钮 -->
-              <div class="review-actions">
-                <el-button 
-                  v-if="reviewStatus === 0" 
-                  :icon="RefreshRight"
-                  @click="refreshReviewStatus"
-                  :loading="refreshingReview"
-                >
-                  刷新审核状态
-                </el-button>
-                <el-button 
-                  v-if="reviewStatus === 1" 
-                  type="success"
-                  size="large"
-                  @click="goToNationalSubmit"
-                >
-                  <el-icon><Promotion /></el-icon>
-                  进入国家平台提交
-                </el-button>
-                <el-button 
-                  v-if="reviewStatus === 2" 
-                  type="warning"
-                  size="large"
-                  @click="backToUploadForResubmit"
-                >
-                  <el-icon><RefreshLeft /></el-icon>
-                  重新上传文件
-                </el-button>
-              </div>
-            </el-card>
-          </div>
-        </transition>
-        
-        <!-- 上报信息 -->
-        <div v-if="reviewStatus === null" class="submit-info">
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="任务名称">
-              {{ submitInfo.taskName }}
-            </el-descriptions-item>
-            <el-descriptions-item label="开始日期">
-              {{ formatDateTime(submitInfo.startDate) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="结束日期">
-              {{ formatDateTime(submitInfo.endDate) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="上报时间">
-              {{ formatDateTime(submitInfo.reportTime) }}
-            </el-descriptions-item>
-          </el-descriptions>
-        </div>
-
-        <!-- 文件列表 -->
-        <el-table
-          :data="preQCResult.details"
-          :show-overflow-tooltip="true"
-        >
+            <el-table-column
+              type="selection"
+              width="55"
+              align="center"
+              :selectable="checkboxDisabled"
+            />
             <el-table-column label="序号" width="80" type="index" align="center" />
             <el-table-column prop="fileType" label="文件类型" width="150" align="center">
               <template #default="{ row }">
@@ -779,64 +569,274 @@
                 <span class="font-bold">{{ scope.row.originalFileName }}</span>
               </template>
             </el-table-column>
-          <el-table-column prop="uploadStatus" label="上传状态" width="120" align="center">
-            <template #default="{ row }">
-              <dict-tag :type="DICT_TYPE.UPLOAD_STATUS" :value="row.uploadStatus" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="qcStatus" label="质检状态" width="140" align="center">
-            <template #default="{ row }">
-              <dict-tag :type="DICT_TYPE.QC_STATUS" :value="row.qcStatus" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="fileSize" label="文件大小" width="120" align="center">
-            <template #default="{ row }">
-              {{ formatFileSize(row.fileSize) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="fileFormat" label="文件格式" width="120" align="center" />
-<!--          <el-table-column label="完成度" width="180" align="center">
-            <template #default="{ row }">
-              <el-progress
-                :percentage="100"
-                :color="getProgressColor(100)"
-                :stroke-width="8"
-              />
-            </template>
-          </el-table-column>-->
-          <el-table-column label="操作" width="150" fixed="right" align="center">
-            <template #default="{ row }">
-              <el-button type="primary" size="small" @click="viewFileData(row)">
-                <el-icon class="mr-5px"><Document /></el-icon>
-                查看详情
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+            <el-table-column prop="uploadStatus" label="上传状态" width="120" align="center">
+              <template #default="{ row }">
+                <dict-tag :type="DICT_TYPE.UPLOAD_STATUS" :value="row.uploadStatus" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="qcStatus" label="质检状态" width="120" align="center">
+              <template #default="{ row }">
+                <dict-tag :type="DICT_TYPE.QC_STATUS" :value="row.qcStatus" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileSize" label="文件大小" width="120" align="center">
+              <template #default="{ row }">
+                {{ formatFileSize(row.fileSize) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileFormat" label="文件格式" width="120" align="center" />
+            <el-table-column prop="errorCount" label="错误数" width="100" align="center">
+              <template #default="{ row }">
+                  <span :class="row.errorCount > 0 ? 'error-count' : ''">
+                    {{ row.errorCount || 0 }}
+                  </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="质控进度" width="180" align="center">
+              <template #default="{ row }">
+                <el-progress
+                  :percentage="getQCProgress(row.qcStatus)"
+                  :color="getQCProgressColor(row.qcStatus)"
+                  :stroke-width="8"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="220" fixed="right" align="center">
+              <template #default="{ row }">
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="viewFileData(row)"
+                >
+                  <el-icon class="mr-5px"><Document /></el-icon>
+                  查看详情
+                </el-button>
+                <el-button
+                  v-if="row.qcStatus === 4"
+                  type="danger"
+                  size="small"
+                  @click="viewQCErrors(row)"
+                >
+                  <el-icon class="mr-5px"><Warning /></el-icon>
+                  查看错误
+                </el-button>
+                <el-button
+                  v-if="row.qcStatus === 4"
+                  type="warning"
+                  size="small"
+                  @click="fixAndReupload(row)"
+                >
+                  <el-icon class="mr-5px"><RefreshRight /></el-icon>
+                  修复重传
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
 
-        <div class="qc-actions">
-          <el-button @click="() => (currentStep = 2)" :disabled="reviewStatus !== null">
-            <el-icon class="mr-5px"><ArrowLeft /></el-icon>
-            返回前置质控
-          </el-button>
-          <el-button
-            v-if="reviewStatus === null"
-            type="success"
-            size="large"
-            :disabled="!preQCResult.passed"
-            @click="submitReport"
-          >
-            <el-icon class="mr-5px"><Promotion /></el-icon>
-            确认提交上报
-          </el-button>
-        </div>
+          <div class="qc-actions">
+            <el-button @click="backToUpload">
+              <el-icon class="mr-5px"><ArrowLeft /></el-icon>
+              返回上传
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="!preQCResult.passed"
+              @click="startSubmitReport"
+            >
+              <el-icon class="mr-5px"><Promotion /></el-icon>
+              开始提交上报
+            </el-button>
+          </div>
         </div>
       </div>
-      
+
+      <!-- 步骤3: 提交上报 -->
+      <div v-if="currentStep === 3" class="step-content">
+        <h3 class="step-title">提交上报</h3>
+
+        <!-- 总览卡片 -->
+        <StepSummaryCard
+          :key="`step3-${stepSummaryKey}`"
+          :step-type="3"
+          :task-id="currentTask.taskId"
+          @refresh="loadStepSummary"
+          @close="handleSummaryClose"
+        />
+
+        <div class="submit-section">
+
+          <!-- 🔥 审核状态卡片 -->
+          <transition name="fade-slide">
+            <div v-if="reviewStatus !== null" class="review-status-section">
+              <el-card :class="['review-status-card', getReviewStatusClass()]">
+                <div class="review-status-header">
+                  <div class="status-icon-wrapper">
+                    <el-icon :class="['status-icon', getReviewStatusClass()]">
+                      <Clock v-if="reviewStatus === 0" />
+                      <CircleCheckFilled v-else-if="reviewStatus === 1" />
+                      <CircleCloseFilled v-else-if="reviewStatus === 2" />
+                    </el-icon>
+                  </div>
+                  <div class="status-content">
+                    <h3 class="status-title">{{ getReviewStatusText() }}</h3>
+                    <p class="status-desc">{{ getReviewStatusDesc() }}</p>
+                  </div>
+                </div>
+
+                <!-- 审核信息 -->
+                <div v-if="reviewInfo" class="review-info">
+                  <el-descriptions :column="2" border>
+                    <el-descriptions-item label="提交时间">
+                      {{ formatDateTime(reviewInfo.submitTime) }}
+                    </el-descriptions-item>
+                    <el-descriptions-item label="审核状态">
+                      <el-tag :type="getReviewTagType()">{{ getReviewStatusText() }}</el-tag>
+                    </el-descriptions-item>
+                    <el-descriptions-item v-if="reviewInfo.reviewTime" label="审核时间">
+                      {{ formatDateTime(reviewInfo.reviewTime) }}
+                    </el-descriptions-item>
+                    <el-descriptions-item v-if="reviewInfo.reviewer" label="审核人">
+                      {{ reviewInfo.reviewer }}
+                    </el-descriptions-item>
+                    <el-descriptions-item v-if="reviewInfo.reviewComment" label="审核意见" :span="2">
+                      <div class="review-comment">{{ reviewInfo.reviewComment }}</div>
+                    </el-descriptions-item>
+                    <el-descriptions-item v-if="reviewStatus === 2 && reviewInfo.rejectReason" label="驳回原因" :span="2">
+                      <div class="reject-reason">{{ reviewInfo.rejectReason }}</div>
+                    </el-descriptions-item>
+                  </el-descriptions>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="review-actions">
+                  <el-button
+                    v-if="reviewStatus === 0"
+                    :icon="RefreshRight"
+                    @click="refreshReviewStatus"
+                    :loading="refreshingReview"
+                  >
+                    刷新审核状态
+                  </el-button>
+                  <el-button
+                    v-if="reviewStatus === 1"
+                    type="success"
+                    size="large"
+                    @click="goToNationalSubmit"
+                  >
+                    <el-icon><Promotion /></el-icon>
+                    进入国家平台提交
+                  </el-button>
+                  <el-button
+                    v-if="reviewStatus === 2"
+                    type="warning"
+                    size="large"
+                    @click="backToUploadForResubmit"
+                  >
+                    <el-icon><RefreshLeft /></el-icon>
+                    重新上传文件
+                  </el-button>
+                </div>
+              </el-card>
+            </div>
+          </transition>
+
+          <!-- 上报信息 -->
+          <div v-if="reviewStatus === null" class="submit-info">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="任务名称">
+                {{ submitInfo.taskName }}
+              </el-descriptions-item>
+              <el-descriptions-item label="开始日期">
+                {{ formatDateTime(submitInfo.startDate) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="结束日期">
+                {{ formatDateTime(submitInfo.endDate) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="上报时间">
+                {{ formatDateTime(submitInfo.reportTime) }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+
+          <!-- 文件列表 -->
+          <el-table
+            :data="preQCResult.details"
+            :show-overflow-tooltip="true"
+          >
+            <el-table-column label="序号" width="80" type="index" align="center" />
+            <el-table-column prop="fileType" label="文件类型" width="150" align="center">
+              <template #default="{ row }">
+                <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="row.fileType" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center">
+              <template #default="scope">
+                <span class="font-bold">{{ scope.row.standardFileName }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center">
+              <template #default="scope">
+                <span class="font-bold">{{ scope.row.originalFileName }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="uploadStatus" label="上传状态" width="120" align="center">
+              <template #default="{ row }">
+                <dict-tag :type="DICT_TYPE.UPLOAD_STATUS" :value="row.uploadStatus" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="qcStatus" label="质检状态" width="140" align="center">
+              <template #default="{ row }">
+                <dict-tag :type="DICT_TYPE.QC_STATUS" :value="row.qcStatus" />
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileSize" label="文件大小" width="120" align="center">
+              <template #default="{ row }">
+                {{ formatFileSize(row.fileSize) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileFormat" label="文件格式" width="120" align="center" />
+            <!--          <el-table-column label="完成度" width="180" align="center">
+                        <template #default="{ row }">
+                          <el-progress
+                            :percentage="100"
+                            :color="getProgressColor(100)"
+                            :stroke-width="8"
+                          />
+                        </template>
+                      </el-table-column>-->
+            <el-table-column label="操作" width="150" fixed="right" align="center">
+              <template #default="{ row }">
+                <el-button type="primary" size="small" @click="viewFileData(row)">
+                  <el-icon class="mr-5px"><Document /></el-icon>
+                  查看详情
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="qc-actions">
+            <el-button @click="() => (currentStep = 2)" :disabled="reviewStatus !== null">
+              <el-icon class="mr-5px"><ArrowLeft /></el-icon>
+              返回前置质控
+            </el-button>
+            <el-button
+              v-if="reviewStatus === null"
+              type="success"
+              size="large"
+              :disabled="!preQCResult.passed"
+              @click="submitReport"
+            >
+              <el-icon class="mr-5px"><Promotion /></el-icon>
+              确认提交上报
+            </el-button>
+          </div>
+        </div>
+      </div>
+
       <!-- 步骤4: 提交国家平台 -->
       <div v-if="currentStep === 4" class="step-content">
         <h3 class="step-title">提交国家平台</h3>
-        
+
         <div class="national-submit-section">
           <el-result icon="success" title="准备就绪" sub-title="您的数据已通过审核，可以提交到国家平台了">
             <template #extra>
@@ -856,8 +856,8 @@
                       {{ fileList.length }} 个
                     </el-descriptions-item>
                   </el-descriptions>
-    </div>
-                
+                </div>
+
                 <el-alert
                   title="提示"
                   type="warning"
@@ -871,7 +871,7 @@
                     </div>
                   </template>
                 </el-alert>
-                
+
                 <el-space>
                   <el-button size="large" @click="currentStep = 3">
                     返回上一步
@@ -1021,7 +1021,7 @@
             <span class="stat-value success">{{ errorDetailDialog.totalRows - errorDetailDialog.errorCount }}</span>
           </div>
         </div>
-        
+
         <div class="pass-rate">
           <span class="rate-label">通过率:</span>
           <el-progress
@@ -1414,18 +1414,18 @@ const overallProgress = computed(() => {
   if (overallProgressData.value && overallProgressData.value.overallProgress !== undefined) {
     return overallProgressData.value.overallProgress
   }
-  
+
   // 降级：前端计算
   if (uploadingFiles.value.length === 0) {
     // 没有正在上传的文件，使用已完成数量计算
     const total = totalFileCount.value
     return total > 0 ? Math.round((uploadedFileCount.value / total) * 100) : 0
   }
-  
+
   // 有正在上传的文件，计算平均进度
   let totalProgress = 0
   let count = 0
-  
+
   fileList.value.forEach(file => {
     if (uploadProgress.value[file.fileType]) {
       totalProgress += uploadProgress.value[file.fileType].progress || 0
@@ -1435,7 +1435,7 @@ const overallProgress = computed(() => {
       count++
     }
   })
-  
+
   return count > 0 ? Math.round(totalProgress / count) : 0
 })
 
@@ -1508,22 +1508,22 @@ function changeSteps(step: number) {
 function getStepTooltip(targetStep: number, stageName: string, description: string): string {
   const current = currentStep.value
   const maxStep = currentTask.value.maxCurrentStep || 0
-  
+
   // 如果步骤不可点击
   if (targetStep > maxStep) {
     return description
   }
-  
+
   // 如果是当前步骤
   if (targetStep === current) {
     return `当前所在：${stageName}`
   }
-  
+
   // 如果目标步骤在当前步骤之前
   if (targetStep < current) {
     return `点击返回${stageName}`
   }
-  
+
   // 如果目标步骤在当前步骤之后
   return `点击前往${stageName}`
 }
@@ -1578,14 +1578,14 @@ const viewErrorDetail = async (row: any) => {
   try {
     // 从后端获取错误详情
     const result = await ReportDataApi.getFileValidationErrors(currentTask.value.taskId, row.fileType)
-    
+
     errorDetailDialog.value = {
       visible: true,
       fileName: row.standardFileName || row.originalFileName,
       fileType: row.fileType,
       totalRows: result.totalRows || 0,
       errorCount: result.errorCount || 0,
-      passRate: result.totalRows > 0 
+      passRate: result.totalRows > 0
         ? Math.round(((result.totalRows - result.errorCount) / result.totalRows) * 100)
         : 0,
       requiredErrors: result.requiredErrors || [],
@@ -1674,9 +1674,9 @@ const addProgressMessage = (text: string, type: 'info' | 'success' | 'warning' |
     tag,
     tagType
   }
-  
+
   progressMessages.value.push(message)
-  
+
   // 保持最多显示10条消息
   if (progressMessages.value.length > 10) {
     progressMessages.value.shift()
@@ -1847,7 +1847,7 @@ const handleFileChange = async (uploadFile: any) => {
     // 🔥 前端模拟进度：开始上传
     uploadProgress.value = {}
     overallProgressData.value = { overallProgress: 0 }
-    
+
     // 模拟上传进度
     const simulateProgress = (start: number, end: number, duration: number) => {
       return new Promise(resolve => {
@@ -1894,12 +1894,12 @@ const handleFileChange = async (uploadFile: any) => {
 
     // 阶段4: 完成 (90% -> 100%)
     await simulateProgress(90, 100, 500)
-    
+
     message.success(isZip ? '压缩包上传完成' : '文件上传完成')
-    
+
     // 刷新文件列表
     await loadFileList(currentTask.value.taskId)
-    
+
     // 清空进度
     overallProgressData.value = { overallProgress: 100 }
     setTimeout(() => {
@@ -1925,7 +1925,7 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
 
   const fileType = row.fileType
   const displayName = row.standardFileName || row.fileName
-  
+
   try {
     // 添加到上传中列表
     if (!uploadingFiles.value.includes(fileType)) {
@@ -1941,9 +1941,9 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
         let current = start
         const interval = setInterval(() => {
           current = Math.min(current + step, end)
-          uploadProgress.value[fileType] = { 
-            progress: Math.round(current), 
-            status: current < end ? 'uploading' : 'success' 
+          uploadProgress.value[fileType] = {
+            progress: Math.round(current),
+            status: current < end ? 'uploading' : 'success'
           }
           if (current >= end) {
             clearInterval(interval)
@@ -1989,7 +1989,7 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
     if (index > -1) {
       uploadingFiles.value.splice(index, 1)
     }
-    
+
     // 清空该文件进度
     setTimeout(() => {
       delete uploadProgress.value[fileType]
@@ -1997,13 +1997,13 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
   } catch (error) {
     console.error('文件上传失败:', error)
     message.error(`${displayName}上传失败，请重试`)
-    
+
     // 从上传中列表移除
     const index = uploadingFiles.value.indexOf(fileType)
     if (index > -1) {
       uploadingFiles.value.splice(index, 1)
     }
-    
+
     // 标记为失败
     uploadProgress.value[fileType] = { progress: 0, status: 'error' }
     setTimeout(() => {
@@ -2016,12 +2016,12 @@ const viewFileData = async (file: any) => {
   excelDetailTotal.value = 0
   queryParams.value.pageNo = 1
   activeFile.value = file
-  
+
   // 🔥 获取错误信息
   try {
     const errorInfo = await ReportDataApi.getFileValidationErrors(file.taskId, file.fileType)
     const errorRowsSet = new Set()
-    
+
     // 收集所有错误行号
     if (errorInfo.requiredErrors) {
       errorInfo.requiredErrors.forEach(err => errorRowsSet.add(err.rowIndex))
@@ -2029,13 +2029,13 @@ const viewFileData = async (file: any) => {
     if (errorInfo.typeErrors) {
       errorInfo.typeErrors.forEach(err => errorRowsSet.add(err.rowIndex))
     }
-    
+
     dataViewDialog.value.errorRows = errorRowsSet
   } catch (error) {
     console.warn('获取错误信息失败:', error)
     dataViewDialog.value.errorRows = new Set()
   }
-  
+
   getExcelDetailData()
 }
 
@@ -2120,53 +2120,53 @@ const startPreQC = async () => {
       currentStep.value = 2
       currentTask.value.currentStep = 2
       currentTask.value.maxCurrentStep = 2
-      
+
       // 🔥 2. 显示质控进度动画
       isQCProcessing.value = true
       qcProgress.value = 0
       qcCurrentPhase.value = '准备开始质控...'
-      
+
       // 初始化文件进度列表
       qcFileProgress.value = fileList.value.map(file => ({
         name: tableTypeNameMap[file.fileType] || file.standardFileName,
         progress: 0,
         status: 'pending' as const
       }))
-      
+
       // 阶段1: 准备质控 (0% -> 10%)
       qcCurrentPhase.value = '正在准备质控环境...'
       await simulateQCProgress(0, 10, 1500)
-      
+
       // 阶段2: 检查数据完整性 (10% -> 30%)
       qcCurrentPhase.value = '正在检查数据完整性...'
       await simulateQCProgress(10, 30, 2000)
-      
+
       // 阶段3: 逐个文件质控 (30% -> 70%)
       for (let i = 0; i < qcFileProgress.value.length; i++) {
         qcFileProgress.value[i].status = 'processing'
         qcCurrentPhase.value = `正在质控 ${qcFileProgress.value[i].name}...`
-        
+
         const startProgress = 30 + (i * 40 / qcFileProgress.value.length)
         const endProgress = 30 + ((i + 1) * 40 / qcFileProgress.value.length)
-        
+
         await simulateFileQCProgress(i, startProgress, endProgress, 1500)
       }
-      
+
       // 阶段4: 执行质控规则 (70% -> 85%)
       qcCurrentPhase.value = '正在执行质控规则...'
       await simulateQCProgress(70, 85, 2000)
-      
+
       // 🔥 3. 调用后端质控接口
       qcCurrentPhase.value = '正在调用后端质控接口...'
       await operateQCResults(currentTask.value.taskId)
-      
+
       // 阶段5: 完成 (85% -> 100%)
       qcCurrentPhase.value = '质控完成，正在生成报告...'
       await simulateQCProgress(85, 100, 1500)
-      
+
       // 🔥 4. 加载质控结果
       await loadQCResults(currentTask.value.taskId)
-      
+
       message.success('前置质控完成，所有文件质控通过')
     } catch (error) {
       console.error('前置质控失败:', error)
@@ -2182,20 +2182,20 @@ const startPreQC = async () => {
       // 🔥 重新质控：先切换步骤，再显示进度
       currentStep.value = 2
       currentTask.value.currentStep = 2
-      
+
       isQCProcessing.value = true
       qcProgress.value = 0
       qcCurrentPhase.value = '正在重新进行前置质控...'
-      
+
       await simulateQCProgress(0, 50, 2000)
-      
+
       qcCurrentPhase.value = '正在调用后端质控接口...'
       await operateQCResults(currentTask.value.taskId)
-      
+
       await simulateQCProgress(50, 100, 2000)
-      
+
       await loadQCResults(currentTask.value.taskId)
-      
+
       message.success('前置质控完成')
     } catch (error) {
       console.error('前置质控失败:', error)
@@ -2231,14 +2231,14 @@ const simulateFileQCProgress = (fileIndex: number, start: number, end: number, d
     let current = start
     const fileStep = 100 / (duration / 50)
     let fileProgress = 0
-    
+
     const interval = setInterval(() => {
       current = Math.min(current + step, end)
       fileProgress = Math.min(fileProgress + fileStep, 100)
-      
+
       qcProgress.value = Math.round(current)
       qcFileProgress.value[fileIndex].progress = Math.round(fileProgress)
-      
+
       if (current >= end) {
         clearInterval(interval)
         qcFileProgress.value[fileIndex].status = 'success'
@@ -2255,10 +2255,10 @@ const viewQCErrors = async (row: any) => {
   }
   try {
     const response = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.fileType) as any
-    
+
     // 解析错误数据 - 处理多种可能的返回格式
     let errorList: any[] = []
-    
+
     if (response && typeof response === 'object') {
       // 格式1: { data: { errors: [...] } }
       if (response.data && Array.isArray(response.data.errors)) {
@@ -2279,14 +2279,14 @@ const viewQCErrors = async (row: any) => {
     } else if (Array.isArray(response)) {
       errorList = response
     }
-    
+
     // 统一字段名 (后端可能返回 errorMessage/message 和 excelRowNum/row)
     const normalizedErrors = errorList.map((item: any) => ({
       row: item.excelRowNum || item.row || item.rowNum || '-',
       message: item.errorMessage || item.message || '未知错误',
       id: item.id
     }))
-    
+
     // 设置错误数据和分页信息
     errorDialog.value.errors = normalizedErrors
     errorDialog.value.totalErrors = normalizedErrors.length
@@ -2328,41 +2328,41 @@ const exportQCErrors = () => {
   try {
     // 生成CSV格式数据
     const fileName = errorDialog.value.fileName || '质检错误'
-    const timestamp = new Date().toLocaleString('zh-CN', { 
-      year: 'numeric', 
-      month: '2-digit', 
+    const timestamp = new Date().toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
     }).replace(/\//g, '-').replace(/:/g, '-')
-    
+
     // CSV表头
     let csvContent = '\uFEFF' // UTF-8 BOM，确保Excel正确识别中文
     csvContent += '序号,行号,错误详情\n'
-    
+
     // CSV数据行
     errorDialog.value.errors.forEach((error, index) => {
       const row = error.row || '-'
       const message = (error.message || '').replace(/"/g, '""') // 转义双引号
       csvContent += `${index + 1},"第${row}行","${message}"\n`
     })
-    
+
     // 创建Blob并下载
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
-    
+
     link.setAttribute('href', url)
     link.setAttribute('download', `${fileName}_质检错误列表_${timestamp}.csv`)
     link.style.visibility = 'hidden'
-    
+
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    
+
     URL.revokeObjectURL(url)
-    
+
     message.success('错误列表导出成功')
   } catch (error) {
     console.error('导出失败:', error)
@@ -2406,10 +2406,10 @@ const submitReport = async () => {
     loading.value = true
     await ReportDataApi.submitReport(currentTask.value.taskId, fileIds)
     message.success('数据已成功提交上报，等待后台审核...')
-    
+
     // 🔥 重新加载任务信息，获取最新的 reportStatus
     await loadCurrentTask()
-    
+
     // 🔥 显示审核状态
     reviewStatus.value = 0 // 待审核
     reviewInfo.value = {
@@ -2419,7 +2419,7 @@ const submitReport = async () => {
       reviewComment: null,
       rejectReason: null
     }
-    
+
     // 开始轮询审核状态
     startReviewPolling()
   } catch (error: any) {
@@ -2472,11 +2472,11 @@ const refreshReviewStatus = async () => {
   try {
     // 调用后端接口获取审核状态
     const task = await ReportDataApi.getCurrentActiveTask(currentTask.value.taskId)
-    
+
     // 保存旧状态，避免不必要的更新
     const oldReportStatus = currentTask.value.reportStatus
     const oldReviewStatus = reviewStatus.value
-    
+
     // 根据 reportStatus 判断审核状态
     // reportStatus: 1/5=审核中, 2=驳回, 3=通过
     if (task.reportStatus === 3) {
@@ -2506,7 +2506,7 @@ const refreshReviewStatus = async () => {
         message.info('仍在审核中...')
       }
     }
-    
+
     // 更新审核信息（只在有新信息时更新）
     if (task.reviewTime || task.reviewer || task.reviewComment || task.rejectReason) {
       reviewInfo.value = {
@@ -2529,14 +2529,14 @@ const refreshReviewStatus = async () => {
 const startReviewPolling = () => {
   // 清除已有轮询
   stopReviewPolling()
-  
+
   reviewPollingInterval = setInterval(async () => {
     try {
       const task = await ReportDataApi.getCurrentActiveTask(currentTask.value.taskId)
-      
+
       // 只在状态发生变化时才更新，避免不必要的页面刷新
       const oldReportStatus = currentTask.value.reportStatus
-      
+
       // 根据 reportStatus 判断审核状态
       // reportStatus: 1/5=审核中, 2=驳回, 3=通过
       if (task.reportStatus === 3 && oldReportStatus !== 3) {
@@ -2589,11 +2589,11 @@ const goToNationalSubmit = async () => {
     currentTask.value.currentStep = 4
     currentTask.value.maxCurrentStep = 4
     await updateCurrentStep(4)
-    
+
     // 清除审核状态显示
     reviewStatus.value = null
     reviewInfo.value = null
-    
+
     message.success('已进入国家平台提交步骤')
   } catch (error) {
     console.error('进入国家平台提交失败:', error)
@@ -2605,17 +2605,17 @@ const goToNationalSubmit = async () => {
 const backToUploadForResubmit = async () => {
   try {
     await message.confirm('返回后需要重新上传文件并提交，确认继续？')
-    
+
     // 🔥 重置步骤到上传阶段
     currentStep.value = 1
     currentTask.value.currentStep = 1
     currentTask.value.maxCurrentStep = 1
     await updateCurrentStep(1)
-    
+
     // 清空审核状态
     reviewStatus.value = null
     reviewInfo.value = null
-    
+
     message.info('请重新上传文件')
   } catch (error: any) {
     if (error !== 'cancel') {
@@ -2629,18 +2629,18 @@ const backToUploadForResubmit = async () => {
 const submitToNationalPlatform = async () => {
   try {
     await message.confirm('确认提交数据到国家平台？提交后将无法撤回')
-    
+
     loading.value = true
-    
+
     // 模拟提交过程
     message.info('正在提交到国家平台...')
     await new Promise(resolve => setTimeout(resolve, 2000))
-    
+
     // 调用后端接口
     // await ReportDataApi.submitNationalPlatform(currentTask.value.taskId)
-    
+
     message.success('数据已成功提交到国家平台！')
-    
+
     // 提交成功后返回列表
     setTimeout(() => {
       router.push({
@@ -2689,7 +2689,7 @@ const loadCurrentTask = async () => {
       task.maxCurrentStep = task.maxCurrentStep ?? task.currentStep ?? 0
       task.currentStep = task.currentStep ?? 0
       currentTask.value = task
-      
+
       // 🔥 根据 reportStatus 决定显示哪个步骤
       // 0: 未上报 -> 正常流程（步骤0-3）
       // 1/5: 已上报/审核中 -> 显示审核状态页（步骤3）
@@ -2716,7 +2716,7 @@ const loadCurrentTask = async () => {
         // 未上报 -> 使用任务记录的当前步骤
         currentStep.value = task.currentStep ?? 0
       }
-      
+
       if (task.taskId || currentTask.value.taskId) {
         const taskId = task.taskId || currentTask.value.taskId
         // 始终加载文件列表
@@ -2732,7 +2732,7 @@ const loadCurrentTask = async () => {
             reportTime: task.reportTime ? String(task.reportTime) : ''
           }
         }
-        
+
         // 🔥 如果 reportStatus 为 1/5（审核中），显示审核状态
         if (task.reportStatus === 1 || task.reportStatus === 5) {
           reviewStatus.value = 0 // 待审核
@@ -4177,7 +4177,7 @@ const handleSummaryClose = async () => {
   :deep(.el-descriptions .el-descriptions__body) {
     display: block;
   }
-  
+
   :deep(.el-descriptions .el-descriptions__item) {
     display: block;
     width: 100% !important;

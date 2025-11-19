@@ -54,6 +54,14 @@
             <el-form-item>
               <el-button
                 type="primary"
+                @click="exportExcel"
+              >
+                <el-icon v-if="!loading"><Refresh /></el-icon>
+                <el-icon v-else><Loading /></el-icon>
+                导出
+              </el-button>
+              <el-button
+                type="primary"
                 @click="loadAllData"
               >
                 <el-icon v-if="!loading"><Refresh /></el-icon>
@@ -655,7 +663,7 @@ import {
   type DrugShortageTrendVO,
   formatNumber,
   getTrendIcon,
-  getTrendColor
+  getTrendColor,
 } from '@/api/shortage/statistics'
 import * as echarts from 'echarts'
 import DetailDialog from './components/DetailDialog.vue'
@@ -665,6 +673,7 @@ import UsageChangeChart from './components/UsageChangeChart.vue'
 import TrendAnalysisChart from './components/TrendAnalysisChart.vue'
 import RegionStatisticsChart from './components/RegionStatisticsChart.vue'
 import StatisticsAreaOrgSelector from './components/StatisticsAreaOrgSelector.vue'
+
 
 defineOptions({ name: 'ShortageStatisticsEnhanced' })
 
@@ -725,6 +734,12 @@ let drugCategoryChart: echarts.ECharts | null = null
 let stockAnalysisChart: echarts.ECharts | null = null
 let usageTrendChart: echarts.ECharts | null = null
 let shortageTrendChart: echarts.ECharts | null = null
+
+const exportExcel = async () => {
+  const data = await StatisticsApi.exportRegionSummary(queryParams);
+  download.excel(data, `区域汇总_${queryParams.reportWeek}.xlsx`)
+  message.success('区域汇总导出成功')
+}
 
 // 周期选项
 const weekOptions = computed(() => {
