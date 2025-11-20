@@ -265,7 +265,11 @@ export const ReportRecordApi = {
 
   // 获取填报详情（含药品明细）
   getReportRecordDetail: (taskId: number) =>
-    request.get({ url: `/shortage/report-record/detail?taskId=${taskId}` })
+    request.get({ url: `/shortage/report-record/detail?taskId=${taskId}` }),
+
+  exportReportDetail: async (params: any) => {
+  return await request.download({ url: `/shortage/report-record/export-report-detail`, params })
+}
 }
 
 // ========== 供应状态枚举 ==========

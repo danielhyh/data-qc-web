@@ -104,7 +104,24 @@
                   <Icon icon="ep:download" class="mr-5px" />
                   导出机构数据
                 </el-button>
+
             </el-tooltip>
+            <el-tooltip
+              placement="top"
+              content="请选择填报专区、填报周期，并筛选后再导出"
+            >
+              <el-button
+                type="success"
+                plain
+                :disabled="!canExport2"
+                :loading="exportLoading"
+                @click="handleExport2"
+              >
+                <Icon icon="ep:download" class="mr-5px" />
+                导出填报记录
+              </el-button>
+            </el-tooltip>
+
           </el-form-item>
         </el-form>
       </ContentWrap>
@@ -467,6 +484,10 @@ const getList = async () => {
     loading.value = false
   }
 }
+const handleExport2 = async () => {
+  const data = await ReportRecordApi.exportReportDetail(queryParams)
+  download.excel(data, 'report-record-detail.xlsx')
+}
 
 /** 地区选择处理 */
 const handleRegionSelect = (region: any) => {
@@ -507,6 +528,11 @@ const canExport = computed(() => {
   }
   return Number(queryParams.reportStatus) === SUBMITTED_STATUS
 })
+
+const canExport2 = computed(() => {
+  return (queryParams.zoneId != null && queryParams.reportWeek != null)
+})
+
 
 /** 重置按钮操作 */
 const resetQuery = () => {
