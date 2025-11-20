@@ -114,7 +114,8 @@
 </template>
 
 <script setup lang="ts">
-import { DrugConfigApi, type DrugConfigVO } from '@/api/shortage'
+import { DrugConfigApi } from '@/api/shortage'
+import type { DrugConfigVO } from '@/api/shortage'
 import { DrugCategoryApi } from '@/api/shortage/drugcategory'
 import { DosageCategoryApi } from '@/api/shortage/dosagecategory'
 import {DICT_TYPE, getIntDictOptions} from "@/utils/dict";

@@ -134,18 +134,25 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="本机构未使用此药品" width="180" align="center" class-name="header-bold">
+          <el-table-column label="机构是否使用" width="150" align="center" class-name="header-bold">
             <template #default="scope">
-              <el-checkbox
-                v-model="scope.row.notAvailable"
+              <el-select
+                :model-value="scope.row.notAvailable ? 0 : 1"
                 :disabled="isReadOnly"
-                @change="handleNotAvailableChange(scope.row)"
-              />
+                style="width: 100%"
+                @change="(val) => {
+                  scope.row.notAvailable = val === 0
+                  handleNotAvailableChange(scope.row)
+                }"
+              >
+                <el-option label="是" :value="1" />
+                <el-option label="否" :value="0" />
+              </el-select>
             </template>
           </el-table-column>
 
           <el-table-column
-            label="本周累计使用量（最小剂量单位）"
+            label="本周累计使用量"
             width="280"
             align="center"
             class-name="header-bold"
@@ -165,7 +172,7 @@
           </el-table-column>
 
           <el-table-column
-            label="当日实时库存量（最小剂量单位）"
+            label="当日实时库存量"
             width="280"
             align="center"
             class-name="header-bold"
@@ -285,12 +292,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import {
-  ReportZoneApi,
-  ReportRecordApi,
-  type ReportZoneVO,
-  type ReportRecordVO
-} from '@/api/shortage'
+import { ReportZoneApi, ReportRecordApi, type ReportZoneVO, type ReportRecordVO } from '@/api/shortage'
 import { ArrowLeft, Close } from '@element-plus/icons-vue'
 import { ReportTaskApi, type ReportTaskVO } from '@/api/shortage/reporttask'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'

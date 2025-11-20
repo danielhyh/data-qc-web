@@ -213,7 +213,7 @@ const handleNextStep = async () => {
         ElMessage.success('基本信息保存成功')
         currentStep.value = 1
       } catch (error) {
-        ElMessage.error('保存失败,请重试')
+        // ElMessage.error('保存失败,请重试')
       } finally {
         loading.value = false
       }

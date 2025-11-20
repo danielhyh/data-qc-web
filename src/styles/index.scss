@@ -95,13 +95,7 @@ html {
 }
 
 body {
-  /* 注释掉全局字体设置，避免加载页字体闪烁 */
-  /* font-family: var(--font-family-base); */
-  // font-size: var(--font-size-base);
-  // line-height: var(--line-height-normal);
-  /* font-weight: var(--font-weight-normal); */
   color: var(--tech-text-primary);
-  /* letter-spacing: var(--letter-spacing-normal); */
 }
 
 /* 标题层级系统 */
@@ -261,40 +255,34 @@ small, .text-muted {
   color: var(--tech-text-tertiary);
 }
 
-/* 列表样式 */
-// ul, ol {
-//   margin-bottom: 1rem;
-//   padding-left: 1.5rem;
-  
-//   li {
-//     margin-bottom: 0.25rem;
-//     line-height: var(--line-height-relaxed);
-//   }
-// }
-
-/* 滚动条美化 - 渐变色 */
+/* 滚动条美化 - 细化宽度 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
   background: rgba(91, 141, 239, 0.05);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #5B8DEF, #7c3aed);
-  border-radius: 4px;
-  transition: all 0.3s;
-  
+  border-radius: 3px;
+  /* 缩短过渡时间,提升响应性 */
+  transition: background 0.15s ease;
+
   &:hover {
     background: linear-gradient(180deg, #6b9def, #8b5cf6);
   }
 }
 
-/* Firefox 滚动条 */
-* {
+/* Firefox 滚动条 - 只对特定容器应用 */
+html,
+body,
+.el-table,
+.el-scrollbar,
+[class*="scroll"] {
   scrollbar-width: thin;
   scrollbar-color: #5B8DEF rgba(91, 141, 239, 0.05);
 }
@@ -428,8 +416,16 @@ small, .text-muted {
   border-radius: var(--border-radius-base) !important;
 }
 
-/* 优化过渡效果 */
-* {
+/* 优化过渡效果 - 只对需要的元素应用 */
+.el-button,
+.el-input,
+.el-select,
+.el-dialog,
+.el-table tr,
+.el-card,
+.el-menu-item,
+.el-tabs__item,
+[class*="transition"] {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -529,18 +525,26 @@ small, .text-muted {
   }
 }
 
+/* 表格行优化 - 提升渲染性能 */
+.el-table__body tr {
+  /* 提示浏览器优化性能 */
+  contain: layout style;
+
+  > td {
+    /* 使用 GPU 加速 */
+    will-change: background-color;
+    transition: background-color 0.2s ease;
+  }
+}
+
 /* 表格行悬停效果优化 */
 .el-table__body tr:hover > td {
   background-color: rgba(91, 141, 239, 0.04) !important;
-  
+
   .cell {
     color: #1a202c !important;
-    font-weight: 600 !important; /* 提升到600，确保文字和数字都加粗 */
-    
-    /* 确保数字也加粗 */
-    * {
-      font-weight: 600 !important;
-    }
+    /* 使用 text-shadow 模拟加粗,避免布局重排 */
+    text-shadow: 0 0 0.3px #1a202c;
   }
 }
 
@@ -580,63 +584,34 @@ small, .text-muted {
   > td.is-fixed-column--right,
   > td.el-table-fixed-column--left,
   > td.is-fixed-column--left {
-    /* 使用完全不透明的背景，避免透视问题 */
-    background-color: #f0f7ff !important; /* 淡蓝色不透明背景 */
-    z-index: 3 !important; /* 提升层级 */
-    
+    background-color: #f0f7ff !important;
+    z-index: 3 !important;
+
     .cell {
       color: #1a202c !important;
-      font-weight: 600 !important; /* 固定列也加粗 */
-      
-      /* 确保固定列中的数字也加粗 */
-      * {
-        font-weight: 600 !important;
-      }
+      /* 使用 text-shadow 模拟加粗,避免布局重排 */
+      text-shadow: 0 0 0.3px #1a202c;
     }
   }
 }
 
-/* 操作列表头样式 - 调试模式 */
+/* 操作列表头样式 */
 .el-table th.el-table__cell.is-fixed-column--right,
 .el-table th.el-table-fixed-column--right {
-  /* 🔍 调试日志：这里的透明度有问题！rgba(..., 0.08) 太透明了 */
-  /* 旧的问题样式：background: linear-gradient(135deg, rgba(91, 141, 239, 0.08), rgba(124, 58, 237, 0.08)) !important; */
-  
-  /* ✅ 修复方案1：使用完全不透明的渐变背景 */
-  background: linear-gradient(135deg, 
-    rgba(248, 250, 252, 1) 0%, 
+  background: linear-gradient(135deg,
+    rgba(248, 250, 252, 1) 0%,
     rgba(241, 245, 249, 1) 100%) !important;
-  
-  /* 🎨 在不透明背景上添加蓝色边框来突出显示 */
   font-weight: 700 !important;
   color: #5B8DEF !important;
   border-left: 3px solid #5B8DEF !important;
-  
-  /* 📝 调试信息：通过浏览器控制台可以看到这个元素 */
   position: relative !important;
-  
-  &::after {
-    content: '🔧 DEBUG: 操作列表头' !important;
-    position: absolute !important;
-    top: -20px !important;
-    right: 0 !important;
-    font-size: 10px !important;
-    color: red !important;
-    background: yellow !important;
-    padding: 2px 4px !important;
-    border-radius: 3px !important;
-    z-index: 9999 !important;
-    white-space: nowrap !important;
-  }
 }
 
 /* 左侧固定列表头样式 */
 .el-table th.el-table__cell.is-fixed-column--left,
 .el-table th.el-table-fixed-column--left {
-  /* 🔍 调试日志：左侧固定列也有同样的问题 rgba(..., 0.06) */
-  /* ✅ 修复：改为不透明背景 */
-  background: linear-gradient(135deg, 
-    rgba(248, 250, 252, 1) 0%, 
+  background: linear-gradient(135deg,
+    rgba(248, 250, 252, 1) 0%,
     rgba(241, 245, 249, 1) 100%) !important;
   border-right: 2px solid rgba(91, 141, 239, 0.15) !important;
 }
@@ -773,12 +748,8 @@ small, .text-muted {
 /* 虚拟表格悬停效果 */
 .el-table-v2__row:hover .el-table-v2__row-cell {
   color: #1a202c !important;
-  font-weight: 600 !important; /* 提升到600，确保文字和数字都加粗 */
-  
-  /* 确保数字也加粗 */
-  * {
-    font-weight: 600 !important;
-  }
+  /* 使用 text-shadow 模拟加粗,避免布局重排 */
+  text-shadow: 0 0 0.3px #1a202c;
 }
 
 /* 虚拟表格展开图标 */
@@ -1464,34 +1435,6 @@ small, .text-muted {
   .el-tabs__active-bar {
     width: 3px !important;
     height: auto;
-  }
-}
-
-/* ============================================
-   Tab 动画效果
-   ============================================ */
-
-/* Tab 内容淡入动画 */
-@keyframes tab-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Tab 激活状态光效动画 */
-@keyframes tab-glow {
-  0%, 100% {
-    opacity: 1;
-    filter: brightness(1);
-  }
-  50% {
-    opacity: 0.85;
-    filter: brightness(1.15);
   }
 }
 

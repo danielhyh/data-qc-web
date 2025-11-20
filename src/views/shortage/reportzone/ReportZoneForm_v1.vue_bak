@@ -331,7 +331,8 @@
 
 <script setup lang="ts">
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
-import { ReportZoneApi, type ReportZoneVO } from '@/api/shortage'
+import { ReportZoneApi } from '@/api/shortage'
+import type { ReportZoneVO } from '@/api/shortage'
 import { Editor } from '@/components/Editor'
 import { Icon } from '@/components/Icon'
 import * as DeptApi from '@/api/system/dept'

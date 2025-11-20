@@ -325,36 +325,6 @@
   }
 }
 
-/* Loading 特效 */
-.tech-loading {
-  position: relative;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(0, 212, 255, 0.1),
-      transparent
-    );
-    animation: tech-shimmer 2s infinite;
-  }
-}
-
-@keyframes tech-shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
 /* 状态标签美化 */
 .status-tag {
   padding: 4px 12px;

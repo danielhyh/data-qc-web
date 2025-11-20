@@ -351,12 +351,12 @@ export const StatisticsApi = {
       params
     }),
 
-  exportRegionSummary: (params: StatisticsQueryVO) => {
-    return request.download({
+  // 导出区域汇总
+  exportRegionSummary: (params: StatisticsQueryVO) =>
+    request.download({
       url: '/shortage/statistics/export-region-summary',
       params
     })
-  }
 }
 
 // ========== 工具函数 ==========

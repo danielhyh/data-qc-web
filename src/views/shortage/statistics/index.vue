@@ -55,10 +55,10 @@
               <el-button
                 type="primary"
                 @click="exportExcel"
+                :loading="exportLoading"
               >
-                <el-icon v-if="!loading"><Refresh /></el-icon>
-                <el-icon v-else><Loading /></el-icon>
-                导出
+                <el-icon><Download /></el-icon>
+                导出区域汇总
               </el-button>
               <el-button
                 type="primary"
@@ -643,10 +643,7 @@ import { Icon } from '@/components/Icon'
 import { ContentWrap } from '@/components/ContentWrap'
 import { useMessage } from '@/hooks/web/useMessage'
 import download from '@/utils/download'
-import {
-  ReportZoneApi,
-  type ReportZoneVO
-} from '@/api/shortage'
+import { ReportZoneApi, type ReportZoneVO } from '@/api/shortage'
 import {
   ReportRecordApi
 } from '@/api/shortage/reportrecord'
@@ -736,9 +733,18 @@ let usageTrendChart: echarts.ECharts | null = null
 let shortageTrendChart: echarts.ECharts | null = null
 
 const exportExcel = async () => {
-  const data = await StatisticsApi.exportRegionSummary(queryParams);
-  download.excel(data, `区域汇总_${queryParams.reportWeek}.xlsx`)
-  message.success('区域汇总导出成功')
+  try {
+    await message.exportConfirm()
+    exportLoading.value = true
+    const data = await StatisticsApi.exportRegionSummary(queryParams)
+    download.excel(data, `区域汇总_${queryParams.reportWeek}.xlsx`)
+    message.success('区域汇总导出成功')
+  } catch (error) {
+    console.error('导出区域汇总失败:', error)
+    message.error('导出失败')
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 // 周期选项

@@ -24,7 +24,8 @@
 </template>
 
 <script setup lang="ts">
-import { ReportZoneApi, type ReportZoneVO } from '@/api/shortage'
+import { ReportZoneApi } from '@/api/shortage'
+import type { ReportZoneVO } from '@/api/shortage'
 import { Editor } from '@/components/Editor'
 
 const message = useMessage()

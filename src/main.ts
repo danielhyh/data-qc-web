@@ -23,8 +23,8 @@ import { setupFormCreate } from '@/plugins/formCreate'
 // 引入全局样式
 import '@/styles/index.scss'
 
-// 引入动画
-import '@/plugins/animate.css'
+// 引入轻量级动画(替代 animate.css,减小体积)
+import '@/styles/animations.css'
 
 // 路由
 import router, { setupRouter } from '@/router'

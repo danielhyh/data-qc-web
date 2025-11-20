@@ -91,6 +91,7 @@
 
 <script setup lang="ts">
 import { ReportZoneApi, type ReportZoneVO, type ReportTimeConfigVO } from '@/api/shortage'
+import { useMessage } from '@/hooks/web/useMessage'
 
 const message = useMessage()
 const dialogVisible = ref(false)

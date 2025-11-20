@@ -485,8 +485,15 @@ const getList = async () => {
   }
 }
 const handleExport2 = async () => {
-  const data = await ReportRecordApi.exportReportDetail(queryParams)
-  download.excel(data, 'report-record-detail.xlsx')
+  try {
+    await message.exportConfirm()
+    exportLoading.value = true
+    const data = await ReportRecordApi.exportReportDetail(queryParams)
+    download.excel(data, '填报记录明细.xlsx')
+    message.success('导出成功')
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 /** 地区选择处理 */

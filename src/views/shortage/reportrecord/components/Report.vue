@@ -246,14 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ReportZoneApi,
-  ReportRecordApi,
-  type ReportZoneVO,
-  type ReportRecordVO,
-  getSupplyStatusLabel,
-  SupplyStatusEnum
-} from '@/api/shortage'
+import { ReportZoneApi, ReportRecordApi, getSupplyStatusLabel, SupplyStatusEnum, type ReportZoneVO, type ReportRecordVO } from '@/api/shortage'
 import { Clock } from '@element-plus/icons-vue'
 import { ReportTaskApi, type ReportTaskVO } from '@/api/shortage/reporttask'
 import { formatDate } from '@/utils/formatTime'

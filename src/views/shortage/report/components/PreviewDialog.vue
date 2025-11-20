@@ -206,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { type ReportRecordVO } from '@/api/shortage'
+import type { ReportRecordVO } from '@/api/shortage'
 import { DICT_TYPE } from '@/utils/dict'
 import { formatDate } from '@/utils/formatTime'
 
