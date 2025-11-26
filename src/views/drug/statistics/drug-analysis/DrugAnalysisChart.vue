@@ -334,17 +334,18 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import * as AnalysisApi from '@/api/dataqc/analysis'
+import { formatAmount } from '@/utils/analysis'
 
 defineOptions({ name: 'DrugAnalysisChart' })
 
 // ========== Props 和 Emits 定义 ==========
 
 interface Props {
-  data: AnalysisApi.DrugAnalysisData
+  data: AnalysisApi.DrugAnalysisVO
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  data: () => ({} as AnalysisApi.DrugAnalysisData)
+  data: () => ({} as AnalysisApi.DrugAnalysisVO)
 })
 
 const emit = defineEmits<{
@@ -930,14 +931,6 @@ const getComplianceMessage = () => {
 }
 
 /**
- * 格式化金额显示
- * 将大数字转换为更易读的格式
- */
-const formatAmount = (amount: number): string => {
-  return AnalysisApi.formatAmount(amount)
-}
-
-/**
  * 获取排名样式类
  * 为前三名提供特殊的视觉效果
  */
@@ -978,7 +971,7 @@ const disposeAllCharts = () => {
 
 // ========== 表格相关方法 ==========
 
-const handleSearch = (keyword: string) => {
+const handleSearch = () => {
   currentPage.value = 1 // 搜索时重置到第一页
 }
 

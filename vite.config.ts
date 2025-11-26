@@ -45,12 +45,9 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
                 scss: {
                     additionalData: '@use "@/styles/variables.scss" as *;',
                     javascriptEnabled: true,
-                    silenceDeprecations: ["legacy-js-api"],
-                    // 优化 SCSS 编译性能
-                    api: 'modern-compiler'
+                    silenceDeprecations: ["legacy-js-api"]
                 }
             },
-            // 开发环境使用原生 CSS 提升性能
             devSourcemap: false
         },
         resolve: {
@@ -70,16 +67,14 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
             minify: 'terser',
             outDir: env.VITE_OUT_DIR || 'dist',
             sourcemap: env.VITE_SOURCEMAP === 'true' ? 'inline' : false,
-            // 提升构建性能
-            chunkSizeWarningLimit: 1000,
-            // CSS 代码分割
+            chunkSizeWarningLimit: 2000,
             cssCodeSplit: true,
+            reportCompressedSize: false,
+            target: 'es2015',
             terserOptions: {
                 compress: {
                     drop_debugger: env.VITE_DROP_DEBUGGER === 'true',
-                    drop_console: env.VITE_DROP_CONSOLE === 'true',
-                    // 移除纯函数调用
-                    pure_funcs: env.VITE_DROP_CONSOLE === 'true' ? ['console.log'] : []
+                    drop_console: env.VITE_DROP_CONSOLE === 'true'
                 }
             },
             rollupOptions: {
@@ -88,12 +83,9 @@ export default ({command, mode}: ConfigEnv): UserConfig => {
                       echarts: ['echarts'],
                       'form-create': ['@form-create/element-ui'],
                       'form-designer': ['@form-create/designer'],
-                      // 分离 Element Plus
-                      'element-plus': ['element-plus'],
-                      // 分离 Vue 核心库
-                      vue: ['vue', 'vue-router', 'pinia']
+                      'element-plus': ['element-plus']
+                      // 移除 vue chunk 合并，让 Vite 自动处理
                     },
-                    // 优化 chunk 命名
                     chunkFileNames: 'js/[name]-[hash].js',
                     entryFileNames: 'js/[name]-[hash].js',
                     assetFileNames: '[ext]/[name]-[hash].[ext]'

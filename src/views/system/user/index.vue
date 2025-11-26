@@ -185,14 +185,14 @@
             <template #default="scope">
               <div class="flex items-center justify-center gap-2">
                 <el-button
-                  type="primary"
+                  type="success"
                   plain
                   size="small"
                   @click="openForm('update', scope.row.id)"
                   v-hasPermi="['system:user:update']"
                 >
                   <Icon icon="ep:edit" class="mr-5px" />
-                  修改
+                  编辑
                 </el-button>
                 <el-dropdown
                   @command="(command) => handleCommand(command, scope.row)"

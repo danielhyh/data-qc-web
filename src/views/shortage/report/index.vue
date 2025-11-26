@@ -187,7 +187,7 @@
 <script setup lang="ts">
 import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
 import { ReportTaskApi, ReportTaskVO } from '@/api/shortage/reporttask'
-import { ReportZoneApi, ReportZoneOptionVO } from '@/api/shortage/reportzone'
+import { ReportZoneApi, ReportZoneOptionVO } from '@/api/shortage'
 import { useRouter, useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 

@@ -63,15 +63,20 @@
     </el-table-column>
   </el-table>
 </template>
-<script setup>
-import { defineProps } from 'vue'
+<script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
-// 定义组件名称
-defineOptions({name: 'Hospital'})
 
-const props = defineProps({
-  dataViewDialog: Object
-})
+// 定义组件名称
+defineOptions({ name: 'Hospital' })
+
+interface Props {
+  dataViewDialog?: {
+    data: any[]
+    loading: boolean
+  }
+}
+
+const props = defineProps<Props>()
 
 /** 获取行样式类名 */
 const getRowClassName = ({ row }) => {

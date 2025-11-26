@@ -211,24 +211,11 @@
                 <template #empty>
                   <div class="empty-org-state">
                     <Icon icon="ep:office-building" class="empty-icon" />
-                    <!-- 已选择但无详情（编辑模式） -->
-                    <template v-if="selectedOrgCount > 0 && selectedOrgDetails.length === 0">
-                      <p class="text-primary font-semibold">已配置 {{ selectedOrgCount }} 个机构</p>
-                      <p class="hint">
-                        点击「配置机构」按钮查看详情或调整机构
-                      </p>
-                    </template>
-                    <!-- 搜索无结果 -->
-                    <template v-else-if="orgSearchKeyword">
-                      <p>未找到匹配的机构</p>
-                    </template>
-                    <!-- 未选择任何机构 -->
-                    <template v-else>
-                      <p>暂未选择任何机构</p>
-                      <p class="hint">
-                        点击「配置机构」按钮选择可填报的医疗机构
-                      </p>
-                    </template>
+                    <p v-if="orgSearchKeyword">未找到匹配的机构</p>
+                    <p v-else>暂未选择任何机构</p>
+                    <p v-if="!orgSearchKeyword" class="hint">
+                      点击「配置机构」按钮选择可填报的医疗机构
+                    </p>
                   </div>
                 </template>
               </el-table>
@@ -268,6 +255,7 @@ import { Editor } from '../../../components/Editor'
 import { Icon } from '../../../components/Icon'
 import { ContentWrap } from '../../../components/ContentWrap'
 import { Tooltip } from '../../../components/Tooltip'
+import * as DeptApi from '../../../api/system/dept'
 
 const ReportZoneOrgSelector = defineAsyncComponent(
   () => import('./components/ReportZoneOrgSelector.vue') as Promise<any>
@@ -567,53 +555,52 @@ const startTimePickerRef = ref() // 开始时间选择器 Ref
 const endTimePickerRef = ref() // 结束时间选择器 Ref
 
 // 根据机构 ID 列表获取机构详情（用于编辑状态下的回显）
-// 优化：编辑时不加载详情，只显示数量，用户通过选择器查看详情
-// const loadOrgDetailsByIds = async (orgIds: number[]) => {
-//   if (!orgIds || orgIds.length === 0) {
-//     selectedOrgDetails.value = []
-//     return
-//   }
+const loadOrgDetailsByIds = async (orgIds: number[]) => {
+  if (!orgIds || orgIds.length === 0) {
+    selectedOrgDetails.value = []
+    return
+  }
 
-//   try {
-//     const tasks = orgIds.map(async (id) => {
-//       try {
-//         const orgDetail = await DeptApi.getDept(id)
-//         return {
-//           id: orgDetail.id,
-//           name: orgDetail.name,
-//           hospitalLevel: orgDetail.hospitalLevel,
-//           regionName: orgDetail.regionName,
-//           areaName: orgDetail.areaName,
-//           regionPath: orgDetail.regionPath,
-//           regionPathName: orgDetail.regionPathName || '',
-//           address: orgDetail.address || '',
-//           contactPerson: orgDetail.contactPerson || '',
-//           contactPhone: orgDetail.contactPhone || ''
-//         }
-//       } catch (error) {
-//         console.warn(`获取机构 ${id} 详情失败:`, error)
-//         return {
-//           id,
-//           name: `机构ID: ${id}`,
-//           hospitalLevel: '',
-//           regionName: '',
-//           areaName: '',
-//           regionPath: '',
-//           regionPathName: '',
-//           address: '',
-//           contactPerson: '',
-//           contactPhone: ''
-//         }
-//       }
-//     })
+  try {
+    const tasks = orgIds.map(async (id) => {
+      try {
+        const orgDetail = await DeptApi.getDept(id)
+        return {
+          id: orgDetail.id,
+          name: orgDetail.name,
+          hospitalLevel: orgDetail.hospitalLevel,
+          regionName: orgDetail.regionName,
+          areaName: orgDetail.areaName,
+          regionPath: orgDetail.regionPath,
+          regionPathName: orgDetail.regionPathName || '', // 区域路径中文名称
+          address: orgDetail.address || '',
+          contactPerson: orgDetail.contactPerson || '',
+          contactPhone: orgDetail.contactPhone || ''
+        }
+      } catch (error) {
+        console.warn(`获取机构 ${id} 详情失败:`, error)
+        return {
+          id,
+          name: `机构ID: ${id}`,
+          hospitalLevel: '',
+          regionName: '',
+          areaName: '',
+          regionPath: '',
+          regionPathName: '',
+          address: '',
+          contactPerson: '',
+          contactPhone: ''
+        }
+      }
+    })
 
-//     const details = await Promise.all(tasks)
-//     selectedOrgDetails.value = mergeOrgDetails(orgIds, details)
-//   } catch (error) {
-//     console.error('批量获取机构详情失败:', error)
-//     selectedOrgDetails.value = mergeOrgDetails(orgIds)
-//   }
-// }
+    const details = await Promise.all(tasks)
+    selectedOrgDetails.value = mergeOrgDetails(orgIds, details)
+  } catch (error) {
+    console.error('批量获取机构详情失败:', error)
+    selectedOrgDetails.value = mergeOrgDetails(orgIds)
+  }
+}
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number) => {
@@ -645,14 +632,15 @@ const open = async (type: string, id?: number) => {
         }
       }
 
-      // 如果有选择的机构，只设置ID列表，不加载详情（优化性能）
+      // 如果有选择的机构，设置到selectedOrgIds中并加载详情
       if (data.reportableOrgs) {
         const deptIds = data.reportableOrgs
           .split(',')
           .map((id) => parseInt(id.trim()))
           .filter((id) => !isNaN(id))
         selectedOrgIds.value = [...deptIds]
-        // 详情将在用户打开选择器时自动加载
+        // 加载选中机构的详细信息用于回显
+        await loadOrgDetailsByIds(deptIds)
       }
     } finally {
       formLoading.value = false

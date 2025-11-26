@@ -152,7 +152,7 @@
           </div>
         </el-col>
 
-        <!-- 填报药品数 -->
+<!--        &lt;!&ndash; 填报药品数 &ndash;&gt;
         <el-col :xs="24" :sm="12" :md="6">
           <div class="core-stat-card">
             <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(103, 194, 58, 0.15) 0%, rgba(103, 194, 58, 0.05) 100%)">
@@ -182,7 +182,7 @@
           </div>
         </el-col>
 
-        <!-- 短缺药品数 -->
+        &lt;!&ndash; 短缺药品数 &ndash;&gt;
         <el-col :xs="24" :sm="12" :md="6">
           <div class="core-stat-card">
             <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, rgba(245, 108, 108, 0.15) 0%, rgba(245, 108, 108, 0.05) 100%)">
@@ -210,7 +210,7 @@
               </span>
             </div>
           </div>
-        </el-col>
+        </el-col>-->
 
         <!-- 填报完成率 -->
         <el-col :xs="24" :sm="12" :md="6">
@@ -253,7 +253,7 @@
     </div>
 
     <!-- 其他指标 -->
-    <div class="other-stats-cards" v-if="overview">
+<!--    <div class="other-stats-cards" v-if="overview">
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="6">
           <div class="core-stat-card other-stat-card">
@@ -326,7 +326,7 @@
           </div>
         </el-col>
       </el-row>
-    </div>
+    </div>-->
 
     <!-- 图表区域 - 优化布局 -->
     <el-row :gutter="16" class="chart-row">

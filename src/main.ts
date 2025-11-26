@@ -51,7 +51,7 @@ import { useI18n } from '@/hooks/web/useI18n'
 import { useUserStore } from '@/store/modules/user'
 import { useTagsViewStore } from '@/store/modules/tagsView'
 
-const INACTIVITY_LIMIT = 1000 * 60 * 1000 // 10 分钟
+const INACTIVITY_LIMIT = 10 * 60 * 1000 // 10 分钟
 let inactivityTimer: number | null = null
 
 const clearInactivityTimer = () => {

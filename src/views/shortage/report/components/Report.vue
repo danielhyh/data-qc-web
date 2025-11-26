@@ -13,10 +13,10 @@
           <div class="header-divider"></div>
           <div class="header-info">
             <h2 class="page-title">{{ zoneInfo?.zoneName || '药品短缺填报' }}</h2>
-            <p class="page-subtitle" v-if="zoneInfo?.currentPeriodRange">
+<!--            <p class="page-subtitle" v-if="zoneInfo?.currentPeriodRange">
               <Icon icon="ep:calendar" class="mr-1" />
               统计时间范围: {{ zoneInfo.currentPeriodRange }}
-            </p>
+            </p>-->
           </div>
         </div>
         <div class="header-right">
@@ -105,12 +105,12 @@
           :row-class-name="getRowClassName"
           :span-method="objectSpanMethod"
         >
-          <el-table-column label="序号" width="80" fixed class-name="header-bold" align="center">
+<!--          <el-table-column label="序号" width="80" fixed class-name="header-bold" align="center">
             <template #default="scope">
               <span v-if="scope.row.showDrugName">{{ scope.row.drugIndex }}</span>
             </template>
-          </el-table-column>
-          <el-table-column label="药品名称" prop="drugName" width="200" class-name="header-bold" />
+          </el-table-column>-->
+          <el-table-column label="药品名称" prop="drugName" fixed width="180" class-name="header-bold" />
           <el-table-column
             label="剂型规格"
             prop="dosageCategory"
@@ -125,7 +125,7 @@
           <el-table-column
             label="统计单位"
             prop="dosageUnit"
-            width="150"
+            width="280"
             class-name="header-bold"
             show-overflow-tooltip
           >
@@ -153,7 +153,7 @@
 
           <el-table-column
             label="本周累计使用量"
-            width="280"
+            width="160"
             align="center"
             class-name="header-bold"
           >
@@ -173,7 +173,7 @@
 
           <el-table-column
             label="当日实时库存量"
-            width="280"
+            width="160"
             align="center"
             class-name="header-bold"
           >
@@ -371,8 +371,9 @@ const filteredReportList = computed(() => {
 
 // 表格合并方法
 const objectSpanMethod = ({ row, column, rowIndex, columnIndex }: any) => {
-  // 合并序号列（第0列）和药品名称列（第1列）
-  if (columnIndex === 0 || columnIndex === 1) {
+  // 只合并药品名称列（第0列）
+  // 注意：序号列已被注释，所以第0列是药品名称
+  if (columnIndex === 0) {
     if (row.showDrugName) {
       return {
         rowspan: row.rowspan,
@@ -434,26 +435,26 @@ const noticeTitle = computed(() => {
   // 准备中状态
   if (reportStatus.value === 4 && taskDetail.value?.startTime) {
     const timeToStart = calculateRemainingTimeFromTarget(taskDetail.value.startTime, true)
-    return `填报通知（${timeToStart}）`
+    return `填报须知（${timeToStart}）`
   }
   
   // 填报中状态（reportStatus === 0 或 1） - 使用 taskDetail.deadlineTime 计算剩余时间
   if ((reportStatus.value === 0 || reportStatus.value === 1) && taskDetail.value?.deadlineTime) {
     const remaining = calculateRemainingTimeFromTarget(taskDetail.value.deadlineTime, false)
-    return `填报通知（${remaining}）`
+    return `填报须知（${remaining}）`
   }
   
   // 已提交状态 - 不显示剩余时间
   if (reportStatus.value === 2) {
-    return '填报通知'
+    return '填报须知'
   }
   
   // 已逾期状态
   if (reportStatus.value === 3) {
-    return '填报通知（已逾期）'
+    return '填报须知（已逾期）'
   }
   
-  return '填报通知'
+  return '填报须知'
 })
 
 // 计算距离目标时间的剩余时间

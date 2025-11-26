@@ -94,13 +94,18 @@
   </el-table>
 </template>
 <script setup lang="ts">
-defineOptions({ name: 'CatalogDetails' })
-import { defineProps } from 'vue'
 import { WarningFilled } from '@element-plus/icons-vue'
 
-const props = defineProps({
-  dataViewDialog: Object
-})
+defineOptions({ name: 'CatalogDetails' })
+
+interface Props {
+  dataViewDialog?: {
+    data: any[]
+    loading: boolean
+  }
+}
+
+const props = defineProps<Props>()
 
 /** 获取行样式类名 */
 const getRowClassName = ({ row }) => {

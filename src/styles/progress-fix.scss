@@ -1,0 +1,91 @@
+/* ============================================
+   进度条悬停问题修复
+   修复进度条在鼠标悬停时出现灰色条的问题
+   ============================================ */
+
+/* 方案1: 禁用进度条容器的伪元素 */
+.el-progress-bar:hover::after,
+.el-progress-bar:hover::before,
+.el-progress-bar::after,
+.el-progress-bar::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* 方案2: 确保进度条容器溢出隐藏 */
+.el-progress-bar {
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* 方案3: 移除可能的阴影效果 */
+.el-progress-bar:hover {
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.el-progress-bar__outer:hover {
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+/* 方案4: 修复内部进度条的样式 */
+.el-progress-bar__inner {
+  transition: width 0.6s ease !important;
+  box-shadow: none !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.el-progress-bar__inner:hover {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* 方案5: 确保进度条外层容器不产生视觉问题 */
+.el-progress-bar__outer {
+  overflow: hidden !important;
+  position: relative !important;
+  vertical-align: middle !important;
+  background-color: #ebeef5 !important;
+}
+
+.el-progress-bar__outer:hover::after,
+.el-progress-bar__outer:hover::before,
+.el-progress-bar__outer::after,
+.el-progress-bar__outer::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* 方案6: 移除可能存在的全局transition影响 */
+.el-progress,
+.el-progress * {
+  transition-property: width, background-color !important;
+}
+
+/* 方案7: 确保没有重复的背景层 */
+.el-progress-bar__outer {
+  background-image: none !important;
+}
+
+.el-progress-bar__outer:hover {
+  background-color: #ebeef5 !important;
+  background-image: none !important;
+}
+
+/* 调试模式 - 可以临时启用来查看问题 */
+.debug-progress-hover {
+  .el-progress-bar,
+  .el-progress-bar__outer,
+  .el-progress-bar__inner {
+    border: 1px solid red !important;
+  }
+
+  .el-progress-bar:hover,
+  .el-progress-bar__outer:hover {
+    border-color: blue !important;
+  }
+}
