@@ -8,7 +8,7 @@
     />
 
     <!-- 统计概览 -->
-    <div class="stats-overview">
+    <!-- <div class="stats-overview">
       <el-row :gutter="16">
         <el-col :xs="12" :sm="6" :md="6" :lg="6">
           <StatCard title="总任务数" :value="statistics.total" icon="Files" color="#409eff" />
@@ -42,25 +42,25 @@
           />
         </el-col>
       </el-row>
-    </div>
+    </div> -->
 
     <!-- 操作区域 -->
     <el-card class="filter-card" shadow="never">
-      <el-row :gutter="20">
-        <el-col :span="16">
+      <el-row :gutter="20" align="middle">
+        <el-col :span="12">
           <!-- 创建任务按钮组 -->
-          <el-button type="primary" @click="createFromQc">
+          <!-- <el-button type="primary" @click="createFromQc">
             <Icon icon="ep:circle-check" />
             从质控结果创建
-          </el-button>
+          </el-button> -->
           <el-button type="success" @click="createFromTemplate">
             <Icon icon="ep:upload" />
             从模板导入创建
           </el-button>
-          <el-button type="success" @click="createFromTemplate2">
+          <!-- <el-button type="success" @click="createFromTemplate2">
             <Icon icon="ep:upload" />
             导入result
-          </el-button>
+          </el-button> -->
           <el-button @click="createFromStandardLibrary">
             <Icon icon="ep:folder" />
             标准库
@@ -70,7 +70,7 @@
             下载导入模板
           </el-button>
         </el-col>
-        <el-col :span="8" class="flex-row-end">
+        <el-col :span="12" class="flex-row-end">
           <!-- 查询条件 -->
           <!-- <el-input
             v-model="queryParams.keyword"
@@ -79,7 +79,7 @@
             class="w-200px"
             @keyup.enter="handleQuery"
           /> -->
-          <el-form-item label="状态筛选" prop="status">
+          <el-form-item label="状态筛选" prop="status" style="margin-right: 10px; margin-bottom: 0;">
             <el-select
               v-model="queryParams.status"
               placeholder="请选择任务状态"
@@ -92,7 +92,7 @@
               <el-option label="已取消" :value="3" />
             </el-select>
           </el-form-item>
-          <el-form-item>
+          <el-form-item style="margin-bottom: 0;">
             <el-button @click="handleQuery">
               <Icon icon="ep:search" class="mr-5px" />
               搜索
@@ -151,10 +151,12 @@
             <span>{{ row.autoApplyThreshold || 0 }}%</span>
           </template>
         </el-table-column>
-        <el-table-column label="比对进度" width="250">
+        <el-table-column label="比对进度" width="280">
           <template #default="{ row }">
             <div class="progress-wrapper">
               <el-progress
+                :text-inside="true"
+                :stroke-width="20"
                 :percentage="getMatchProgress(row)"
                 :status="getProgressStatus(row.status)"
               />
@@ -165,7 +167,7 @@
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="gotoBatchMatch(row)"> 批量匹配 </el-button>
-            <!--            <el-button link type="primary" @click="viewReport(row)"> 查看报告 </el-button>-->
+<!--            <el-button link type="primary" @click="viewReport(row)"> 查看报告 </el-button>-->
             <el-button link type="success" @click="exportResult(row)"> 导出结果 </el-button>
           </template>
         </el-table-column>
@@ -298,23 +300,23 @@
       </template>
     </el-dialog>
 
-    <TemplateDownloadDialog ref="downloadDialog" />
+    <TemplateDownloadDialog ref="downloadDialog"/>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { YpidMatchTaskApi, YpidMatchTaskVO } from '@/api/drug/ypid/task'
 import { YpidApi } from '@/api/drug/ypid'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElLoading } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
-import { ElLoading, ElMessage } from 'element-plus'
+
 
 // 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
-import StatCard from '@/components/StatCard/index.vue'
 import TemplateDownloadDialog from '@/views/drug/import/template/components/TemplateDownloadDialog.vue'
 
 defineOptions({ name: 'YpidComparisonIndex' })
@@ -369,7 +371,8 @@ const templateCreateForm = reactive({
   taskName: '',
   autoApplyEnabled: true,
   autoApplyThreshold: 90,
-  taskNo: ''
+  taskNo:'',
+
 })
 
 // ========================= 计算属性 =========================
@@ -610,12 +613,12 @@ const createFromStandardLibrary = () => {
 // }
 
 const getCurrentDateString = () => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0') // 月份从0开始，需要+1
-  const day = String(now.getDate()).padStart(2, '0')
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0'); // 月份从0开始，需要+1
+  const day = String(now.getDate()).padStart(2, '0');
 
-  return `${year}${month}${day}`
+  return `${year}${month}${day}`;
 }
 const handlerTemplateCreate2 = async () => {
   const form = new FormData()
@@ -630,18 +633,13 @@ const handleTemplateCreate = async () => {
   }
   templateCreateLoading.value = true
   try {
-    const taskNo =
-      'YPID_' +
-      getCurrentDateString() +
-      '_' +
-      Math.floor(Math.random() * 1000000)
-        .toString()
-        .padStart(6, '0')
+    const taskNo = 'YPID_' + getCurrentDateString() + '_' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
     const params = {
       ...templateCreateForm,
       taskType: 2,
       sourceFile: uploadedFile.value[0].name,
-      status: 0
+      status: 0,
+
     } as any
     params.taskNo = taskNo
     const form = new FormData()
@@ -710,7 +708,8 @@ onMounted(() => {
 }
 
 .progress-wrapper {
-  display: flex;
+  display: grid;
+  grid-template-columns: 3fr 1fr;
   align-items: center;
   gap: 10px;
 }
@@ -732,8 +731,8 @@ onMounted(() => {
 .mr-5px {
   margin-right: 5px;
 }
-.flex-row-end {
-  display: flex;
-  justify-content: flex-end;
+.flex-row-end{
+    display: flex;
+    justify-content: flex-end;
 }
 </style>
