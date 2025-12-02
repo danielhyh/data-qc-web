@@ -965,13 +965,4 @@ defineExpose({
   color: #909399;
   font-size: 12px;
 }
-
-/* 进度条样式 */
-:deep(.el-progress-bar__outer) {
-  border-radius: 4px;
-}
-
-:deep(.el-progress-bar__inner) {
-  border-radius: 4px;
-}
 </style>

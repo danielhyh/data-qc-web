@@ -43,6 +43,9 @@ import Logger from '@/utils/Logger'
 
 import VueDOMPurifyHTML from 'vue-dompurify-html' // 解决v-html 的安全隐患
 
+// 浏览器兼容性检测
+import { initBrowserCheck } from '@/utils/browserCheck'
+
 // 引入SSO工具
 import { SsoAuth } from '@/utils/sso'
 import { getAccessToken } from '@/utils/auth'
@@ -119,6 +122,9 @@ const setupInactivityForceLogout = () => {
 }
 // 创建实例
 const setupAll = async () => {
+  // 浏览器兼容性检测（在应用初始化前执行）
+  initBrowserCheck()
+  
   // 初始化SSO状态，清理可能残留的重定向标记
   SsoAuth.init()
 

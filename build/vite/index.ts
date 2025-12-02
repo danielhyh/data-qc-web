@@ -15,6 +15,7 @@ import topLevelAwait from 'vite-plugin-top-level-await'
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import { createSvgIconsPlugin } from 'vite-plugin-svg-icons-ng'
 import UnoCSS from 'unocss/vite'
+import legacy from '@vitejs/plugin-legacy'
 
 export function createVitePlugins() {
   const root = process.cwd()
@@ -94,6 +95,30 @@ export function createVitePlugins() {
       promiseExportName: '__tla',
       // The function to generate import names of top-level await promise in each chunk module
       promiseImportName: (i) => `__tla_${i}`
+    }),
+    // 为旧版浏览器提供支持（包括 Win7 + 360极速浏览器等）
+    legacy({
+      targets: ['defaults', 'not IE 11', 'Chrome >= 60', 'Safari >= 10', 'iOS >= 10', 'Firefox >= 60', 'Edge >= 79'],
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+      renderLegacyChunks: true,
+      polyfills: [
+        'es.symbol',
+        'es.array.filter',
+        'es.promise',
+        'es.promise.finally',
+        'es/map',
+        'es/set',
+        'es.array.for-each',
+        'es.object.define-properties',
+        'es.object.define-property',
+        'es.object.get-own-property-descriptor',
+        'es.object.get-own-property-descriptors',
+        'es.object.keys',
+        'es.object.to-string',
+        'web.dom-collections.for-each',
+        'esnext.global-this',
+        'esnext.string.match-all'
+      ]
     })
   ]
 }

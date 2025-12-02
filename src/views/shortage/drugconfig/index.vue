@@ -1,3 +1,4 @@
+<!--药品配置页面-->
 <template>
   <div class="app-container">
     <!-- 固定头部卡片（含返回按钮） -->

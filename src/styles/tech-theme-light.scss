@@ -546,10 +546,33 @@
 /* 进度条组件 */
 .el-progress__text {
   color: var(--tech-text-primary) !important;
+  font-weight: 600;
+  font-size: 14px !important;
+}
+
+.el-progress-bar__outer {
+  border-radius: 10px;
 }
 
 .el-progress-bar__inner {
   background: var(--tech-gradient-primary);
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+
+/* 成功状态 */
+.el-progress.is-success .el-progress-bar__inner {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+}
+
+/* 警告状态 */
+.el-progress.is-warning .el-progress-bar__inner {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* 异常状态 */
+.el-progress.is-exception .el-progress-bar__inner {
+  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
 }
 
 /* ============================================

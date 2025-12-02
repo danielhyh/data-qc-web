@@ -4009,31 +4009,6 @@ const handleSummaryClose = async () => {
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
-/* 进度条样式优化 */
-:deep(.el-progress) {
-  line-height: 1;
-}
-
-:deep(.el-progress__text) {
-  font-weight: 700;
-  font-size: 14px !important;
-}
-
-:deep(.el-progress-bar__outer) {
-  background: #e5e7eb;
-  border-radius: 10px;
-}
-
-:deep(.el-progress-bar__inner) {
-  border-radius: 10px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-:deep(.el-progress.is-success .el-progress-bar__inner) {
-  background: linear-gradient(90deg, #10b981 0%, #059669 100%) !important;
-}
-
 /* Dialog 样式优化 */
 :deep(.el-dialog) {
   border-radius: 16px;

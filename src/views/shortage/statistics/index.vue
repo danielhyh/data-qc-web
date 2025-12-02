@@ -5,7 +5,7 @@
       <div class="header-content">
         <div class="header-title">
           <Icon icon="ep:data-analysis" class="title-icon" />
-          <h1 class="title-text">短缺药品统计分析</h1>
+          <h1 class="title-text">季节性药品监测周报统计分析</h1>
         </div>
         
         <div class="header-actions">
@@ -1495,24 +1495,24 @@ const handleAreaOrgConfirm = (payload: {
   position: relative;
 }
 
-// 固定头部栏样式
+// 固定头部栏样式 - 采用现代化卡片风格
 .fixed-header {
   position: sticky;
-  top: 0;
+  top: 20px;
   z-index: 100;
   background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  margin-bottom: 20px;
-  border-bottom: 1px solid #ebeef5;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  margin: 20px 24px;
+  transition: all 0.3s ease;
 }
 
 .header-content {
-  padding: 20px 24px;
-  max-width: 1920px;
-  margin: 0 auto;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 24px;
 }
 
 .header-title {
@@ -2009,6 +2009,68 @@ const handleAreaOrgConfirm = (payload: {
   &.rank-3 {
     background: #cd7f32;
     color: #fff;
+  }
+}
+
+// 响应式设计
+@media (max-width: 1200px) {
+  .header-content {
+    flex-wrap: wrap;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+  }
+}
+
+@media (max-width: 768px) {
+  .fixed-header {
+    margin: 16px;
+    top: 16px;
+  }
+
+  .header-content {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-title {
+    .title-icon {
+      font-size: 20px;
+    }
+    
+    .title-text {
+      font-size: 16px;
+    }
+  }
+
+  .header-actions {
+    width: 100%;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    
+    .search-form {
+      flex-direction: column;
+      width: 100%;
+      
+      .el-form-item {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 12px;
+        
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+
+  .content-area {
+    padding: 0 16px 16px;
   }
 }
 </style>

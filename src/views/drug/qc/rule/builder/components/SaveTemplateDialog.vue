@@ -529,27 +529,24 @@ const generateScenarioDescription = () => {
 }
 
 const generateCodeExample = () => {
-  // 使用字符串拼接而不是模板字符串中的变量，避免 Vite 解析动态导入路径
-  const categoryPath = '${templateForm.category}'
-  const templateName = '${templateForm.name}'
+  // 避免 Vite 解析动态导入路径 - 分段拼接字符串，避免 import 语句被 Vite 解析
+  const line1 = '// 1. 引入模板'
+  const line2 = 'import template from ' + `'qc-templates/\${templateForm.category}/\${templateForm.name}'`
+  const line3 = ''
+  const line4 = '// 2. 创建规则实例'
+  const line5 = 'const rule = new QcRule({'
+  const line6 = '  template: template,'
+  const line7 = `  name: '\${templateForm.name}规则',`
+  const line8 = `  checkDimension: 'RECORD'`
+  const line9 = '})'
+  const line10 = ''
+  const line11 = '// 3. 执行规则检查'
+  const line12 = 'const result = await rule.execute(data)'
+  const line13 = 'if (!result.isValid) {'
+  const line14 = `  console.log('验证失败:', result.errors)`
+  const line15 = '}'
 
-  return `
-// 1. 引入模板
-import template from 'qc-templates/${categoryPath}/${templateName}'
-
-// 2. 创建规则实例
-const rule = new QcRule({
-  template: template,
-  name: '${templateName}规则',
-  checkDimension: 'RECORD'
-})
-
-// 3. 执行规则检查
-const result = await rule.execute(data)
-if (!result.isValid) {
-  console.log('验证失败:', result.errors)
-}
-  `.trim()
+  return [line1, line2, line3, line4, line5, line6, line7, line8, line9, line10, line11, line12, line13, line14, line15].join('\n')
 }
 
 const generateResultDescription = () => {
