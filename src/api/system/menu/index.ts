@@ -15,6 +15,8 @@ export interface MenuVO {
   visible: boolean
   keepAlive: boolean
   alwaysShow?: boolean
+  menuCategory?: string
+  businessModuleCode?: string
   createTime: Date
 }
 

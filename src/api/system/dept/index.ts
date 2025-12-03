@@ -35,6 +35,8 @@ export interface DeptVO {
   adminCategory?: string
   deptType?: string
   area?: string
+  businessType?: string // 业务类型: BOTH/SHORTAGE/MONITOR
+  adminLevel?: number // 管理级别: 0-非管理机构, 1-省级, 2-市级, 3-区县级
   hasChildren?: boolean // 是否有子节点
 }
 

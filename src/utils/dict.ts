@@ -237,4 +237,7 @@ export enum DICT_TYPE {
   OPERATION_TYPE = 'operation_type', // 操作类型
 
   ADMINISTRATIVE_AFFILIATION = 'administrative_affiliation', // 行政归属
+  BUSINESS_MODULE = 'business_module', // 业务模块编码
+  MENU_CATEGORY = 'menu_category', // 菜单分类
+  MANAGEMENT_LEVEL = 'management_level', // 管理级别
 }

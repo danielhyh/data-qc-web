@@ -151,6 +151,26 @@
                 </template>
               </el-table-column>
               <el-table-column prop="adminCategory" label="行政归属" width="110" show-overflow-tooltip />
+              <el-table-column prop="businessType" label="参与系统" width="150">
+                <template #default="scope">
+                  <div class="business-type-cell">
+                    <dict-tag
+                      :type="DICT_TYPE.BUSINESS_MODULE"
+                      :value="scope.row.businessType ?? ''"
+                    />
+                    <el-button
+                      type="primary"
+                      link
+                      size="small"
+                      @click="openBusinessTypeConfig(scope.row)"
+                      v-hasPermi="['system:dept:update']"
+                      class="ml-5px"
+                    >
+                      <Icon icon="ep:setting" />
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column prop="orgCode" label="组织机构代码" width="160" show-overflow-tooltip />
               <el-table-column prop="socialCreditCode" label="社会信用代码" width="190" show-overflow-tooltip />
               <el-table-column prop="contactPerson" label="联络员" width="100" />
@@ -282,6 +302,61 @@
     </div>
     </div>
 
+    <!-- 业务类型配置弹窗 -->
+    <el-dialog
+      v-model="businessTypeDialog.visible"
+      title="配置参与系统"
+      width="500px"
+      @close="handleBusinessTypeClose"
+    >
+      <el-form :model="businessTypeForm" label-width="100px">
+        <el-form-item label="机构名称">
+          <el-input :value="businessTypeForm.deptName" disabled />
+        </el-form-item>
+        <el-form-item label="管理级别">
+          <dict-tag 
+            :type="DICT_TYPE.MANAGEMENT_LEVEL" 
+            :value="businessTypeForm.adminLevel ? businessTypeForm.adminLevel.toString() : '0'" 
+          />
+          <el-tag v-if="businessTypeForm.adminLevel > 0" type="warning" class="ml-10px">
+            <Icon icon="ep:warning" class="mr-5px" />
+            管理机构不受业务模块限制
+          </el-tag>
+        </el-form-item>
+        <el-form-item label="参与系统">
+          <el-radio-group v-model="businessTypeForm.businessType" :disabled="businessTypeForm.adminLevel > 0">
+            <el-radio label="BOTH" border>
+              <dict-tag :type="DICT_TYPE.BUSINESS_MODULE" value="BOTH" />
+              <span class="text-gray-500 ml-5px">同时参与短缺和监测</span>
+            </el-radio>
+            <el-radio label="SHORTAGE" border class="mt-10px">
+              <dict-tag :type="DICT_TYPE.BUSINESS_MODULE" value="SHORTAGE" />
+              <span class="text-gray-500 ml-5px">仅参与短缺药品系统</span>
+            </el-radio>
+            <el-radio label="MONITOR" border class="mt-10px">
+              <dict-tag :type="DICT_TYPE.BUSINESS_MODULE" value="MONITOR" />
+              <span class="text-gray-500 ml-5px">仅参与监测系统</span>
+            </el-radio>
+          </el-radio-group>
+          <div v-if="businessTypeForm.adminLevel === 0" class="mt-10px text-gray-500">
+            <Icon icon="ep:info-filled" class="mr-5px" />
+            提示：配置后将影响该机构用户登录时可见的菜单
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="businessTypeDialog.visible = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          @click="handleBusinessTypeSave"
+          :loading="businessTypeDialog.loading"
+          :disabled="businessTypeForm.adminLevel > 0"
+        >
+          保存配置
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 表单弹窗：添加/修改 -->
     <DeptForm ref="formRef" @success="getList" />
 
@@ -290,7 +365,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { DICT_TYPE, getDictObj, getIntDictOptions, getDictLabel } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import * as DeptApi from '@/api/system/dept'
@@ -529,11 +604,8 @@ const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
 }
 
-/** 打开同步弹窗 */
+/** 同步弹窗引用 */
 const syncModalRef = ref()
-const openSyncModal = () => {
-  syncModalRef.value.open()
-}
 
 /** 删除按钮操作 */
 const handleDelete = async (id: number) => {
@@ -614,6 +686,74 @@ const handleDownloadTemplate = async () => {
   }
 }
 
+// ========== 业务类型配置相关 ==========
+/** 业务类型配置弹窗数据 */
+const businessTypeDialog = reactive({
+  visible: false,
+  loading: false
+})
+
+/** 业务类型配置表单 */
+const businessTypeForm = reactive({
+  deptId: 0,
+  deptName: '',
+  adminLevel: 0,
+  businessType: '' as string
+})
+
+/** 打开业务类型配置弹窗 */
+const openBusinessTypeConfig = (row: any) => {
+  // 设置表单数据
+  businessTypeForm.deptId = row.id
+  businessTypeForm.deptName = row.name
+  businessTypeForm.adminLevel = row.adminLevel || 0
+  businessTypeForm.businessType = row.businessType || ''
+  
+  // 打开弹窗
+  businessTypeDialog.visible = true
+}
+
+/** 关闭业务类型配置弹窗 */
+const handleBusinessTypeClose = () => {
+  // 清空表单
+  businessTypeForm.deptId = 0
+  businessTypeForm.deptName = ''
+  businessTypeForm.adminLevel = 0
+  businessTypeForm.businessType = ''
+}
+
+/** 保存业务类型配置 */
+const handleBusinessTypeSave = async () => {
+  try {
+    businessTypeDialog.loading = true
+    
+    // 如果没有选择，设置为undefined
+    const businessType = businessTypeForm.businessType || undefined
+    
+    // 获取完整的部门信息
+    const deptInfo = await DeptApi.getDept(businessTypeForm.deptId)
+    
+    // 调用更新接口
+    await DeptApi.updateDept({
+      ...deptInfo,
+      id: businessTypeForm.deptId,
+      businessType: businessType
+    })
+    
+    message.success('参与系统配置已更新')
+    businessTypeDialog.visible = false
+    
+    // 刷新列表
+    await getList()
+  } catch (error: any) {
+    console.error('配置失败:', error)
+    const errorMsg = error?.data?.msg || error?.message || '配置更新失败'
+    message.error(errorMsg)
+  } finally {
+    businessTypeDialog.loading = false
+  }
+}
+
 /** 初始化 **/
 onMounted(async () => {
   // 获取用户列表
@@ -624,6 +764,48 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
+/* 业务类型单元格样式 */
+.business-type-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .el-tag {
+    flex-shrink: 0;
+  }
+  
+  .el-button {
+    margin-left: auto;
+  }
+}
+
+/* 业务类型弹窗单选框样式 */
+.el-radio-group {
+  display: flex;
+  flex-direction: column;
+  
+  .el-radio {
+    width: 100%;
+    height: auto;
+    padding: 12px;
+    margin: 0;
+    
+    &.mt-10px {
+      margin-top: 10px;
+    }
+    
+    :deep(.el-radio__label) {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      
+      .el-tag {
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
 /* 容器高度自适应 */
 .dept-container {
   height: calc(100vh - 140px); /* 减去头部导航和边距 */

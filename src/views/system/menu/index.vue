@@ -1,101 +1,128 @@
 <template>
+  <div class="app-container">
+    <!-- Tab 标签页 -->
+    <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
+      <!-- 管理端菜单 Tab -->
+      <el-tab-pane name="ADMIN">
+        <template #label>
+          <span class="tab-label-wrapper">
+            <Icon icon="ep:setting" class="tab-icon" />
+            <span>管理端菜单</span>
+          </span>
+        </template>
+      </el-tab-pane>
 
-  <!-- 搜索工作栏 -->
-  <ContentWrap>
-    <el-form
-      ref="queryFormRef"
-      :inline="true"
-      :model="queryParams"
-      class="-mb-15px"
-      label-width="68px"
-    >
-      <el-form-item label="菜单名称" prop="name">
-        <el-input
-          v-model="queryParams.name"
-          class="!w-240px"
-          clearable
-          placeholder="请输入菜单名称"
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-select
-          v-model="queryParams.status"
-          class="!w-240px"
-          clearable
-          placeholder="请选择菜单状态"
+      <!-- 机构端菜单 Tab -->
+      <el-tab-pane name="ORG">
+        <template #label>
+          <span class="tab-label-wrapper">
+            <Icon icon="ep:office-building" class="tab-icon" />
+            <span>机构端菜单</span>
+          </span>
+        </template>
+      </el-tab-pane>
+      <!-- 搜索工作栏 -->
+      <ContentWrap>
+        <el-form
+          ref="queryFormRef"
+          :inline="true"
+          :model="queryParams"
+          class="-mb-15px"
+          label-width="68px"
         >
-          <el-option
-            v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button @click="handleQuery">
-          <Icon class="mr-5px" icon="ep:search" />
-          搜索
-        </el-button>
-        <el-button @click="resetQuery">
-          <Icon class="mr-5px" icon="ep:refresh" />
-          重置
-        </el-button>
-        <el-button
-          v-hasPermi="['system:menu:create']"
-          plain
-          type="primary"
-          @click="openForm('create')"
-        >
-          <Icon class="mr-5px" icon="ep:plus" />
-          新增
-        </el-button>
-        <el-button plain type="danger" @click="toggleExpandAll">
-          <Icon class="mr-5px" icon="ep:sort" />
-          展开/折叠
-        </el-button>
-        <el-button plain @click="refreshMenu">
-          <Icon class="mr-5px" icon="ep:refresh" />
-          刷新菜单缓存
-        </el-button>
-      </el-form-item>
-    </el-form>
-  </ContentWrap>
+          <el-form-item label="菜单名称" prop="name">
+            <el-input
+              v-model="queryParams.name"
+              class="!w-240px"
+              clearable
+              placeholder="请输入菜单名称"
+              @keyup.enter="handleQuery"
+            />
+          </el-form-item>
+          <el-form-item label="状态" prop="status">
+            <el-select
+              v-model="queryParams.status"
+              class="!w-240px"
+              clearable
+              placeholder="请选择菜单状态"
+            >
+              <el-option
+                v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
+                :key="dict.value"
+                :label="dict.label"
+                :value="dict.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button @click="handleQuery">
+              <Icon class="mr-5px" icon="ep:search" />
+              搜索
+            </el-button>
+            <el-button @click="resetQuery">
+              <Icon class="mr-5px" icon="ep:refresh" />
+              重置
+            </el-button>
+            <el-button
+              v-hasPermi="['system:menu:create']"
+              plain
+              type="primary"
+              @click="openForm('create', undefined, undefined, activeTab)"
+            >
+              <Icon class="mr-5px" icon="ep:plus" />
+              新增
+            </el-button>
+            <el-button plain type="danger" @click="toggleExpandAll">
+              <Icon class="mr-5px" icon="ep:sort" />
+              展开/折叠
+            </el-button>
+            <el-button plain @click="refreshMenu">
+              <Icon class="mr-5px" icon="ep:refresh" />
+              刷新菜单缓存
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </ContentWrap>
 
-  <!-- 列表 -->
-  <ContentWrap>
-    <el-auto-resizer>
-      <template #default="{ width }">
-        <el-table-v2
-          v-model:expanded-row-keys="expandedRowKeys"
-          :columns="columns"
-          :data="list"
-          :expand-column-key="columns[0].key"
-          :height="1000"
-          :width="width"
-          fixed
-          row-key="id"
-        />
-      </template>
-    </el-auto-resizer>
-  </ContentWrap>
+      <!-- 列表 -->
+      <ContentWrap>
+        <el-auto-resizer>
+          <template #default="{ width }">
+            <el-table-v2
+              v-model:expanded-row-keys="expandedRowKeys"
+              :columns="columns"
+              :data="list"
+              :expand-column-key="columns[0].key"
+              :height="1000"
+              :width="width"
+              fixed
+              row-key="id"
+            />
+          </template>
+        </el-auto-resizer>
+      </ContentWrap>
+    </el-tabs>
 
-  <!-- 表单弹窗：添加/修改 -->
-  <MenuForm ref="formRef" @success="getList" />
+    <!-- 表单弹窗：添加/修改 -->
+    <MenuForm ref="formRef" @success="getList" />
+  </div>
 </template>
+
 <script lang="tsx" setup>
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { ref, reactive, onMounted } from 'vue'
+import { DICT_TYPE, getIntDictOptions, getDictLabel } from '@/utils/dict'
 import { handleTree } from '@/utils/tree'
 import * as MenuApi from '@/api/system/menu'
 import { MenuVO } from '@/api/system/menu'
 import MenuForm from './MenuForm.vue'
 import DictTag from '@/components/DictTag/src/DictTag.vue'
 import { Icon } from '@/components/Icon'
-import { ElButton, TableV2FixedDir } from 'element-plus'
+import { ElButton, ElSwitch, TableV2FixedDir } from 'element-plus'
 import { checkPermi } from '@/utils/permission'
 import { CommonStatusEnum } from '@/utils/constants'
 import { CACHE_KEY, useCache } from '@/hooks/web/useCache'
+import { useI18n } from '@/hooks/web/useI18n'
+import { useMessage } from '@/hooks/web/useMessage'
 
 defineOptions({ name: 'SystemMenu' })
 
@@ -141,6 +168,16 @@ const columns = [
     width: 200
   },
   {
+    key: 'businessModuleCode',
+    title: '业务模块',
+    dataKey: 'businessModuleCode',
+    width: 120,
+    cellRenderer: ({ cellData }) => {
+      if (!cellData) return ''
+      return getDictLabel(DICT_TYPE.BUSINESS_MODULE, cellData)
+    }
+  },
+  {
     key: 'status',
     title: '状态',
     dataKey: 'status',
@@ -178,7 +215,7 @@ const columns = [
       // 检查权限并添加按钮
       if (checkPermi(['system:menu:update'])) {
         buttons.push(
-          <ElButton key="edit" link type="primary" onClick={() => openForm('update', rowData.id)}>
+          <ElButton key="edit" link type="primary" onClick={() => openForm('update', rowData.id, undefined, activeTab.value)}>
             修改
           </ElButton>
         )
@@ -189,7 +226,7 @@ const columns = [
             key="create"
             link
             type="primary"
-            onClick={() => openForm('create', undefined, rowData.id)}
+            onClick={() => openForm('create', undefined, rowData.id, activeTab.value)}
           >
             新增
           </ElButton>
@@ -218,13 +255,14 @@ const message = useMessage() // 消息弹窗
 
 const loading = ref(true) // 列表的加载中
 const list = ref<any[]>([]) // 列表的数据
+const activeTab = ref('ADMIN') // 当前激活的Tab
 const queryParams = reactive({
   name: undefined,
-  status: undefined
+  status: undefined,
+  menuCategory: 'ADMIN'
 })
 const queryFormRef = ref() // 搜索的表单
 const isExpandAll = ref(false) // 是否展开，默认全部折叠
-const refreshTable = ref(true) // 重新渲染表格状态
 
 // 添加展开行控制
 const expandedRowKeys = ref<number[]>([])
@@ -240,6 +278,13 @@ const getList = async () => {
   }
 }
 
+/** Tab切换处理 */
+const handleTabChange = (tabName: string) => {
+  activeTab.value = tabName
+  queryParams.menuCategory = tabName
+  getList()
+}
+
 /** 搜索按钮操作 */
 const handleQuery = () => {
   getList()
@@ -253,8 +298,8 @@ const resetQuery = () => {
 
 /** 添加/修改操作 */
 const formRef = ref()
-const openForm = (type: string, id?: number, parentId?: number) => {
-  formRef.value.open(type, id, parentId)
+const openForm = (type: string, id?: number, parentId?: number, menuCategory?: string) => {
+  formRef.value.open(type, id, parentId, menuCategory || activeTab.value)
 }
 
 /** 展开/折叠操作 */
@@ -308,6 +353,7 @@ const handleStatusChanged = async (menu: MenuVO, val: number) => {
     menuStatusUpdating.value[menu.id] = false
   }
 }
+
 
 /** 初始化 **/
 onMounted(() => {

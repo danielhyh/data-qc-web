@@ -105,6 +105,22 @@
           <el-radio key="false" :value="false" border>不缓存</el-radio>
         </el-radio-group>
       </el-form-item>
+      <el-form-item v-if="formData.type !== 3" label="业务模块" prop="businessModuleCode">
+        <template #label>
+          <Tooltip
+            message="业务模块用于区分不同业务领域的功能，按钮会自动继承父菜单的业务模块"
+            title="业务模块"
+          />
+        </template>
+        <el-select v-model="formData.businessModuleCode" clearable placeholder="请选择业务模块">
+          <el-option
+            v-for="dict in getStrDictOptions(DICT_TYPE.BUSINESS_MODULE)"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
+        </el-select>
+      </el-form-item>
     </el-form>
     <template #footer>
       <el-button :disabled="formLoading" type="primary" @click="submitForm">确 定</el-button>
@@ -113,7 +129,7 @@
   </Dialog>
 </template>
 <script lang="ts" setup>
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { DICT_TYPE, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
 import * as MenuApi from '@/api/system/menu'
 import { CACHE_KEY, useCache } from '@/hooks/web/useCache'
 import { CommonStatusEnum, SystemMenuTypeEnum } from '@/utils/constants'
@@ -143,7 +159,8 @@ const formData = ref({
   status: CommonStatusEnum.ENABLE,
   visible: true,
   keepAlive: true,
-  alwaysShow: true
+  alwaysShow: true,
+  businessModuleCode: ''
 })
 const formRules = reactive({
   name: [{ required: true, message: '菜单名称不能为空', trigger: 'blur' }],
@@ -245,7 +262,8 @@ const resetForm = () => {
     status: CommonStatusEnum.ENABLE,
     visible: true,
     keepAlive: true,
-    alwaysShow: true
+    alwaysShow: true,
+    businessModuleCode: ''
   }
   formRef.value?.resetFields()
 }
