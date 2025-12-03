@@ -132,10 +132,13 @@
 <script setup lang="ts">
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
-import { MonitoringUnableReportApi, MonitoringUnableReportVO } from '@/api/system/monitoringunablereport'
+import {
+  MonitoringUnableReportApi,
+  MonitoringUnableReportVO
+} from '@/api/system/monitoringunablereport'
 import MonitoringUnableReportForm from './MonitoringUnableReportForm.vue'
 
-/** 监测内无法上报机构 列表 */
+/** 无法上报机构 列表 */
 defineOptions({ name: 'MonitoringUnableReport' })
 
 const message = useMessage() // 消息弹窗
@@ -151,7 +154,7 @@ const queryParams = reactive({
   unableReportReason: undefined,
   remark: undefined,
   status: undefined,
-  createTime: [],
+  createTime: []
 })
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中
@@ -207,7 +210,7 @@ const handleExport = async () => {
     // 发起导出
     exportLoading.value = true
     const data = await MonitoringUnableReportApi.exportMonitoringUnableReport(queryParams)
-    download.excel(data, '监测内无法上报机构.xls')
+    download.excel(data, '无法上报机构.xls')
   } catch {
   } finally {
     exportLoading.value = false

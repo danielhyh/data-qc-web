@@ -2,285 +2,315 @@
 <template>
   <div class="system-dept-page">
     <div class="flex dept-container">
-    <!-- 左侧地区树选择器 -->
-    <RegionTree
-      ref="regionTreeRef"
-      :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
-      :auto-select-first="false"
-      :show-org-count="true"
-      :show-collapse-button="true"
-      @node-click="handleRegionNodeClick"
-    />
+      <!-- 左侧地区树选择器 -->
+      <RegionTree
+        ref="regionTreeRef"
+        :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
+        :auto-select-first="false"
+        :show-org-count="true"
+        :show-collapse-button="true"
+        @node-click="handleRegionNodeClick"
+      />
 
-    <!-- 拖拽分隔条 -->
-    <div class="resize-handle" @mousedown="startResize"></div>
+      <!-- 拖拽分隔条 -->
+      <div class="resize-handle" @mousedown="startResize"></div>
 
-    <!-- 右侧机构管理内容区域 -->
-    <div class="flex-1 ml-5 main-content">
-      <!-- 当前选择的地区信息 - 始终显示 -->
-      <div class="mb-15px">
-        <el-tag
-          type="primary"
-          size="large"
-          class="region-tag"
-          :closable="!!selectedRegion"
-          @close="handleClearRegion"
-        >
-          <Icon icon="ep:location" class="mr-5px" />
-          {{ selectedRegion ? `当前地区：${getRegionDisplayName(selectedRegion)}` : '全部机构' }}
-        </el-tag>
-      </div>
+      <!-- 右侧机构管理内容区域 -->
+      <div class="flex-1 ml-5 main-content">
+        <!-- 当前选择的地区信息 - 始终显示 -->
+        <div class="mb-15px">
+          <el-tag
+            type="primary"
+            size="large"
+            class="region-tag"
+            :closable="!!selectedRegion"
+            @close="handleClearRegion"
+          >
+            <Icon icon="ep:location" class="mr-5px" />
+            {{ selectedRegion ? `当前地区：${getRegionDisplayName(selectedRegion)}` : '全部机构' }}
+          </el-tag>
+        </div>
 
-      <!-- Tab 标签页 -->
-      <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
-        <!-- 机构管理 Tab -->
-        <el-tab-pane name="dept">
-          <template #label>
-            <span class="tab-label-wrapper">
-              <Icon icon="ep:office-building" class="tab-icon" />
-              <span>机构管理</span>
-            </span>
-          </template>
-          <!-- 搜索工作栏 -->
-          <ContentWrap>
-            <el-form
-              class="-mb-15px"
-              :model="queryParams"
-              ref="queryFormRef"
-              :inline="true"
-              label-width="68px"
-            >
-              <el-form-item label="机构名称" prop="name">
-                <el-input
-                  v-model="queryParams.name"
-                  placeholder="请输入机构名称"
-                  clearable
-                  @keyup.enter="handleQuery"
-                  class="!w-240px"
-                />
-              </el-form-item>
-              <el-form-item label="机构状态" prop="status">
-                <el-select
-                  v-model="queryParams.status"
-                  placeholder="请选择机构状态"
-                  clearable
-                  class="!w-240px"
-                >
-                  <el-option
-                    v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-                    :key="dict.value"
-                    :label="dict.label"
-                    :value="dict.value"
+        <!-- Tab 标签页 -->
+        <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
+          <!-- 机构管理 Tab -->
+          <el-tab-pane name="dept">
+            <template #label>
+              <span class="tab-label-wrapper">
+                <Icon icon="ep:office-building" class="tab-icon" />
+                <span>机构管理</span>
+              </span>
+            </template>
+            <!-- 搜索工作栏 -->
+            <ContentWrap>
+              <el-form
+                class="-mb-15px"
+                :model="queryParams"
+                ref="queryFormRef"
+                :inline="true"
+                label-width="68px"
+              >
+                <el-form-item label="机构名称" prop="name">
+                  <el-input
+                    v-model="queryParams.name"
+                    placeholder="请输入机构名称"
+                    clearable
+                    @keyup.enter="handleQuery"
+                    class="!w-240px"
                   />
-                </el-select>
-              </el-form-item>
-              <el-form-item>
-                <el-button @click="handleQuery"
-                ><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button
-                >
-                <el-button @click="resetQuery"
-                ><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button
-                >
-                <el-button
-                  type="primary"
-                  @click="openForm('create')"
-                  v-hasPermi="['system:dept:create']"
-                >
-                  <Icon icon="ep:plus" class="mr-5px" /> 新增
-                </el-button>
-                <el-button
-                  type="warning"
-                  plain
-                  @click="handleImport"
-                >
-                  <Icon icon="ep:upload" class="mr-5px" /> 导入
-                </el-button>
-                <el-button
-                  type="info"
-                  plain
-                  @click="handleDownloadTemplate"
-                >
-                  <Icon icon="ep:document" class="mr-5px" /> 模板
-                </el-button>
-                <el-button type="danger" @click="toggleExpandAll" v-if="!useLazyLoad">
-                  <Icon icon="ep:sort" class="mr-5px" /> 展开/折叠
-                </el-button>
-                <el-button type="success" @click="openSyncModal">
-                  <Icon icon="ep:download" class="mr-5px" /> 从标准库同步
-                </el-button>
-              </el-form-item>
-            </el-form>
-          </ContentWrap>
-
-          <!-- 机构列表 -->
-          <ContentWrap>
-            <el-table
-              v-if="refreshTable"
-              v-loading="loading"
-              :data="list"
-              row-key="id"
-              :lazy="useLazyLoad"
-              :load="loadChildren"
-              :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-              :default-expand-all="isExpandAll"
-            >
-              <el-table-column prop="name" label="机构名称" min-width="230">
-                <template #default="scope">
-                  <div class="institution-name-cell">
-                    <el-tooltip
-                      :content="getInstitutionCategoryLabel(scope.row.institutionCategory)"
-                      placement="top"
-                    >
-                      <DictIcon
-                        :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
-                        :value="scope.row.institutionCategory ?? ''"
-                        :size="18"
-                        default-color="#5b8def"
-                      />
-                    </el-tooltip>
-                    <span class="institution-name-text font-bold">{{ scope.row.name }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="externalId" label="外部机构代码" width="180" show-overflow-tooltip />
-              <el-table-column prop="regionPathName" label="所在地区" min-width="220" show-overflow-tooltip />
-              <el-table-column prop="deptAddressCode" label="行政区划代码" width="140" show-overflow-tooltip />
-              <el-table-column prop="institutionCategory" label="机构类别" width="120">
-                <template #default="scope">
-                  <dict-tag
-                    :type="DICT_TYPE.INSTITUTION_CATEGORY"
-                    :value="scope.row.institutionCategory ?? ''"
-                  />
-                </template>
-              </el-table-column>
-              <el-table-column prop="hospitalLevel" label="机构等级" width="100">
-                <template #default="scope">
-                  <dict-tag :type="DICT_TYPE.INSTITUTION_LEVEL" :value="scope.row.hospitalLevel ?? ''" />
-                </template>
-              </el-table-column>
-              <el-table-column prop="adminCategory" label="行政归属" width="110" show-overflow-tooltip />
-              <el-table-column prop="orgCode" label="组织机构代码" width="160" show-overflow-tooltip />
-              <el-table-column prop="socialCreditCode" label="社会信用代码" width="190" show-overflow-tooltip />
-              <el-table-column prop="contactPerson" label="联络员" width="100" />
-              <el-table-column prop="contactPhone" label="联络员手机" width="120" />
-              <el-table-column prop="address" label="联系地址" min-width="220" show-overflow-tooltip />
-              <el-table-column prop="grassrootsInstitution" label="基层机构" width="100">
-                <template #default="scope">
-                  <el-tag :type="getBooleanTagType(scope.row.grassrootsInstitution)">
-                    {{ getBooleanLabel(scope.row.grassrootsInstitution) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="isMonitoringRequired" label="监测对象" width="110">
-                <template #default="scope">
-                  <el-tag :type="getBooleanTagType(scope.row.isMonitoringRequired)">
-                    {{ getBooleanLabel(scope.row.isMonitoringRequired) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="sort" label="排序" width="140">
-                <template #default="scope">
-                  <div class="sort-input-wrapper">
-                    <el-input-number
-                      :model-value="getSortInputValue(scope.row)"
-                      :min="0"
-                      :max="9999"
-                      :controls="false"
-                      size="small"
-                      class="sort-input"
-                      :disabled="updatingSortId === scope.row.id"
-                      @update:model-value="(value) => handleSortInputChange(scope.row, value)"
-                      @blur="() => handleSortCommit(scope.row)"
-                      @keydown.enter.prevent="() => handleSortCommit(scope.row)"
+                </el-form-item>
+                <el-form-item label="机构状态" prop="status">
+                  <el-select
+                    v-model="queryParams.status"
+                    placeholder="请选择机构状态"
+                    clearable
+                    class="!w-240px"
+                  >
+                    <el-option
+                      v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
+                      :key="dict.value"
+                      :label="dict.label"
+                      :value="dict.value"
                     />
-                    <Icon
-                      v-if="updatingSortId === scope.row.id"
-                      icon="line-md:loading-twotone-loop"
-                      class="sort-loading"
-                    />
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态" width="80">
-                <template #default="scope">
-                  <el-switch
-                    v-model="scope.row.status"
-                    :active-value="0"
-                    :inactive-value="1"
-                    @change="handleStatusChange(scope.row)"
-                    v-hasPermi="['system:dept:update']"
-                  />
-                </template>
-              </el-table-column>
-              <el-table-column
-                label="创建时间"
-                align="center"
-                prop="createTime"
-                width="180"
-                :formatter="dateFormatter"
-              />
-              <el-table-column label="操作" align="center" width="180px" fixed="right">
-                <template #default="scope">
+                  </el-select>
+                </el-form-item>
+                <el-form-item>
+                  <el-button @click="handleQuery"
+                    ><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button
+                  >
+                  <el-button @click="resetQuery"
+                    ><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button
+                  >
                   <el-button
                     type="primary"
-                    plain
-                    size="small"
-                    @click="openForm('update', scope.row.id)"
-                    v-hasPermi="['system:dept:update']"
+                    @click="openForm('create')"
+                    v-hasPermi="['system:dept:create']"
                   >
-                    <Icon icon="ep:edit" class="mr-5px" />
-                    修改
+                    <Icon icon="ep:plus" class="mr-5px" /> 新增
                   </el-button>
-                  <el-button
-                    type="danger"
-                    plain
-                    size="small"
-                    @click="handleDelete(scope.row.id)"
-                    v-hasPermi="['system:dept:delete']"
-                  >
-                    <Icon icon="ep:delete" class="mr-5px" />
-                    删除
+                  <el-button type="warning" plain @click="handleImport">
+                    <Icon icon="ep:upload" class="mr-5px" /> 导入
                   </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </ContentWrap>
-        </el-tab-pane>
+                  <el-button type="info" plain @click="handleDownloadTemplate">
+                    <Icon icon="ep:document" class="mr-5px" /> 模板
+                  </el-button>
+                  <el-button type="danger" @click="toggleExpandAll" v-if="!useLazyLoad">
+                    <Icon icon="ep:sort" class="mr-5px" /> 展开/折叠
+                  </el-button>
+                  <el-button type="success" @click="openSyncModal">
+                    <Icon icon="ep:download" class="mr-5px" /> 从标准库同步
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </ContentWrap>
 
-        <!-- 监测内无法上报机构 Tab -->
-        <el-tab-pane name="monitoring">
-          <template #label>
-            <span class="tab-label-wrapper">
-              <Icon icon="ep:warning" class="tab-icon" />
-              <span>监测内无法上报机构</span>
-              <el-badge
-                v-if="unableReportCount > 0"
-                :value="unableReportCount"
-                class="tab-badge tab-badge-danger"
-              />
-            </span>
-          </template>
-          <!-- 监测内无法上报机构组件 - 始终渲染以便初始化加载数据 -->
-          <MonitoringUnableReportTab
-            :area-code="selectedRegionCode"
-            :selected-region-id="selectedRegionIdForMonitor"
-            @count-updated="handleUnableReportCountUpdate"
-          />
-        </el-tab-pane>
+            <!-- 机构列表 -->
+            <ContentWrap>
+              <el-table
+                v-if="refreshTable"
+                v-loading="loading"
+                :data="list"
+                row-key="id"
+                :lazy="useLazyLoad"
+                :load="loadChildren"
+                :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+                :default-expand-all="isExpandAll"
+              >
+                <el-table-column prop="name" label="机构名称" min-width="230">
+                  <template #default="scope">
+                    <div class="institution-name-cell">
+                      <el-tooltip
+                        :content="getInstitutionCategoryLabel(scope.row.institutionCategory)"
+                        placement="top"
+                      >
+                        <DictIcon
+                          :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
+                          :value="scope.row.institutionCategory ?? ''"
+                          :size="18"
+                          default-color="#5b8def"
+                        />
+                      </el-tooltip>
+                      <span class="institution-name-text font-bold">{{ scope.row.name }}</span>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="externalId"
+                  label="外部机构代码"
+                  width="180"
+                  show-overflow-tooltip
+                />
+                <el-table-column
+                  prop="regionPathName"
+                  label="所在地区"
+                  min-width="220"
+                  show-overflow-tooltip
+                />
+                <el-table-column
+                  prop="deptAddressCode"
+                  label="行政区划代码"
+                  width="140"
+                  show-overflow-tooltip
+                />
+                <el-table-column prop="institutionCategory" label="机构类别" width="120">
+                  <template #default="scope">
+                    <dict-tag
+                      :type="DICT_TYPE.INSTITUTION_CATEGORY"
+                      :value="scope.row.institutionCategory ?? ''"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column prop="hospitalLevel" label="机构等级" width="100">
+                  <template #default="scope">
+                    <dict-tag
+                      :type="DICT_TYPE.INSTITUTION_LEVEL"
+                      :value="scope.row.hospitalLevel ?? ''"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  prop="adminCategory"
+                  label="行政归属"
+                  width="110"
+                  show-overflow-tooltip
+                />
+                <el-table-column
+                  prop="orgCode"
+                  label="组织机构代码"
+                  width="160"
+                  show-overflow-tooltip
+                />
+                <el-table-column
+                  prop="socialCreditCode"
+                  label="社会信用代码"
+                  width="190"
+                  show-overflow-tooltip
+                />
+                <el-table-column prop="contactPerson" label="联络员" width="100" />
+                <el-table-column prop="contactPhone" label="联络员手机" width="120" />
+                <el-table-column
+                  prop="address"
+                  label="联系地址"
+                  min-width="220"
+                  show-overflow-tooltip
+                />
+                <el-table-column prop="grassrootsInstitution" label="基层机构" width="100">
+                  <template #default="scope">
+                    <el-tag :type="getBooleanTagType(scope.row.grassrootsInstitution)">
+                      {{ getBooleanLabel(scope.row.grassrootsInstitution) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="isMonitoringRequired" label="监测对象" width="110">
+                  <template #default="scope">
+                    <el-tag :type="getBooleanTagType(scope.row.isMonitoringRequired)">
+                      {{ getBooleanLabel(scope.row.isMonitoringRequired) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="sort" label="排序" width="140">
+                  <template #default="scope">
+                    <div class="sort-input-wrapper">
+                      <el-input-number
+                        :model-value="getSortInputValue(scope.row)"
+                        :min="0"
+                        :max="9999"
+                        :controls="false"
+                        size="small"
+                        class="sort-input"
+                        :disabled="updatingSortId === scope.row.id"
+                        @update:model-value="(value) => handleSortInputChange(scope.row, value)"
+                        @blur="() => handleSortCommit(scope.row)"
+                        @keydown.enter.prevent="() => handleSortCommit(scope.row)"
+                      />
+                      <Icon
+                        v-if="updatingSortId === scope.row.id"
+                        icon="line-md:loading-twotone-loop"
+                        class="sort-loading"
+                      />
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="80">
+                  <template #default="scope">
+                    <el-switch
+                      v-model="scope.row.status"
+                      :active-value="0"
+                      :inactive-value="1"
+                      @change="handleStatusChange(scope.row)"
+                      v-hasPermi="['system:dept:update']"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  label="创建时间"
+                  align="center"
+                  prop="createTime"
+                  width="180"
+                  :formatter="dateFormatter"
+                />
+                <el-table-column label="操作" align="center" width="180px" fixed="right">
+                  <template #default="scope">
+                    <el-button
+                      type="primary"
+                      plain
+                      size="small"
+                      @click="openForm('update', scope.row.id)"
+                      v-hasPermi="['system:dept:update']"
+                    >
+                      <Icon icon="ep:edit" class="mr-5px" />
+                      修改
+                    </el-button>
+                    <el-button
+                      type="danger"
+                      plain
+                      size="small"
+                      @click="handleDelete(scope.row.id)"
+                      v-hasPermi="['system:dept:delete']"
+                    >
+                      <Icon icon="ep:delete" class="mr-5px" />
+                      删除
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </ContentWrap>
+          </el-tab-pane>
 
-        <!-- 委直委管配置 Tab -->
-        <el-tab-pane name="categoryConfig">
-          <template #label>
-            <span class="tab-label-wrapper">
-              <Icon icon="ep:setting" class="tab-icon" />
-              <span>委直委管配置</span>
-            </span>
-          </template>
-          <!-- 委直委管配置组件 -->
-          <InstitutionCategoryConfigTab />
-        </el-tab-pane>
-      </el-tabs>
-    </div>
+          <!-- 无法上报机构 Tab -->
+          <el-tab-pane name="monitoring">
+            <template #label>
+              <span class="tab-label-wrapper">
+                <Icon icon="ep:warning" class="tab-icon" />
+                <span>无法上报机构</span>
+                <el-badge
+                  v-if="unableReportCount > 0"
+                  :value="unableReportCount"
+                  class="tab-badge tab-badge-danger"
+                />
+              </span>
+            </template>
+            <!-- 无法上报机构组件 - 始终渲染以便初始化加载数据 -->
+            <MonitoringUnableReportTab
+              :area-code="selectedRegionCode"
+              :selected-region-id="selectedRegionIdForMonitor"
+              @count-updated="handleUnableReportCountUpdate"
+            />
+          </el-tab-pane>
+
+          <!-- 委直委管配置 Tab -->
+          <el-tab-pane name="categoryConfig">
+            <template #label>
+              <span class="tab-label-wrapper">
+                <Icon icon="ep:setting" class="tab-icon" />
+                <span>委直委管配置</span>
+              </span>
+            </template>
+            <!-- 委直委管配置组件 -->
+            <InstitutionCategoryConfigTab />
+          </el-tab-pane>
+        </el-tabs>
+      </div>
     </div>
 
     <!-- 表单弹窗：添加/修改 -->
@@ -292,7 +322,7 @@
 </template>
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { DICT_TYPE, getDictObj, getIntDictOptions, getDictLabel } from '@/utils/dict'
+import { DICT_TYPE, getDictLabel, getDictObj, getIntDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import { handleTree } from '@/utils/tree'
 import * as DeptApi from '@/api/system/dept'
@@ -460,7 +490,7 @@ const getList = async () => {
     // 有搜索条件时不使用懒加载，直接展示所有匹配的数据
     const hasSearchCondition = queryParams.name || queryParams.status !== undefined
     useLazyLoad.value = !hasSearchCondition
-    
+
     if (hasSearchCondition) {
       // 有搜索条件：不使用懒加载，查询所有匹配数据并构建树
       const params = { ...queryParams, parentId: undefined }
@@ -477,7 +507,7 @@ const getList = async () => {
       await nextTick()
       list.value = data // 直接使用数据，不构建树
     }
-    
+
     editingSortCache.clear()
     refreshTable.value = true
   } finally {
@@ -622,7 +652,8 @@ const handleImport = () => {
     if (!file) return
 
     const fileName = file.name.toLowerCase()
-    const isSupported = fileName.endsWith('.xls') || fileName.endsWith('.xlsx') || fileName.endsWith('.csv')
+    const isSupported =
+      fileName.endsWith('.xls') || fileName.endsWith('.xlsx') || fileName.endsWith('.csv')
     if (!isSupported) {
       message.error('仅支持上传 xls、xlsx 或 csv 格式文件')
       return

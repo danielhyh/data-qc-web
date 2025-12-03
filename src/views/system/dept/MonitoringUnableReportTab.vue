@@ -1,4 +1,4 @@
-<!--监测内无法上报机构-->
+<!--无法上报机构-->
 <template>
   <div>
     <!-- 搜索工作栏 -->
@@ -61,13 +61,15 @@
       <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
         <el-table-column label="机构名称" align="center" prop="deptName" min-width="200">
           <template #default="scope">
-            <div class="institution-name-cell">
-              <Icon icon="ep:office-building" class="institution-icon" />
-              <span class="institution-name-text font-bold">{{ scope.row.deptName }}</span>
-            </div>
+            <span class="institution-name-text font-bold">{{ scope.row.deptName }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="无法上报原因" align="center" prop="unableReportReason" min-width="200" />
+        <el-table-column
+          label="无法上报原因"
+          align="center"
+          prop="unableReportReason"
+          min-width="200"
+        />
         <el-table-column label="备注说明" align="center" prop="remark" min-width="150" />
         <el-table-column label="状态" align="center" prop="status" width="80">
           <template #default="scope">
@@ -130,7 +132,10 @@
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
-import { MonitoringUnableReportApi, MonitoringUnableReportVO } from '@/api/system/monitoringunablereport'
+import {
+  MonitoringUnableReportApi,
+  MonitoringUnableReportVO
+} from '@/api/system/monitoringunablereport'
 import MonitoringUnableReportForm from '../monitoringunablereport/MonitoringUnableReportForm.vue'
 import { Icon } from '@/components/Icon'
 
@@ -173,7 +178,7 @@ const getList = async () => {
     const data = await MonitoringUnableReportApi.getMonitoringUnableReportPage(queryParams)
     list.value = data.list
     total.value = data.total
-    
+
     // 发射总数更新事件，通知父组件更新徽标
     emit('countUpdated', data.total)
   } finally {
@@ -233,7 +238,7 @@ const handleExport = async () => {
     await message.exportConfirm()
     exportLoading.value = true
     const data = await MonitoringUnableReportApi.exportMonitoringUnableReport(queryParams)
-    download.excel(data, '监测内无法上报机构.xls')
+    download.excel(data, '无法上报机构.xls')
   } catch {
   } finally {
     exportLoading.value = false
@@ -241,11 +246,15 @@ const handleExport = async () => {
 }
 
 /** 监听地区变化 */
-watch(() => props.areaCode, () => {
-  // 无论 areaCode 是否为空都调用 getList
-  // 为空时查询所有数据，有值时查询对应地区数据
-  getList()
-}, { immediate: true }) // immediate: true 会在组件初始化时立即执行一次
+watch(
+  () => props.areaCode,
+  () => {
+    // 无论 areaCode 是否为空都调用 getList
+    // 为空时查询所有数据，有值时查询对应地区数据
+    getList()
+  },
+  { immediate: true }
+) // immediate: true 会在组件初始化时立即执行一次
 </script>
 
 <style scoped lang="scss">

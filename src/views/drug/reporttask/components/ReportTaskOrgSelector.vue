@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model="innerVisible"
-    title="配置可填报机构（不包含监测内无法上报机构）"
+    title="配置可填报机构（不包含无法上报机构）"
     width="1080px"
     class="report-task-org-selector"
   >
@@ -107,11 +107,7 @@
               </el-input>
             </div>
             <div class="org-filter-row">
-              <el-checkbox
-                v-model="selectAll"
-                size="small"
-                @change="handleSelectAllChange"
-              >
+              <el-checkbox v-model="selectAll" size="small" @change="handleSelectAllChange">
                 全选当前机构
               </el-checkbox>
               <el-checkbox-group
@@ -957,7 +953,9 @@ watch(areaKeyword, () => {
       rgba(147, 197, 253, 0.1) 50%,
       rgba(59, 130, 246, 0.08) 100%
     );
-    box-shadow: inset 3px 0 0 0 rgba(59, 130, 246, 0.6), 0 2px 8px rgba(59, 130, 246, 0.15);
+    box-shadow:
+      inset 3px 0 0 0 rgba(59, 130, 246, 0.6),
+      0 2px 8px rgba(59, 130, 246, 0.15);
     transform: translateX(0);
 
     &:hover {
@@ -1001,4 +999,3 @@ watch(areaKeyword, () => {
   }
 }
 </style>
-

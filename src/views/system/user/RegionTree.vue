@@ -106,6 +106,24 @@
         </template>
       </el-tree>
     </div>
+
+    <!-- 底部固定区域 - 显示当前选中的地区信息 -->
+    <div v-show="!isCollapsed" class="region-footer">
+      <div class="selected-region-info">
+        <Icon icon="ep:location" class="location-icon" />
+        <span class="region-text">
+          {{ selectedRegionData ? selectedRegionData.name : '全部地区' }}
+        </span>
+        <span v-if="selectedRegionData" class="region-level-tag">
+          {{ getRegionLevelLabel(selectedRegionData.level) }}
+        </span>
+      </div>
+      <el-tooltip v-if="selectedRegionData" content="清除选择" placement="top">
+        <span class="clear-btn" @click="handleClear">
+          <Icon icon="ep:close" />
+        </span>
+      </el-tooltip>
+    </div>
   </div>
 </template>
 
@@ -113,7 +131,7 @@
 import { ref, watch, nextTick, onMounted } from 'vue'
 import { ElTree } from 'element-plus'
 import * as AreaOrgApi from '@/api/system/areaOrg'
-import { DICT_TYPE } from '@/utils/dict'
+import { DICT_TYPE, getDictLabel } from '@/utils/dict'
 import DictIcon from '@/components/DictIcon'
 import { Icon } from '@/components/Icon'
 
@@ -136,11 +154,13 @@ const props = withDefaults(
     autoSelectFirst?: boolean // 是否自动选中第一个节点
     showOrgCount?: boolean // 是否显示机构数量标签
     showCollapseButton?: boolean // 是否显示内部的收起按钮
+    selectedRegionData?: any // 当前选中的地区数据（用于底部显示）
   }>(),
   {
     autoSelectFirst: true, // 默认自动选中
     showOrgCount: false, // 默认不显示机构数量
-    showCollapseButton: false // 默认不显示，交由外部控制
+    showCollapseButton: false, // 默认不显示，交由外部控制
+    selectedRegionData: null // 默认无选中
   }
 )
 
@@ -219,7 +239,7 @@ const handleNodeClick = async (row: { [key: string]: any }) => {
   activeCode.value = row.code
   emits('node-click', row)
 }
-const emits = defineEmits(['node-click'])
+const emits = defineEmits(['node-click', 'clear'])
 
 /** 清除选中状态 */
 const clearSelection = () => {
@@ -243,6 +263,18 @@ const hasTotalCount = (node: Tree) => {
   const total = node.totalOrgCount ?? 0
   const direct = node.directOrgCount ?? 0
   return total > direct
+}
+
+/** 获取地区级别的文字标签 */
+const getRegionLevelLabel = (level: number | undefined) => {
+  if (level === undefined || level === null) return ''
+  return getDictLabel(DICT_TYPE.REGION_LEVEL, level) || ''
+}
+
+/** 清除选中并通知父组件 */
+const handleClear = () => {
+  clearSelection()
+  emits('clear')
 }
 
 /** 暴露方法给父组件 */
@@ -496,6 +528,65 @@ onMounted(async () => {
 
   &:active {
     transform: scale(0.95);
+  }
+}
+
+// 底部固定区域
+.region-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(59, 130, 246, 0.04);
+  border-top: 1px solid var(--el-border-color-lighter);
+
+  .selected-region-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+
+    .location-icon {
+      font-size: 14px;
+      color: #2563eb;
+    }
+
+    .region-text {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--el-text-color-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .region-level-tag {
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      background: rgba(59, 130, 246, 0.08);
+      color: #3b82f6;
+    }
+  }
+
+  .clear-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s;
+
+    &:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
   }
 }
 </style>

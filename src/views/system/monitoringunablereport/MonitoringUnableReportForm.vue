@@ -15,12 +15,7 @@
           filterable
           class="!w-240px"
         >
-          <el-option
-            v-for="dept in deptList"
-            :key="dept.id"
-            :label="dept.name"
-            :value="dept.id"
-          />
+          <el-option v-for="dept in deptList" :key="dept.id" :label="dept.name" :value="dept.id" />
         </el-select>
       </el-form-item>
       <el-form-item label="无法上报原因" prop="unableReportReason">
@@ -61,10 +56,13 @@
 </template>
 <script setup lang="ts">
 import { DICT_TYPE, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
-import { MonitoringUnableReportApi, MonitoringUnableReportVO } from '@/api/system/monitoringunablereport'
-import { getSimpleDeptList, DeptVO } from '@/api/system/dept'
+import {
+  MonitoringUnableReportApi,
+  MonitoringUnableReportVO
+} from '@/api/system/monitoringunablereport'
+import { DeptVO, getSimpleDeptList } from '@/api/system/dept'
 
-/** 监测内无法上报机构 表单 */
+/** 无法上报机构 表单 */
 defineOptions({ name: 'MonitoringUnableReportForm' })
 
 const { t } = useI18n() // 国际化
@@ -79,12 +77,12 @@ const formData = ref({
   deptId: undefined,
   unableReportReason: undefined,
   remark: undefined,
-  status: 0,
+  status: 0
 })
 const formRules = reactive({
   deptId: [{ required: true, message: '所属机构不能为空', trigger: 'blur' }],
   unableReportReason: [{ required: true, message: '无法上报原因不能为空', trigger: 'blur' }],
-  status: [{ required: true, message: '状态不能为空', trigger: 'blur' }],
+  status: [{ required: true, message: '状态不能为空', trigger: 'blur' }]
 })
 const formRef = ref() // 表单 Ref
 const deptList = ref<DeptVO[]>([]) // 机构列表
@@ -149,7 +147,7 @@ const resetForm = () => {
     deptId: undefined,
     unableReportReason: undefined,
     remark: undefined,
-    status: 0,
+    status: 0
   }
   formRef.value?.resetFields()
 }
