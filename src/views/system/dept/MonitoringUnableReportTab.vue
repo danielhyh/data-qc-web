@@ -8,44 +8,60 @@
         :model="queryParams"
         ref="queryFormRef"
         :inline="true"
-        label-width="100px"
+        label-width="auto"
       >
-        <el-form-item label="机构名称" prop="deptName">
+        <el-form-item label="关键字" prop="keyword">
           <el-input
-            v-model="queryParams.deptName"
-            placeholder="请输入机构名称"
+            v-model="queryParams.keyword"
+            placeholder="搜索机构名称、机构代码..."
             clearable
             @keyup.enter="handleQuery"
             class="!w-240px"
           />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
+        <el-form-item label="不上报模块" prop="moduleCode">
           <el-select
-            v-model="queryParams.status"
-            placeholder="请选择状态"
+            v-model="queryParams.moduleCode"
+            placeholder="全部"
             clearable
-            class="!w-240px"
+            class="!w-150px"
           >
             <el-option
-              v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
+              v-for="dict in getStrDictOptions(DICT_TYPE.BUSINESS_MODULE)"
               :key="dict.value"
               :label="dict.label"
               :value="dict.value"
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="机构分类" prop="deptClass">
+          <el-tree-select
+            v-model="queryParams.deptClass"
+            :data="deptCategoryTree"
+            :props="{ label: 'name', value: 'code', children: 'children' }"
+            check-strictly
+            filterable
+            clearable
+            placeholder="请选择"
+            class="!w-180px"
+          />
+        </el-form-item>
         <el-form-item>
-          <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-          <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-          <el-button
-            type="primary"
-            @click="openForm('create')"
-            v-hasPermi="['system:monitoring-unable-report:create']"
-          >
-            <Icon icon="ep:plus" class="mr-5px" /> 新增
+          <el-button type="primary" @click="handleQuery">
+            <Icon icon="ep:search" class="mr-5px" /> 搜索
+          </el-button>
+          <el-button @click="resetQuery">
+            <Icon icon="ep:refresh" class="mr-5px" /> 重置
           </el-button>
           <el-button
             type="success"
+            @click="openForm('create')"
+            v-hasPermi="['system:monitoring-unable-report:create']"
+          >
+            <Icon icon="ep:plus" class="mr-5px" /> 新增配置
+          </el-button>
+          <el-button
+            plain
             @click="handleExport"
             :loading="exportLoading"
             v-hasPermi="['system:monitoring-unable-report:export']"
@@ -59,56 +75,54 @@
     <!-- 列表 -->
     <ContentWrap>
       <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-        <el-table-column label="机构名称" align="center" prop="deptName" min-width="200">
+        <el-table-column type="selection" width="50" />
+        <el-table-column label="机构名称" align="left" prop="deptName" min-width="180">
           <template #default="scope">
             <span class="institution-name-text font-bold">{{ scope.row.deptName }}</span>
           </template>
         </el-table-column>
-        <el-table-column
-          label="无法上报原因"
-          align="center"
-          prop="unableReportReason"
-          min-width="200"
-        />
-        <el-table-column label="备注说明" align="center" prop="remark" min-width="150" />
-        <el-table-column label="状态" align="center" prop="status" width="80">
+        <el-table-column label="机构代码" align="center" prop="orgCode" width="140" />
+        <el-table-column label="行政区划" align="center" prop="regionName" width="120" />
+        <el-table-column label="机构类别" align="center" prop="deptClassName" width="150" show-overflow-tooltip />
+        <el-table-column label="不上报模块" align="center" prop="moduleCode" width="120">
           <template #default="scope">
-            <el-switch
-              v-model="scope.row.status"
-              :active-value="0"
-              :inactive-value="1"
-              @change="handleStatusChange(scope.row)"
-              v-hasPermi="['system:monitoring-unable-report:update']"
-            />
+            <el-tag :type="getDictColorType(DICT_TYPE.BUSINESS_MODULE, scope.row.moduleCode)">
+              {{ getDictLabel(DICT_TYPE.BUSINESS_MODULE, scope.row.moduleCode) }}
+            </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="无法上报原因" align="left" prop="unableReportReason" min-width="220">
+          <template #default="scope">
+            <div>{{ getDictLabel(DICT_TYPE.UNABLE_REPORT_REASON, scope.row.unableReportReason) || scope.row.unableReportReason }}</div>
+            <div v-if="scope.row.remark" class="text-gray-400 text-xs mt-1">备注：{{ scope.row.remark }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="设置人" align="center" prop="creator" width="100" />
         <el-table-column
-          label="创建时间"
+          label="设置时间"
           align="center"
           prop="createTime"
           :formatter="dateFormatter"
-          width="180px"
+          width="180"
         />
-        <el-table-column label="操作" align="center" width="180px" fixed="right">
+        <el-table-column label="操作" align="center" width="180" fixed="right">
           <template #default="scope">
             <el-button
-              type="primary"
-              plain
+              type="success"
               size="small"
               @click="openForm('update', scope.row.id)"
               v-hasPermi="['system:monitoring-unable-report:update']"
             >
-              <Icon icon="ep:edit" class="mr-5px" />
-              修改
+              <Icon icon="ep:edit" class="mr-1" />
+              编辑
             </el-button>
             <el-button
               type="danger"
-              plain
               size="small"
               @click="handleDelete(scope.row.id)"
               v-hasPermi="['system:monitoring-unable-report:delete']"
             >
-              <Icon icon="ep:delete" class="mr-5px" />
+              <Icon icon="ep:delete" class="mr-1" />
               删除
             </el-button>
           </template>
@@ -129,15 +143,17 @@
 </template>
 
 <script setup lang="ts">
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
+import { DICT_TYPE, getStrDictOptions, getDictLabel, getDictColorType } from '@/utils/dict'
 import {
   MonitoringUnableReportApi,
   MonitoringUnableReportVO
 } from '@/api/system/monitoringunablereport'
 import MonitoringUnableReportForm from '../monitoringunablereport/MonitoringUnableReportForm.vue'
 import { Icon } from '@/components/Icon'
+import { DeptCategoryApi } from '@/api/system/deptcategory'
+import { handleTree } from '@/utils/tree'
 
 interface Props {
   areaCode?: string
@@ -160,15 +176,14 @@ const total = ref(0)
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
-  deptName: undefined,
-  unableReportReason: undefined,
-  remark: undefined,
-  status: undefined,
-  createTime: [],
+  keyword: undefined,
+  moduleCode: undefined,
+  deptClass: undefined,
   areaCode: undefined as string | undefined
 })
 const queryFormRef = ref()
 const exportLoading = ref(false)
+const deptCategoryTree = ref<any[]>([]) // 机构分类树
 
 /** 查询列表 */
 const getList = async () => {
@@ -194,13 +209,17 @@ const handleQuery = () => {
 
 /** 重置按钮操作 */
 const resetQuery = () => {
-  queryParams.deptName = undefined
-  queryParams.unableReportReason = undefined
-  queryParams.remark = undefined
-  queryParams.status = undefined
-  queryParams.createTime = []
+  queryParams.keyword = undefined
+  queryParams.moduleCode = undefined
+  queryParams.deptClass = undefined
   queryFormRef.value.resetFields()
   handleQuery()
+}
+
+/** 获取机构分类树 */
+const getDeptCategoryTree = async () => {
+  const data = await DeptCategoryApi.getDeptCategoryList({})
+  deptCategoryTree.value = handleTree(data, 'id', 'parentId')
 }
 
 /** 添加/修改操作 */
@@ -217,19 +236,6 @@ const handleDelete = async (id: number) => {
     message.success(t('common.delSuccess'))
     await getList()
   } catch {}
-}
-
-/** 状态开关操作 */
-const handleStatusChange = async (row: MonitoringUnableReportVO) => {
-  try {
-    const statusText = row.status === 0 ? '启用' : '禁用'
-    await message.confirm(`确认要${statusText}"${row.deptName}"吗?`)
-    await MonitoringUnableReportApi.updateMonitoringUnableReportStatus(row.id, row.status)
-    message.success(`${statusText}成功`)
-  } catch {
-    // 操作失败或取消，恢复状态
-    row.status = row.status === 0 ? 1 : 0
-  }
 }
 
 /** 导出按钮操作 */
@@ -255,6 +261,11 @@ watch(
   },
   { immediate: true }
 ) // immediate: true 会在组件初始化时立即执行一次
+
+/** 初始化 */
+onMounted(() => {
+  getDeptCategoryTree()
+})
 </script>
 
 <style scoped lang="scss">

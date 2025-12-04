@@ -14,12 +14,14 @@ export interface DeptVO {
   regionId?: number
   regionCode?: string
   regionPath?: string
-  regionPathName?: string // 区域路径中文名称
+  regionPathName?: string // 区域路径中文名称（简化为市/区县）
   regionName?: string
   areaName?: string
   institutionId?: string
   institutionCategory?: string
   hospitalLevel?: string
+  hospitalLevelJ?: string // 医院等级-级
+  hospitalGrade?: string // 医院等级-等
   contactPerson?: string
   contactPhone?: string
   deptAddressCode?: string
@@ -34,10 +36,19 @@ export interface DeptVO {
   isMonitoringRequired?: number
   adminCategory?: string
   deptType?: string
+  deptClass?: string // 机构分类代码
+  deptClassName?: string // 机构分类名称
   area?: string
   businessType?: string // 业务类型: BOTH/SHORTAGE/MONITOR
   adminLevel?: number // 管理级别: 0-非管理机构, 1-省级, 2-市级, 3-区县级
   hasChildren?: boolean // 是否有子节点
+  // 用户关联字段
+  userId?: number
+  username?: string
+  userStatus?: number
+  loginDate?: Date
+  // 树形结构子节点
+  children?: DeptVO[]
 }
 
 // 查询部门（精简)列表
@@ -112,4 +123,25 @@ export const importDept = async (file: File) => {
 // 下载导入模板
 export const importTemplate = async () => {
   return await request.download({ url: '/system/dept/get-import-template' })
+}
+
+// 树列表查询参数
+export interface DeptTreeListParam {
+  keyword?: string
+  status?: number
+  areaCode?: string
+  adminLevel?: number
+  businessType?: string
+  hospitalLevelJ?: string
+  deptClass?: string
+}
+
+// 查询机构树列表（全量，用于虚拟列表）
+export const getDeptTreeList = async (params: DeptTreeListParam): Promise<DeptVO[]> => {
+  return await request.get({ url: '/system/dept/tree-list', params })
+}
+
+// 导出机构列表
+export const exportDeptList = async (params: DeptTreeListParam) => {
+  return await request.download({ url: '/system/dept/export', params })
 }

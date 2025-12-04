@@ -211,7 +211,8 @@ export enum DICT_TYPE {
 
   // ========== 机构标准库字典 ==========
   INSTITUTION_CATEGORY = 'institution_category', // 机构类别
-  INSTITUTION_LEVEL = 'institution_level', // 机构等级
+  INSTITUTION_LEVEL = 'institution_level', // 机构等级(级)
+  HOSPITAL_GRADE = 'YYDJ_D', // 医院等级(等次)
 
   // ========== 短缺药品模块 ==========
   SUPPLY_STATUS = 'supply_status', // 供应状态

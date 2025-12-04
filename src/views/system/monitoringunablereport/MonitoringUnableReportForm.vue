@@ -8,14 +8,31 @@
       v-loading="formLoading"
     >
       <el-form-item label="所属机构" prop="deptId">
-        <el-select
+        <el-tree-select
           v-model="formData.deptId"
-          placeholder="请选择机构"
-          clearable
+          :data="deptTree"
+          :props="defaultProps"
           filterable
+          check-strictly
+          node-key="id"
+          placeholder="请选择机构"
+          class="!w-full"
+          :disabled="!!fixedDeptId"
+        />
+      </el-form-item>
+      <el-form-item label="不上报模块" prop="moduleCode">
+        <el-select
+          v-model="formData.moduleCode"
+          placeholder="请选择不上报模块"
+          clearable
           class="!w-240px"
         >
-          <el-option v-for="dept in deptList" :key="dept.id" :label="dept.name" :value="dept.id" />
+          <el-option
+            v-for="dict in getStrDictOptions(DICT_TYPE.BUSINESS_MODULE)"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
         </el-select>
       </el-form-item>
       <el-form-item label="无法上报原因" prop="unableReportReason">
@@ -36,17 +53,6 @@
       <el-form-item label="备注说明" prop="remark">
         <el-input v-model="formData.remark" type="textarea" placeholder="请输入备注说明" />
       </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-radio-group v-model="formData.status">
-          <el-radio
-            v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-            :key="dict.value"
-            :label="dict.value"
-          >
-            {{ dict.label }}
-          </el-radio>
-        </el-radio-group>
-      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="submitForm" type="primary" :disabled="formLoading">确 定</el-button>
@@ -55,12 +61,13 @@
   </Dialog>
 </template>
 <script setup lang="ts">
-import { DICT_TYPE, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
+import { DICT_TYPE, getStrDictOptions } from '@/utils/dict'
+import { defaultProps, handleTree } from '@/utils/tree'
 import {
   MonitoringUnableReportApi,
   MonitoringUnableReportVO
 } from '@/api/system/monitoringunablereport'
-import { DeptVO, getSimpleDeptList } from '@/api/system/dept'
+import { getSimpleDeptList } from '@/api/system/dept'
 
 /** 无法上报机构 表单 */
 defineOptions({ name: 'MonitoringUnableReportForm' })
@@ -73,28 +80,39 @@ const dialogTitle = ref('') // 弹窗的标题
 const formLoading = ref(false) // 表单的加载中：1）修改时的数据加载；2）提交的按钮禁用
 const formType = ref('') // 表单的类型：create - 新增；update - 修改
 const formData = ref({
-  id: undefined,
-  deptId: undefined,
-  unableReportReason: undefined,
-  remark: undefined,
-  status: 0
+  id: undefined as number | undefined,
+  deptId: undefined as number | undefined,
+  moduleCode: undefined as string | undefined,
+  unableReportReason: undefined as string | undefined,
+  remark: undefined as string | undefined
 })
 const formRules = reactive({
-  deptId: [{ required: true, message: '所属机构不能为空', trigger: 'blur' }],
-  unableReportReason: [{ required: true, message: '无法上报原因不能为空', trigger: 'blur' }],
-  status: [{ required: true, message: '状态不能为空', trigger: 'blur' }]
+  deptId: [{ required: true, message: '所属机构不能为空', trigger: 'change' }],
+  moduleCode: [{ required: true, message: '不上报模块不能为空', trigger: 'change' }],
+  unableReportReason: [{ required: true, message: '无法上报原因不能为空', trigger: 'change' }]
 })
 const formRef = ref() // 表单 Ref
-const deptList = ref<DeptVO[]>([]) // 机构列表
+const deptTree = ref<Tree[]>([]) // 机构树
+const fixedDeptId = ref<number>() // 固定的机构ID（从机构管理入口传入）
 
 /** 打开弹窗 */
-const open = async (type: string, id?: number, regionId?: number, areaCode?: string) => {
+const open = async (type: string, id?: number, deptId?: number, areaCode?: string) => {
   dialogVisible.value = true
   dialogTitle.value = t('action.' + type)
   formType.value = type
   resetForm()
+  
+  // 如果传入了固定的机构ID，设置并置灰
+  if (deptId) {
+    fixedDeptId.value = deptId
+    formData.value.deptId = deptId
+  } else {
+    fixedDeptId.value = undefined
+  }
+  
   // 加载机构列表
-  await loadDeptList(regionId)
+  await loadDeptList(areaCode ? undefined : undefined)
+  
   // 修改时，设置数据
   if (id) {
     formLoading.value = true
@@ -107,10 +125,11 @@ const open = async (type: string, id?: number, regionId?: number, areaCode?: str
 }
 defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 
-/** 加载机构列表 */
+/** 加载机构树 */
 const loadDeptList = async (regionId?: number) => {
   try {
-    deptList.value = await getSimpleDeptList(regionId)
+    const list = await getSimpleDeptList(regionId)
+    deptTree.value = handleTree(list)
   } catch (error) {
     console.error('加载机构列表失败:', error)
   }
@@ -145,9 +164,9 @@ const resetForm = () => {
   formData.value = {
     id: undefined,
     deptId: undefined,
+    moduleCode: undefined,
     unableReportReason: undefined,
-    remark: undefined,
-    status: 0
+    remark: undefined
   }
   formRef.value?.resetFields()
 }

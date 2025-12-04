@@ -15,7 +15,7 @@ import { setupGlobCom } from '@/components'
 
 // 引入 element-plus
 import { setupElementPlus } from '@/plugins/elementPlus'
-import { ElMessageBox } from 'element-plus'
+// import { ElMessageBox } from 'element-plus' // 10分钟强制登出功能暂时禁用
 
 // 引入 form-create
 import { setupFormCreate } from '@/plugins/formCreate'
@@ -48,78 +48,81 @@ import { initBrowserCheck } from '@/utils/browserCheck'
 
 // 引入SSO工具
 import { SsoAuth } from '@/utils/sso'
-import { getAccessToken } from '@/utils/auth'
-import { isRelogin } from '@/config/axios/service'
-import { useI18n } from '@/hooks/web/useI18n'
-import { useUserStore } from '@/store/modules/user'
-import { useTagsViewStore } from '@/store/modules/tagsView'
+// 以下导入为10分钟强制登出功能使用 - 暂时禁用
+// import { getAccessToken } from '@/utils/auth'
+// import { isRelogin } from '@/config/axios/service'
+// import { useI18n } from '@/hooks/web/useI18n'
+// import { useUserStore } from '@/store/modules/user'
+// import { useTagsViewStore } from '@/store/modules/tagsView'
 
-const INACTIVITY_LIMIT = 10 * 60 * 1000 // 10 分钟
-let inactivityTimer: number | null = null
-
-const clearInactivityTimer = () => {
-  if (inactivityTimer) {
-    window.clearTimeout(inactivityTimer)
-    inactivityTimer = null
-  }
-}
-
-const showInactivityLogoutConfirm = async () => {
-  const { t } = useI18n()
-  const userStore = useUserStore()
-  const tagsViewStore = useTagsViewStore()
-
-  // 显示弹框提示用户重新登录
-  ElMessageBox.confirm(t('sys.api.timeoutMessage'), t('common.confirmTitle'), {
-    showCancelButton: false,
-    closeOnClickModal: false,
-    showClose: false,
-    closeOnPressEscape: false,
-    confirmButtonText: t('login.relogin'),
-    type: 'warning'
-  })
-    .then(async () => {
-      // 执行完整的登出逻辑
-      await userStore.loginOut()
-      tagsViewStore.delAllViews()
-      isRelogin.show = false
-      // 注意：userStore.loginOut() 内部会调用 SsoAuth.logout() 并刷新页面
-    })
-    .catch(async () => {
-      // 即使用户尝试关闭弹框,也执行完整的登出逻辑
-      await userStore.loginOut()
-      tagsViewStore.delAllViews()
-      isRelogin.show = false
-    })
-}
-
-const resetInactivityTimer = () => {
-  // 未登录不计时
-  if (!getAccessToken()) {
-    clearInactivityTimer()
-    return
-  }
-
-  clearInactivityTimer()
-
-  inactivityTimer = window.setTimeout(() => {
-    // 到点再确认一次还在登录状态，且没有其它超时弹框
-    if (!getAccessToken()) return
-    if (isRelogin.show) return
-
-    isRelogin.show = true
-    showInactivityLogoutConfirm()
-  }, INACTIVITY_LIMIT)
-}
-
-const setupInactivityForceLogout = () => {
-  const events = ['click', 'mousemove', 'keydown', 'scroll', 'touchstart']
-  events.forEach((event) => {
-    window.addEventListener(event, resetInactivityTimer, true)
-  })
-  // 应用启动时，根据当前 token 状态启动一次计时
-  resetInactivityTimer()
-}
+// ========== 10分钟无操作强制登出功能 - 暂时禁用 ==========
+// const INACTIVITY_LIMIT = 10 * 60 * 1000 // 10 分钟
+// let inactivityTimer: number | null = null
+//
+// const clearInactivityTimer = () => {
+//   if (inactivityTimer) {
+//     window.clearTimeout(inactivityTimer)
+//     inactivityTimer = null
+//   }
+// }
+//
+// const showInactivityLogoutConfirm = async () => {
+//   const { t } = useI18n()
+//   const userStore = useUserStore()
+//   const tagsViewStore = useTagsViewStore()
+//
+//   // 显示弹框提示用户重新登录
+//   ElMessageBox.confirm(t('sys.api.timeoutMessage'), t('common.confirmTitle'), {
+//     showCancelButton: false,
+//     closeOnClickModal: false,
+//     showClose: false,
+//     closeOnPressEscape: false,
+//     confirmButtonText: t('login.relogin'),
+//     type: 'warning'
+//   })
+//     .then(async () => {
+//       // 执行完整的登出逻辑
+//       await userStore.loginOut()
+//       tagsViewStore.delAllViews()
+//       isRelogin.show = false
+//       // 注意：userStore.loginOut() 内部会调用 SsoAuth.logout() 并刷新页面
+//     })
+//     .catch(async () => {
+//       // 即使用户尝试关闭弹框,也执行完整的登出逻辑
+//       await userStore.loginOut()
+//       tagsViewStore.delAllViews()
+//       isRelogin.show = false
+//     })
+// }
+//
+// const resetInactivityTimer = () => {
+//   // 未登录不计时
+//   if (!getAccessToken()) {
+//     clearInactivityTimer()
+//     return
+//   }
+//
+//   clearInactivityTimer()
+//
+//   inactivityTimer = window.setTimeout(() => {
+//     // 到点再确认一次还在登录状态，且没有其它超时弹框
+//     if (!getAccessToken()) return
+//     if (isRelogin.show) return
+//
+//     isRelogin.show = true
+//     showInactivityLogoutConfirm()
+//   }, INACTIVITY_LIMIT)
+// }
+//
+// const setupInactivityForceLogout = () => {
+//   const events = ['click', 'mousemove', 'keydown', 'scroll', 'touchstart']
+//   events.forEach((event) => {
+//     window.addEventListener(event, resetInactivityTimer, true)
+//   })
+//   // 应用启动时，根据当前 token 状态启动一次计时
+//   resetInactivityTimer()
+// }
+// ========== 10分钟无操作强制登出功能 - 暂时禁用 ==========
 // 创建实例
 const setupAll = async () => {
   // 浏览器兼容性检测（在应用初始化前执行）
@@ -152,8 +155,8 @@ const setupAll = async () => {
 
   app.mount('#app')
 
-  // 启用“空闲 10 分钟强制退出登录”
-  setupInactivityForceLogout()
+  // 启用"空闲 10 分钟强制退出登录" - 暂时禁用
+  // setupInactivityForceLogout()
 }
 
 setupAll()

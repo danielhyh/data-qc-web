@@ -28,6 +28,11 @@ export const getUser = (id: number) => {
   return request.get({ url: '/system/user/get?id=' + id })
 }
 
+// 根据机构ID查询用户详情
+export const getUserByDeptId = (deptId: number) => {
+  return request.get({ url: '/system/user/get-by-dept-id?deptId=' + deptId })
+}
+
 // 新增用户
 export const createUser = (data: UserVO) => {
   return request.post({ url: '/system/user/create', data })

@@ -6,69 +6,41 @@
       :model="queryParams"
       ref="queryFormRef"
       :inline="true"
-      label-width="68px"
+      label-width="auto"
     >
-      <el-form-item label="部门ID，关联system_dept表" prop="deptId">
+      <el-form-item prop="keyword">
         <el-input
-          v-model="queryParams.deptId"
-          placeholder="请输入部门ID，关联system_dept表"
+          v-model="queryParams.keyword"
+          placeholder="搜索机构名称、机构代码..."
           clearable
           @keyup.enter="handleQuery"
           class="!w-240px"
         />
       </el-form-item>
-      <el-form-item label="无法上报原因" prop="unableReportReason">
-        <el-input
-          v-model="queryParams.unableReportReason"
-          placeholder="请输入无法上报原因"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="备注说明" prop="remark">
-        <el-input
-          v-model="queryParams.remark"
-          placeholder="请输入备注说明"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="状态（0有效 1无效）" prop="status">
+      <el-form-item label="不上报模块" prop="moduleCode">
         <el-select
-          v-model="queryParams.status"
-          placeholder="请选择状态（0有效 1无效）"
+          v-model="queryParams.moduleCode"
+          placeholder="全部"
           clearable
-          class="!w-240px"
+          class="!w-150px"
         >
-          <el-option label="请选择字典生成" value="" />
+          <el-option
+            v-for="dict in getStrDictOptions(DICT_TYPE.BUSINESS_MODULE)"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
         </el-select>
       </el-form-item>
-      <el-form-item label="创建时间" prop="createTime">
-        <el-date-picker
-          v-model="queryParams.createTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
       <el-form-item>
-        <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-        <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
         <el-button
           type="primary"
-          plain
           @click="openForm('create')"
           v-hasPermi="['system:monitoring-unable-report:create']"
         >
-          <Icon icon="ep:plus" class="mr-5px" /> 新增
+          <Icon icon="ep:plus" class="mr-5px" /> 新增配置
         </el-button>
         <el-button
-          type="success"
           plain
           @click="handleExport"
           :loading="exportLoading"
@@ -83,19 +55,37 @@
   <!-- 列表 -->
   <ContentWrap>
     <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="主键ID" align="center" prop="id" />
-      <el-table-column label="部门ID，关联system_dept表" align="center" prop="deptId" />
-      <el-table-column label="无法上报原因" align="center" prop="unableReportReason" />
-      <el-table-column label="备注说明" align="center" prop="remark" />
-      <el-table-column label="状态（0有效 1无效）" align="center" prop="status" />
+      <el-table-column type="selection" width="50" />
+      <el-table-column label="机构名称" align="left" prop="deptName" min-width="180" />
+      <el-table-column label="机构代码" align="center" prop="orgCode" width="140" />
+      <el-table-column label="行政区划" align="center" prop="regionName" width="120" />
+      <el-table-column label="机构类别" align="center" prop="institutionCategory" width="150">
+        <template #default="scope">
+          {{ getDictLabel(DICT_TYPE.INSTITUTION_CATEGORY, scope.row.institutionCategory) || scope.row.institutionCategory }}
+        </template>
+      </el-table-column>
+      <el-table-column label="不上报模块" align="center" prop="moduleCode" width="120">
+        <template #default="scope">
+          <el-tag :type="getDictColorType(DICT_TYPE.BUSINESS_MODULE, scope.row.moduleCode)">
+            {{ getDictLabel(DICT_TYPE.BUSINESS_MODULE, scope.row.moduleCode) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="无法上报原因" align="left" prop="unableReportReason" min-width="220">
+        <template #default="scope">
+          <div>{{ getDictLabel(DICT_TYPE.UNABLE_REPORT_REASON, scope.row.unableReportReason) || scope.row.unableReportReason }}</div>
+          <div v-if="scope.row.remark" class="text-gray-400 text-xs mt-1">备注：{{ scope.row.remark }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="设置人" align="center" prop="creator" width="100" />
       <el-table-column
-        label="创建时间"
+        label="设置时间"
         align="center"
         prop="createTime"
         :formatter="dateFormatter"
-        width="180px"
+        width="180"
       />
-      <el-table-column label="操作" align="center" min-width="120px">
+      <el-table-column label="操作" align="center" width="120" fixed="right">
         <template #default="scope">
           <el-button
             link
@@ -132,6 +122,7 @@
 <script setup lang="ts">
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
+import { DICT_TYPE, getStrDictOptions, getDictLabel, getDictColorType } from '@/utils/dict'
 import {
   MonitoringUnableReportApi,
   MonitoringUnableReportVO
@@ -150,11 +141,8 @@ const total = ref(0) // 列表的总页数
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
-  deptId: undefined,
-  unableReportReason: undefined,
-  remark: undefined,
-  status: undefined,
-  createTime: []
+  keyword: undefined,
+  moduleCode: undefined
 })
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中

@@ -72,9 +72,6 @@
                   <el-button type="warning" plain @click="handleImport">
                     <Icon icon="ep:upload" class="mr-5px" /> 导入
                   </el-button>
-                  <el-button type="success" plain @click="handleExport" :loading="exportLoading">
-                    <Icon icon="ep:download" class="mr-5px" /> 导出
-                  </el-button>
                 </el-form-item>
               </el-form>
 
@@ -142,18 +139,6 @@
                         />
                       </el-select>
                     </el-form-item>
-                    <el-form-item label="机构分类" prop="deptClass">
-                      <el-tree-select
-                        v-model="queryParams.deptClass"
-                        :data="deptCategoryTree"
-                        :props="{ label: 'name', value: 'code', children: 'children' }"
-                        check-strictly
-                        filterable
-                        clearable
-                        placeholder="请选择"
-                        class="!w-180px"
-                      />
-                    </el-form-item>
                   </el-form>
                 </div>
               </el-collapse-transition>
@@ -162,164 +147,168 @@
             <!-- 机构列表 -->
             <ContentWrap>
               <el-table v-loading="loading" :data="list" row-key="id">
-                <!-- 机构名称 + 管理级别标签 -->
-                <el-table-column prop="name" label="机构名称" min-width="260" fixed="left">
+                <el-table-column prop="name" label="机构名称" min-width="230">
                   <template #default="scope">
-                    <div class="dept-name-cell">
-                      <span class="institution-name-text">{{ scope.row.name }}</span>
-                      <el-tag
-                        v-if="scope.row.adminLevel > 0"
-                        :type="getAdminLevelTagType(scope.row.adminLevel)"
-                        size="small"
-                        class="ml-8px"
-                      >
-                        {{ getAdminLevelLabel(scope.row.adminLevel) }}
-                      </el-tag>
-                    </div>
+                    <span class="institution-name-text font-bold">{{ scope.row.name }}</span>
                   </template>
                 </el-table-column>
-                <!-- 机构代码 -->
                 <el-table-column
-                  prop="orgCode"
-                  label="机构代码"
+                  prop="externalId"
+                  label="外部机构代码"
+                  width="180"
+                  show-overflow-tooltip
+                />
+                <el-table-column
+                  prop="regionPathName"
+                  label="所在地区"
+                  min-width="220"
+                  show-overflow-tooltip
+                />
+                <el-table-column
+                  prop="deptAddressCode"
+                  label="行政区划代码"
                   width="140"
                   show-overflow-tooltip
                 />
-                <!-- 行政区划 -->
-                <el-table-column
-                  prop="regionPathName"
-                  label="行政区划"
-                  width="100"
-                  show-overflow-tooltip
-                />
-                <!-- 机构类别 -->
-                <el-table-column
-                  prop="deptClassName"
-                  label="机构类别"
-                  width="120"
-                  show-overflow-tooltip
-                />
-                <!-- 等级(级) -->
-                <el-table-column prop="hospitalLevelJ" label="等级" width="80">
+                <el-table-column prop="institutionCategory" label="机构类别" width="120">
                   <template #default="scope">
                     <dict-tag
-                      v-if="scope.row.hospitalLevelJ"
+                      :type="DICT_TYPE.INSTITUTION_CATEGORY"
+                      :value="scope.row.institutionCategory ?? ''"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column prop="hospitalLevel" label="机构等级" width="100">
+                  <template #default="scope">
+                    <dict-tag
                       :type="DICT_TYPE.INSTITUTION_LEVEL"
-                      :value="scope.row.hospitalLevelJ"
-                    />
-                    <span v-else class="text-gray-400">-</span>
-                  </template>
-                </el-table-column>
-                <!-- 等次(等) -->
-                <el-table-column prop="hospitalGrade" label="等次" width="80">
-                  <template #default="scope">
-                    <dict-tag
-                      v-if="scope.row.hospitalGrade"
-                      :type="DICT_TYPE.HOSPITAL_GRADE"
-                      :value="scope.row.hospitalGrade"
-                    />
-                    <span v-else class="text-gray-400">-</span>
-                  </template>
-                </el-table-column>
-                <!-- 参与系统 -->
-                <el-table-column prop="businessType" label="参与系统" width="100">
-                  <template #default="scope">
-                    <dict-tag
-                      :type="DICT_TYPE.BUSINESS_MODULE"
-                      :value="scope.row.businessType ?? ''"
+                      :value="scope.row.hospitalLevel ?? ''"
                     />
                   </template>
                 </el-table-column>
-                <!-- 联络员 -->
-                <el-table-column prop="contactPerson" label="联络员" width="100" />
-                <!-- 联络电话 -->
-                <el-table-column prop="contactPhone" label="联络电话" width="120" />
-                <!-- 账号信息 -->
-                <el-table-column label="账号信息" min-width="160">
+                <el-table-column
+                  prop="adminCategory"
+                  label="行政归属"
+                  width="110"
+                  show-overflow-tooltip
+                />
+                <el-table-column prop="businessType" label="参与系统" width="150">
                   <template #default="scope">
-                    <div v-if="scope.row.username" class="account-info-cell">
-                      <div class="account-row">
-                        <el-tag
-                          :type="scope.row.userStatus === 0 ? 'success' : 'danger'"
-                          size="small"
-                          class="status-tag"
-                        >
-                          {{ scope.row.userStatus === 0 ? '正常' : '停用' }}
-                        </el-tag>
-                        <span class="account-username" :title="scope.row.username">{{ scope.row.username }}</span>
-                      </div>
-                      <div v-if="scope.row.loginDate" class="login-time">
-                        最后 {{ formatDate(scope.row.loginDate) }}
-                      </div>
-                      <div v-else class="login-time text-gray-400">未登录</div>
+                    <div class="business-type-cell">
+                      <dict-tag
+                        :type="DICT_TYPE.BUSINESS_MODULE"
+                        :value="scope.row.businessType ?? ''"
+                      />
+                      <el-button
+                        type="primary"
+                        link
+                        size="small"
+                        @click="openBusinessTypeConfig(scope.row)"
+                        v-hasPermi="['system:dept:update']"
+                        class="ml-5px"
+                      >
+                        <Icon icon="ep:setting" />
+                      </el-button>
                     </div>
-                    <span v-else class="text-gray-400">-</span>
                   </template>
                 </el-table-column>
-                <!-- 状态 -->
-                <el-table-column prop="status" label="状态" width="80" align="center">
+                <el-table-column
+                  prop="orgCode"
+                  label="组织机构代码"
+                  width="160"
+                  show-overflow-tooltip
+                />
+                <el-table-column
+                  prop="socialCreditCode"
+                  label="社会信用代码"
+                  width="190"
+                  show-overflow-tooltip
+                />
+                <el-table-column prop="contactPerson" label="联络员" width="100" />
+                <el-table-column prop="contactPhone" label="联络员手机" width="120" />
+                <el-table-column
+                  prop="address"
+                  label="联系地址"
+                  min-width="220"
+                  show-overflow-tooltip
+                />
+                <el-table-column prop="grassrootsInstitution" label="基层机构" width="100">
                   <template #default="scope">
-                    <el-tag :type="scope.row.status === 0 ? 'success' : 'info'" size="small">
-                      {{ scope.row.status === 0 ? '启用' : '停用' }}
+                    <el-tag :type="getBooleanTagType(scope.row.grassrootsInstitution)">
+                      {{ getBooleanLabel(scope.row.grassrootsInstitution) }}
                     </el-tag>
                   </template>
                 </el-table-column>
+                <el-table-column prop="isMonitoringRequired" label="监测对象" width="110">
+                  <template #default="scope">
+                    <el-tag :type="getBooleanTagType(scope.row.isMonitoringRequired)">
+                      {{ getBooleanLabel(scope.row.isMonitoringRequired) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="sort" label="排序" width="140">
+                  <template #default="scope">
+                    <div class="sort-input-wrapper">
+                      <el-input-number
+                        :model-value="getSortInputValue(scope.row)"
+                        :min="0"
+                        :max="9999"
+                        :controls="false"
+                        size="small"
+                        class="sort-input"
+                        :disabled="updatingSortId === scope.row.id"
+                        @update:model-value="(value) => handleSortInputChange(scope.row, value)"
+                        @blur="() => handleSortCommit(scope.row)"
+                        @keydown.enter.prevent="() => handleSortCommit(scope.row)"
+                      />
+                      <Icon
+                        v-if="updatingSortId === scope.row.id"
+                        icon="line-md:loading-twotone-loop"
+                        class="sort-loading"
+                      />
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="80">
+                  <template #default="scope">
+                    <el-switch
+                      v-model="scope.row.status"
+                      :active-value="0"
+                      :inactive-value="1"
+                      @change="handleStatusChange(scope.row)"
+                      v-hasPermi="['system:dept:update']"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  label="创建时间"
+                  align="center"
+                  prop="createTime"
+                  width="180"
+                  :formatter="dateFormatter"
+                />
                 <el-table-column label="操作" align="center" width="180px" fixed="right">
                   <template #default="scope">
                     <el-button
                       type="primary"
+                      plain
                       size="small"
-                      @click="openDetail(scope.row)"
-                      v-hasPermi="['system:dept:query']"
+                      @click="openForm('update', scope.row.id)"
+                      v-hasPermi="['system:dept:update']"
                     >
-                      <Icon icon="ep:view" />
-                      详情
+                      <Icon icon="ep:edit" class="mr-5px" />
+                      修改
                     </el-button>
-                    <el-dropdown
-                      trigger="click"
-                      @command="(cmd) => handleCommand(cmd, scope.row)"
-                      @visible-change="(visible) => handleDropdownVisibleChange(scope.row.id, visible)"
+                    <el-button
+                      type="danger"
+                      plain
+                      size="small"
+                      @click="handleDelete(scope.row.id)"
+                      v-hasPermi="['system:dept:delete']"
                     >
-                      <el-button type="info" size="small" class="more-btn">
-                        <Icon :icon="dropdownStates[scope.row.id] ? 'ep:arrow-up' : 'ep:arrow-down'" />
-                        更多
-                      </el-button>
-                      <template #dropdown>
-                        <el-dropdown-menu>
-                          <!-- 编辑机构 -->
-                          <el-dropdown-item
-                            command="edit"
-                            v-hasPermi="['system:dept:update']"
-                          >
-                            <Icon icon="ep:edit" class="mr-5px" />编辑机构
-                          </el-dropdown-item>
-                          <!-- 维护短缺机构 - 仅医疗机构显示 -->
-                          <el-dropdown-item
-                            v-if="scope.row.adminLevel === 0"
-                            command="unableReport"
-                            v-hasPermi="['system:monitoring-unable-report:create']"
-                          >
-                            <Icon icon="ep:warning" class="mr-5px" />维护短缺机构
-                          </el-dropdown-item>
-                          <!-- 管理账号 -->
-                          <el-dropdown-item
-                            command="account"
-                            v-hasPermi="['system:user:query']"
-                          >
-                            <Icon icon="ep:user" class="mr-5px" />管理账号
-                          </el-dropdown-item>
-                          <!-- 停用/启用机构 -->
-                          <el-dropdown-item
-                            :command="scope.row.status === 0 ? 'disable' : 'enable'"
-                            v-hasPermi="['system:dept:update']"
-                            :divided="true"
-                          >
-                            <Icon :icon="scope.row.status === 0 ? 'ep:video-pause' : 'ep:video-play'" class="mr-5px" />
-                            {{ scope.row.status === 0 ? '停用机构' : '启用机构' }}
-                          </el-dropdown-item>
-                        </el-dropdown-menu>
-                      </template>
-                    </el-dropdown>
+                      <Icon icon="ep:delete" class="mr-5px" />
+                      删除
+                    </el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -421,26 +410,15 @@
 
     <!-- 同步弹窗：从标准库同步 -->
     <InstitutionSyncModal ref="syncModalRef" @success="getList" />
-
-    <!-- 账号管理抽屉 -->
-    <AccountDrawer ref="accountDrawerRef" @success="getList" />
-
-    <!-- 机构详情抽屉 -->
-    <DeptDetailDrawer ref="detailDrawerRef" />
-
-    <!-- 无法上报机构表单 -->
-    <MonitoringUnableReportForm ref="unableReportFormRef" @success="getList" />
   </div>
 </template>
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { DICT_TYPE, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
+import { dateFormatter } from '@/utils/formatTime'
 import * as DeptApi from '@/api/system/dept'
 import DeptForm from './DeptForm.vue'
 import InstitutionSyncModal from './InstitutionSyncModal.vue'
-import AccountDrawer from './AccountDrawer.vue'
-import DeptDetailDrawer from './DeptDetailDrawer.vue'
-import MonitoringUnableReportForm from '../monitoringunablereport/MonitoringUnableReportForm.vue'
 import * as UserApi from '@/api/system/user'
 import RegionTree from '../user/RegionTree.vue'
 import MonitoringUnableReportTab from './MonitoringUnableReportTab.vue'
@@ -448,8 +426,6 @@ import { Icon } from '@/components/Icon'
 import { ElMessage } from 'element-plus'
 import { useMessage } from '@/hooks/web/useMessage'
 import { useI18n } from '@/hooks/web/useI18n'
-import { DeptCategoryApi } from '@/api/system/deptcategory'
-import { handleTree } from '@/utils/tree'
 
 defineOptions({ name: 'SystemDept' })
 
@@ -457,7 +433,6 @@ const message = useMessage() // 消息弹窗
 const { t } = useI18n() // 国际化
 
 const loading = ref(true) // 列表的加载中
-const exportLoading = ref(false) // 导出加载中
 const list = ref<any[]>([]) // 列表的数据
 const total = ref(0) // 列表的总条数
 const queryParams = reactive({
@@ -468,7 +443,6 @@ const queryParams = reactive({
   adminLevel: undefined, // 管理级别
   businessType: undefined, // 参与系统
   hospitalLevel: undefined, // 机构等级
-  deptClass: undefined, // 机构分类
   areaCode: undefined // 使用areaCode匹配后端接口
 })
 const showFilter = ref(false) // 是否显示筛选区域
@@ -479,17 +453,9 @@ const selectedRegionCode = ref<string | undefined>() // 选中的地区代码
 const selectedRegion = ref<any>(null) // 选中的地区节点（用于显示标签）
 const activeTab = ref('dept') // 当前激活的标签页
 const unableReportCount = ref(0) // 无法上报机构数量（用于徽标显示）
-const deptCategoryTree = ref<any[]>([]) // 机构分类树
 
-// 排序功能已精简，保留以备后用
 const editingSortCache = reactive(new Map<number, number>())
 const updatingSortId = ref<number | null>(null)
-
-// 下拉菜单展开状态
-const dropdownStates = reactive<Record<number, boolean>>({})
-const handleDropdownVisibleChange = (id: number, visible: boolean) => {
-  dropdownStates[id] = visible
-}
 
 const selectedRegionIdForMonitor = computed(() => {
   if (!selectedRegionId.value) {
@@ -499,62 +465,10 @@ const selectedRegionIdForMonitor = computed(() => {
   return Number.isNaN(parsed) ? undefined : parsed
 })
 
-// 已精简列表，以下函数保留以备后用
 const getBooleanLabel = (value: number | undefined | null) => {
   if (value === 0) return '是'
   if (value === 1) return '否'
   return '-'
-}
-
-/** 获取管理级别标签类型 */
-const getAdminLevelTagType = (level: number) => {
-  const typeMap: Record<number, string> = {
-    1: 'danger',  // 省级管理
-    2: 'warning', // 市级管理
-    3: 'success'  // 区县级管理
-  }
-  return typeMap[level] || 'info'
-}
-
-/** 获取管理级别标签文本 */
-const getAdminLevelLabel = (level: number) => {
-  const labelMap: Record<number, string> = {
-    1: '省级管理',
-    2: '市级管理',
-    3: '区县级管理'
-  }
-  return labelMap[level] || ''
-}
-
-/** 获取等级等次合并文本 */
-const getHospitalLevelText = (levelJ: string | undefined, grade: string | undefined) => {
-  // 等级映射: 1=一级, 2=二级, 3=三级
-  const levelMap: Record<string, string> = {
-    '1': '一级',
-    '2': '二级',
-    '3': '三级'
-  }
-  // 等次映射: 1=甲等, 2=乙等, 3=丙等
-  const gradeMap: Record<string, string> = {
-    '1': '甲等',
-    '2': '乙等',
-    '3': '丙等'
-  }
-  const levelText = levelJ ? levelMap[levelJ] || levelJ : ''
-  const gradeText = grade ? gradeMap[grade] || grade : ''
-  return levelText + gradeText || '-'
-}
-
-/** 格式化日期时间 */
-const formatDate = (date: string | Date | undefined) => {
-  if (!date) return ''
-  const d = new Date(date)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const hours = String(d.getHours()).padStart(2, '0')
-  const minutes = String(d.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
 const getBooleanTagType = (value: number | undefined | null) => {
@@ -722,16 +636,9 @@ const resetQuery = () => {
   queryParams.adminLevel = undefined
   queryParams.businessType = undefined
   queryParams.hospitalLevel = undefined
-  queryParams.deptClass = undefined
   queryParams.pageNo = 1
   // 重置不清除地区选择，保持地区筛选条件
   handleQuery()
-}
-
-/** 获取机构分类树 */
-const getDeptCategoryTree = async () => {
-  const data = await DeptCategoryApi.getDeptCategoryList({})
-  deptCategoryTree.value = handleTree(data, 'id', 'parentId')
 }
 
 /** 添加/修改操作 */
@@ -742,12 +649,6 @@ const openForm = (type: string, id?: number) => {
 
 /** 同步弹窗引用 */
 const syncModalRef = ref()
-
-/** 账号管理抽屉引用 */
-const accountDrawerRef = ref<InstanceType<typeof AccountDrawer>>()
-const openAccountDrawer = (row: any) => {
-  accountDrawerRef.value?.open(row)
-}
 
 /** 删除按钮操作 */
 const handleDelete = async (id: number) => {
@@ -818,52 +719,15 @@ const handleImport = () => {
   input.click()
 }
 
-/** 导出机构列表 */
-const handleExport = async () => {
+/** 打开模板下载 */
+const handleDownloadTemplate = async () => {
   try {
-    exportLoading.value = true
-    await DeptApi.exportDeptList(queryParams)
-    message.success('导出成功')
+    // 调用后端接口下载模板
+    await DeptApi.importTemplate()
   } catch (error: any) {
-    console.error('导出失败:', error)
-    const errorMsg = error?.data?.msg || error?.message || '导出失败'
-    message.error(errorMsg)
-  } finally {
-    exportLoading.value = false
+    console.error('模板下载失败:', error)
+    message.error('模板下载失败，请稍后重试')
   }
-}
-
-/** 操作下拉菜单命令处理 */
-const handleCommand = async (command: string, row: any) => {
-  switch (command) {
-    case 'edit':
-      openForm('update', row.id)
-      break
-    case 'unableReport':
-      openUnableReportConfig(row)
-      break
-    case 'account':
-      openAccountDrawer(row)
-      break
-    case 'disable':
-    case 'enable':
-      const newStatus = command === 'disable' ? 1 : 0
-      row.status = newStatus
-      await handleStatusChange(row)
-      break
-  }
-}
-
-// ========== 详情抽屉相关 ==========
-const detailDrawerRef = ref()
-const openDetail = (row: any) => {
-  detailDrawerRef.value?.open(row)
-}
-
-// ========== 维护短缺机构相关 ==========
-const unableReportFormRef = ref()
-const openUnableReportConfig = (row: any) => {
-  unableReportFormRef.value?.open('create', undefined, row.id, selectedRegionCode.value)
 }
 
 // ========== 业务类型配置相关 ==========
@@ -938,8 +802,6 @@ const handleBusinessTypeSave = async () => {
 onMounted(async () => {
   // 获取用户列表
   userList.value = await UserApi.getSimpleUserList()
-  // 获取机构分类树
-  getDeptCategoryTree()
   // 默认加载所有机构
   getList()
 })
@@ -1134,54 +996,6 @@ onMounted(async () => {
 .institution-name-text {
   font-weight: 600;
   color: var(--el-text-color-primary);
-}
-
-/* 机构名称单元格 */
-.dept-name-cell {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* 更多按钮样式 */
-.more-btn {
-  margin-left: 8px;
-}
-
-/* 账号信息单元格样式 */
-.account-info-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0; /* 允许子元素收缩 */
-
-  .account-row {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .status-tag {
-    flex-shrink: 0; /* 标签不收缩 */
-  }
-
-  .account-username {
-    font-weight: 500;
-    color: var(--el-text-color-primary);
-    margin-left: 5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-  }
-
-  .login-time {
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-    display: flex;
-    align-items: center;
-  }
 }
 
 .sort-input-wrapper {
