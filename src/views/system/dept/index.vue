@@ -246,7 +246,9 @@
                         >
                           {{ scope.row.userStatus === 0 ? '正常' : '停用' }}
                         </el-tag>
-                        <span class="account-username" :title="scope.row.username">{{ scope.row.username }}</span>
+                        <span class="account-username" :title="scope.row.username">{{
+                          scope.row.username
+                        }}</span>
                       </div>
                       <div v-if="scope.row.loginDate" class="login-time">
                         最后 {{ formatDate(scope.row.loginDate) }}
@@ -267,7 +269,7 @@
                 <el-table-column label="操作" align="center" width="180px" fixed="right">
                   <template #default="scope">
                     <el-button
-                      type="primary"
+                      type="success"
                       size="small"
                       @click="openDetail(scope.row)"
                       v-hasPermi="['system:dept:query']"
@@ -278,19 +280,20 @@
                     <el-dropdown
                       trigger="click"
                       @command="(cmd) => handleCommand(cmd, scope.row)"
-                      @visible-change="(visible) => handleDropdownVisibleChange(scope.row.id, visible)"
+                      @visible-change="
+                        (visible) => handleDropdownVisibleChange(scope.row.id, visible)
+                      "
                     >
                       <el-button type="info" size="small" class="more-btn">
-                        <Icon :icon="dropdownStates[scope.row.id] ? 'ep:arrow-up' : 'ep:arrow-down'" />
+                        <Icon
+                          :icon="dropdownStates[scope.row.id] ? 'ep:arrow-up' : 'ep:arrow-down'"
+                        />
                         更多
                       </el-button>
                       <template #dropdown>
                         <el-dropdown-menu>
                           <!-- 编辑机构 -->
-                          <el-dropdown-item
-                            command="edit"
-                            v-hasPermi="['system:dept:update']"
-                          >
+                          <el-dropdown-item command="edit" v-hasPermi="['system:dept:update']">
                             <Icon icon="ep:edit" class="mr-5px" />编辑机构
                           </el-dropdown-item>
                           <!-- 维护短缺机构 - 仅医疗机构显示 -->
@@ -302,10 +305,7 @@
                             <Icon icon="ep:warning" class="mr-5px" />维护短缺机构
                           </el-dropdown-item>
                           <!-- 管理账号 -->
-                          <el-dropdown-item
-                            command="account"
-                            v-hasPermi="['system:user:query']"
-                          >
+                          <el-dropdown-item command="account" v-hasPermi="['system:user:query']">
                             <Icon icon="ep:user" class="mr-5px" />管理账号
                           </el-dropdown-item>
                           <!-- 停用/启用机构 -->
@@ -314,7 +314,10 @@
                             v-hasPermi="['system:dept:update']"
                             :divided="true"
                           >
-                            <Icon :icon="scope.row.status === 0 ? 'ep:video-pause' : 'ep:video-play'" class="mr-5px" />
+                            <Icon
+                              :icon="scope.row.status === 0 ? 'ep:video-pause' : 'ep:video-play'"
+                              class="mr-5px"
+                            />
                             {{ scope.row.status === 0 ? '停用机构' : '启用机构' }}
                           </el-dropdown-item>
                         </el-dropdown-menu>
@@ -509,9 +512,9 @@ const getBooleanLabel = (value: number | undefined | null) => {
 /** 获取管理级别标签类型 */
 const getAdminLevelTagType = (level: number) => {
   const typeMap: Record<number, string> = {
-    1: 'danger',  // 省级管理
+    1: 'danger', // 省级管理
     2: 'warning', // 市级管理
-    3: 'success'  // 区县级管理
+    3: 'success' // 区县级管理
   }
   return typeMap[level] || 'info'
 }

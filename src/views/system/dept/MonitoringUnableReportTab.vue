@@ -20,12 +20,7 @@
           />
         </el-form-item>
         <el-form-item label="不上报模块" prop="moduleCode">
-          <el-select
-            v-model="queryParams.moduleCode"
-            placeholder="全部"
-            clearable
-            class="!w-150px"
-          >
+          <el-select v-model="queryParams.moduleCode" placeholder="全部" clearable class="!w-150px">
             <el-option
               v-for="dict in getStrDictOptions(DICT_TYPE.BUSINESS_MODULE)"
               :key="dict.value"
@@ -74,7 +69,7 @@
 
     <!-- 列表 -->
     <ContentWrap>
-      <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+      <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
         <el-table-column type="selection" width="50" />
         <el-table-column label="机构名称" align="left" prop="deptName" min-width="180">
           <template #default="scope">
@@ -83,7 +78,13 @@
         </el-table-column>
         <el-table-column label="机构代码" align="center" prop="orgCode" width="140" />
         <el-table-column label="行政区划" align="center" prop="regionName" width="120" />
-        <el-table-column label="机构类别" align="center" prop="deptClassName" width="150" show-overflow-tooltip />
+        <el-table-column
+          label="机构类别"
+          align="center"
+          prop="deptClassName"
+          width="150"
+          show-overflow-tooltip
+        />
         <el-table-column label="不上报模块" align="center" prop="moduleCode" width="120">
           <template #default="scope">
             <el-tag :type="getDictColorType(DICT_TYPE.BUSINESS_MODULE, scope.row.moduleCode)">
@@ -91,10 +92,20 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="无法上报原因" align="left" prop="unableReportReason" min-width="220">
+        <el-table-column
+          label="无法上报原因"
+          align="left"
+          prop="unableReportReason"
+          min-width="220"
+        >
           <template #default="scope">
-            <div>{{ getDictLabel(DICT_TYPE.UNABLE_REPORT_REASON, scope.row.unableReportReason) || scope.row.unableReportReason }}</div>
-            <div v-if="scope.row.remark" class="text-gray-400 text-xs mt-1">备注：{{ scope.row.remark }}</div>
+            <div>{{
+              getDictLabel(DICT_TYPE.UNABLE_REPORT_REASON, scope.row.unableReportReason) ||
+              scope.row.unableReportReason
+            }}</div>
+            <div v-if="scope.row.remark" class="text-gray-400 text-xs mt-1"
+              >备注：{{ scope.row.remark }}</div
+            >
           </template>
         </el-table-column>
         <el-table-column label="设置人" align="center" prop="creator" width="100" />
@@ -145,7 +156,7 @@
 <script setup lang="ts">
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
-import { DICT_TYPE, getStrDictOptions, getDictLabel, getDictColorType } from '@/utils/dict'
+import { DICT_TYPE, getDictColorType, getDictLabel, getStrDictOptions } from '@/utils/dict'
 import {
   MonitoringUnableReportApi,
   MonitoringUnableReportVO
