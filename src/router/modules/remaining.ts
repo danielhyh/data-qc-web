@@ -34,6 +34,37 @@ const { t } = useI18n()
  **/
 const remainingRouter: AppRouteRecordRaw[] = [
   {
+    path: '/feedback',
+    component: Layout,
+    name: 'Feedback',
+    meta: {
+      title: '工单管理',
+      icon: 'ep:ticket',
+      alwaysShow: true
+    },
+    children: [
+      {
+        path: 'list',
+        name: 'FeedbackList',
+        component: () => import('@/views/drug/feedback/index.vue'),
+        meta: {
+          title: '工单列表'
+        }
+      },
+      {
+        path: 'detail/:id',
+        name: 'FeedbackDetail',
+        component: () => import('@/views/drug/feedback/detail.vue'),
+        meta: {
+          title: '工单详情',
+          hidden: true,
+          canTo: true,
+          activeMenu: '/feedback/list'
+        }
+      }
+    ]
+  },
+  {
     path: '/redirect',
     component: Layout,
     name: 'Redirect',

@@ -1,5 +1,6 @@
 <script lang="tsx">
 import { defineComponent, computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Message } from '@/layout/components//Message'
 import { Collapse } from '@/layout/components/Collapse'
 import { UserInfo } from '@/layout/components/UserInfo'
@@ -39,6 +40,7 @@ export default defineComponent({
   name: 'ToolHeader',
   setup() {
     // 设置抽屉显示状态
+    const router = useRouter()
     const showSetting = ref(false)
 
     return () => (
@@ -72,6 +74,12 @@ export default defineComponent({
           {message.value ? (
             <Message class="custom-hover" color="var(--top-header-text-color)"></Message>
           ) : undefined}
+                    <div
+            class="custom-hover h-full flex items-center px-10px cursor-pointer"
+            onClick={() => router.push('/feedback/list')}
+          >
+            <Icon icon="ep:comment" color="var(--top-header-text-color)" />
+          </div>
           <UserInfo></UserInfo>
           <Setting v-model={showSetting.value} />
         </div>
