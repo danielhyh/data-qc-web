@@ -89,7 +89,7 @@
         <el-table-column label="任务剩余时间" align="center" width="150px">
           <template #default="scope">
             <!-- 已逾期状态直接显示已逾期 -->
-            <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已逾期</span>
+            <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已结束</span>
             <!-- 准备中状态显示距开始剩余时间 -->
             <span v-else-if="scope.row.reportStatus === 4" :class="getRemainingTimeClass(scope.row.startTime)">
               {{ calculateRemainingTime(scope.row.startTime, true) }}
@@ -131,9 +131,18 @@
               填报
             </el-button>
             
-            <!-- 已提交状态：显示查看按钮 -->
+            <!-- 已提交状态：在填报时间内显示修改按钮，否则显示查看按钮 -->
             <el-button
-              v-if="scope.row.reportStatus === 2"
+              v-if="scope.row.reportStatus === 2 && isInReportTimeRange(scope.row)"
+              type="primary"
+              size="small"
+              @click="handleReport(scope.row.id)"
+            >
+              <Icon icon="ep:edit" class="mr-1" />
+              修改
+            </el-button>
+            <el-button
+              v-if="scope.row.reportStatus === 2 && !isInReportTimeRange(scope.row)"
               type="success"
               size="small"
               plain
@@ -187,7 +196,7 @@
 <script setup lang="ts">
 import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
 import { ReportTaskApi, ReportTaskVO } from '@/api/shortage/reporttask'
-import { ReportZoneApi, ReportZoneOptionVO } from '@/api/shortage'
+import { ReportZoneApi, ReportZoneVO } from '@/api/shortage'
 import { useRouter, useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 
@@ -211,7 +220,7 @@ const queryFormRef = ref() // 搜索的表单
 
 // 下拉选项数据
 const yearOptions = ref<number[]>([])
-const zoneOptions = ref<ReportZoneOptionVO[]>([])
+const zoneOptions = ref<ReportZoneVO[]>([])
 
 /** 查询列表 */
 const getList = async () => {
@@ -297,7 +306,9 @@ const calculateRemainingTime = (targetTime: string, isStartTime: boolean = false
   if (isStartTime) {
     prefix = diff <= 0 ? '已开始' : '距开始'
   } else {
-    prefix = diff <= 0 ? '逾期' : '剩余'
+    // 超过截止时间直接返回"已结束"，不再计算具体时间
+    if (diff <= 0) return '已结束'
+    prefix = '剩余'
   }
 
   const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
@@ -333,6 +344,17 @@ const getRemainingTimeClass = (deadlineTime: string) => {
   } else {
     return 'text-green-500' // 正常显示绿色
   }
+}
+
+/** 判断任务是否在填报时间范围内 */
+const isInReportTimeRange = (task: ReportTaskVO): boolean => {
+  if (!task.startTime || !task.deadlineTime) return false
+  
+  const now = new Date().getTime()
+  const start = new Date(task.startTime).getTime()
+  const end = new Date(task.deadlineTime).getTime()
+  
+  return now >= start && now <= end
 }
 
 /** 获取进度条颜色 */

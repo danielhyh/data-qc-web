@@ -269,7 +269,11 @@ export const ReportRecordApi = {
 
   // 导出填报详情
   exportReportDetail: (params: any) =>
-    request.download({ url: `/shortage/report-record/export-report-detail`, params })
+    request.download({ url: `/shortage/report-record/export-report-detail`, params }),
+
+  // 获取填报进度统计
+  getReportProgress: (params: any) =>
+    request.get({ url: `/shortage/report-record/report-progress`, params })
 }
 
 // ========== 供应状态枚举 ==========

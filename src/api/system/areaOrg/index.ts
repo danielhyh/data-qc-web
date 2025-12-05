@@ -24,8 +24,11 @@ export interface OrgItem {
 }
 
 // 获取区域树（完整树，包含所有子节点）
-export const getAreaTree = () => {
-  return request.get<AreaNode[]>({ url: '/system/area-org/area-tree' })
+export const getAreaTree = (excludeModuleCode?: string) => {
+  return request.get<AreaNode[]>({
+    url: '/system/area-org/area-tree',
+    params: excludeModuleCode ? { excludeModuleCode } : {}
+  })
 }
 
 // 获取区域树顶级节点（懒加载）

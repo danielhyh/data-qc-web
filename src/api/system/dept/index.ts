@@ -65,6 +65,7 @@ export interface DeptPageParam extends PageParam {
   hospitalLevels?: string[] // 支持多个等级筛选
   institutionCategory?: string
   excludeUnableReport?: boolean
+  excludeModuleCode?: string // 排除指定模块的无法上报机构，如 'SHORTAGE'
   [key: string]: any
 }
 

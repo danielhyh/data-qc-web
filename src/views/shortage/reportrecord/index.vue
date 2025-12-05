@@ -2,13 +2,14 @@
 <template>
   <div class="report-record-page">
     <div class="flex record-container">
-    <!-- 左侧地区树选择器 -->
+    <!-- 左侧地区树选择器（排除短缺无法上报机构） -->
     <RegionTree
       ref="regionTreeRef"
       :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
       :auto-select-first="false"
       :show-org-count="true"
       :show-collapse-button="true"
+      exclude-module-code="SHORTAGE"
       @node-click="handleRegionSelect"
     />
 
@@ -54,7 +55,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="填报周期" prop="reportWeek">
-            <el-select v-model="queryParams.reportWeek" placeholder="请选择填报周期" clearable class="!w-200px">
+            <el-select v-model="queryParams.reportWeek" placeholder="请选择填报周期" class="!w-200px">
               <el-option v-for="week in reportWeekOptions" :key="week" :label="week" :value="week" />
             </el-select>
           </el-form-item>
@@ -126,6 +127,33 @@
         </el-form>
       </ContentWrap>
 
+      <!-- 进度统计 -->
+      <ContentWrap v-if="queryParams.reportWeek">
+        <div class="progress-stats">
+          <div class="progress-item">
+            <span class="label">总机构数：</span>
+            <span class="value">{{ progressData.totalCount || 0 }}</span>
+          </div>
+          <div class="progress-item success">
+            <span class="label">已上报：</span>
+            <span class="value">{{ progressData.reportedCount || 0 }}</span>
+          </div>
+          <div class="progress-item warning">
+            <span class="label">未上报：</span>
+            <span class="value">{{ progressData.unreportedCount || 0 }}</span>
+          </div>
+          <div class="progress-item primary">
+            <span class="label">上报率：</span>
+            <span class="value">{{ progressData.reportRate || 0 }}%</span>
+          </div>
+          <el-progress
+            :percentage="progressData.reportRate || 0"
+            :stroke-width="10"
+            style="width: 200px; margin-left: 16px"
+          />
+        </div>
+      </ContentWrap>
+
       <!-- 列表 -->
       <ContentWrap>
         <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
@@ -163,7 +191,7 @@
           </el-table-column>
           <el-table-column label="剩余时间" align="center" width="150px">
             <template #default="scope">
-              <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已逾期</span>
+              <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已结束</span>
               <span v-else :class="getRemainingTimeClass(scope.row.deadlineTime)">
                 {{ calculateRemainingTime(scope.row.deadlineTime) }}
               </span>
@@ -246,7 +274,7 @@
 
         <!-- 填报明细卡片 -->
         <ContentWrap
-          :title="`填报明细（${detailRecords.length} 种药品）`"
+          :title="`填报明细（${detailDrugCount} 种药品）`"
           header-icon="ep:document"
           :collapsible="true"
           :default-collapsed="false"
@@ -262,7 +290,11 @@
               :span-method="detailSpanMethod"
               class="detail-table"
             >
-              <el-table-column label="序号" type="index" width="90" align="center" class-name="header-bold" />
+              <el-table-column label="序号" width="90" align="center" class-name="header-bold">
+                <template #default="scope">
+                  {{ getDrugIndex(scope.row, scope.$index) }}
+                </template>
+              </el-table-column>
               <el-table-column
                 label="药品分类"
                 prop="drugCategory"
@@ -408,12 +440,42 @@ const detailLoading = ref(false)
 const detailData = ref<any>({})
 const detailRecords = ref<any[]>([])
 
+// 填报明细药品数量（按药品名称去重）
+const detailDrugCount = computed(() => {
+  const drugNames = new Set(detailRecords.value.map(item => item.drugName))
+  return drugNames.size
+})
+
+// 获取药品序号（按药品名称分组，相同药品显示相同序号）
+const getDrugIndex = (row: any, rowIndex: number): number => {
+  const dataList = detailRecords.value
+  if (!dataList.length) return rowIndex + 1
+  
+  // 获取当前药品名称在所有药品名称中的排序位置
+  const drugNames: string[] = []
+  dataList.forEach(item => {
+    if (!drugNames.includes(item.drugName)) {
+      drugNames.push(item.drugName)
+    }
+  })
+  
+  return drugNames.indexOf(row.drugName) + 1
+}
+
 // 面板拖拽相关
 const regionTreeRef = ref<InstanceType<typeof RegionTree>>()
 const selectorWidth = ref(250) // 默认宽度设为最小宽度
 const isResizing = ref(false)
 
-const queryParams = reactive({
+const queryParams = reactive<{
+  pageNo: number
+  pageSize: number
+  regionCode: string | undefined
+  zoneId: number | undefined
+  reportWeek: string | undefined
+  deptName: string | undefined
+  reportStatus: number | undefined
+}>({
   pageNo: 1,
   pageSize: 10,
   regionCode: undefined, // 地区代码
@@ -423,6 +485,19 @@ const queryParams = reactive({
   reportStatus: undefined // 填报状态
 })
 const queryFormRef = ref() // 搜索的表单
+
+// 进度统计数据
+const progressData = ref<{
+  totalCount: number
+  reportedCount: number
+  unreportedCount: number
+  reportRate: number
+}>({
+  totalCount: 0,
+  reportedCount: 0,
+  unreportedCount: 0,
+  reportRate: 0
+})
 
 const getInstitutionCategoryLabel = (value: string | number | boolean | undefined) => {
   return getDictObj(DICT_TYPE.INSTITUTION_CATEGORY, value)?.label ?? '机构分类'
@@ -480,8 +555,26 @@ const getList = async () => {
     const data = await ReportRecordApi.getReportRecordList(queryParams)
     list.value = data.list
     total.value = data.total
+    // 同时获取进度统计
+    if (queryParams.reportWeek) {
+      loadReportProgress()
+    }
   } finally {
     loading.value = false
+  }
+}
+
+/** 加载填报进度统计 */
+const loadReportProgress = async () => {
+  try {
+    const data = await ReportRecordApi.getReportProgress({
+      zoneId: queryParams.zoneId,
+      reportWeek: queryParams.reportWeek,
+      regionCode: queryParams.regionCode
+    })
+    progressData.value = data || { totalCount: 0, reportedCount: 0, unreportedCount: 0, reportRate: 0 }
+  } catch (error) {
+    console.error('加载进度统计失败:', error)
   }
 }
 const handleExport2 = async () => {
@@ -544,6 +637,10 @@ const canExport2 = computed(() => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value.resetFields()
+  // 重置后重新选中最新周期
+  if (reportWeekOptions.value.length > 0) {
+    queryParams.reportWeek = reportWeekOptions.value[0]
+  }
   handleQuery()
 }
 
@@ -567,7 +664,9 @@ const calculateRemainingTime = (targetTime: string, isStartTime: boolean = false
   if (isStartTime) {
     prefix = diff <= 0 ? '已开始' : '距开始'
   } else {
-    prefix = diff <= 0 ? '逾期' : '剩余'
+    // 超过截止时间直接返回"已结束"，不再计算具体时间
+    if (diff <= 0) return '已结束'
+    prefix = '剩余'
   }
 
   const days = Math.floor(absDiff / (1000 * 60 * 60 * 24))
@@ -797,6 +896,10 @@ const loadReportWeekOptions = async () => {
   try {
     const data = await ReportRecordApi.getReportWeeks()
     reportWeekOptions.value = data
+    // 默认选中最新的周期（第一个）
+    if (data && data.length > 0 && !queryParams.reportWeek) {
+      queryParams.reportWeek = data[0]
+    }
   } catch (error) {
     console.error('加载填报周期选项失败:', error)
   }
@@ -835,10 +938,11 @@ const handleExport = async () => {
 }
 
 /** 初始化 **/
-onMounted(() => {
-  loadReportWeekOptions()
+onMounted(async () => {
+  // 先加载周期选项（会自动选中最新周期）
+  await loadReportWeekOptions()
   loadZoneOptions()
-  // 默认加载所有数据，不限制地区
+  // 带着默认周期查询列表
   getList()
 })
 </script>
@@ -1037,6 +1141,43 @@ onMounted(() => {
 
   .days-icon {
     font-size: 16px;
+  }
+}
+
+// 进度统计样式
+.progress-stats {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 0;
+
+  .progress-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .label {
+      color: #606266;
+      font-size: 14px;
+    }
+
+    .value {
+      font-weight: 600;
+      font-size: 16px;
+      color: #303133;
+    }
+
+    &.success .value {
+      color: #67c23a;
+    }
+
+    &.warning .value {
+      color: #e6a23c;
+    }
+
+    &.primary .value {
+      color: #409eff;
+    }
   }
 }
 </style>

@@ -155,12 +155,14 @@ const props = withDefaults(
     showOrgCount?: boolean // 是否显示机构数量标签
     showCollapseButton?: boolean // 是否显示内部的收起按钮
     selectedRegionData?: any // 当前选中的地区数据（用于底部显示）
+    excludeModuleCode?: string // 排除指定模块的无法上报机构（如 SHORTAGE）
   }>(),
   {
     autoSelectFirst: true, // 默认自动选中
     showOrgCount: false, // 默认不显示机构数量
     showCollapseButton: false, // 默认不显示，交由外部控制
-    selectedRegionData: null // 默认无选中
+    selectedRegionData: null, // 默认无选中
+    excludeModuleCode: undefined // 默认不排除
   }
 )
 
@@ -197,8 +199,8 @@ const collectExpandKeys = (nodes: Tree[]): string[] => {
 const getTree = async () => {
   loading.value = true
   try {
-    // 使用带机构数量的地区树API
-    const res = await AreaOrgApi.getAreaTree()
+    // 使用带机构数量的地区树API（支持排除指定模块的无法上报机构）
+    const res = await AreaOrgApi.getAreaTree(props.excludeModuleCode)
     regionList.value = res || []
 
     // 收集默认展开的节点（展开到市级）

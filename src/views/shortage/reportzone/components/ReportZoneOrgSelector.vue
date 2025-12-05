@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model="innerVisible"
-    title="配置可填报机构"
+    title="配置可填报机构（不包含短缺无法上报机构）"
     width="1280px"
     class="report-zone-org-selector"
   >
@@ -530,11 +530,13 @@ const loadDeptTree = async (areaCode: string) => {
   }
   deptTreeLoading.value = true
   try {
-    // 构建分页查询参数
+    // 构建分页查询参数，排除短缺模块无法上报机构
     const params: DeptApi.DeptPageParam = {
       areaCode,
       pageNo: pageNo.value,
-      pageSize: pageSize.value
+      pageSize: pageSize.value,
+      excludeUnableReport: true,
+      excludeModuleCode: 'SHORTAGE'
     }
 
     // 添加搜索条件
@@ -602,11 +604,13 @@ const handleSelectionChange = async (rows: DeptTreeNode[]) => {
   const isUnselectAll = selectedIds.length === 0 && currentPageIds.length > 0
 
   if (isSelectAll || isUnselectAll) {
-    // 全选/取消全选:获取所有符合当前筛选条件的机构ID
+    // 全选/取消全选:获取所有符合当前筛选条件的机构ID（排除短缺模块无法上报机构）
     const params: DeptApi.DeptPageParam = {
       areaCode: activeAreaCode.value,
       pageNo: 1,
-      pageSize: 10
+      pageSize: 10,
+      excludeUnableReport: true,
+      excludeModuleCode: 'SHORTAGE'
     }
 
     // 添加搜索条件
