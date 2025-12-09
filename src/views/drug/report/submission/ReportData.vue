@@ -168,293 +168,24 @@
         </div>
       </div>
 
-      <!-- 步骤1: 上传与校验 -->
+      <!-- 步骤1: 上传与校验（使用独立组件） -->
       <div v-if="currentStep === 1" class="step-content">
-        <h3 class="step-title">上传与校验</h3>
-
-        <!-- 总览卡片（整合进度信息） -->
-        <StepSummaryCard
-          :key="`step1-${stepSummaryKey}`"
-          :step-type="1"
+        <UploadValidateTab
           :task-id="currentTask.taskId"
-          :is-processing="isUploading"
-          :current-phase="currentBatchPhase"
-          :uploaded-count="uploadedFileCount"
-          :total-count="totalFileCount"
-          :overall-progress="overallProgress"
-          @refresh="loadStepSummary"
-          @close="handleSummaryClose"
+          :file-list="fileList"
+          :step-summary-key="stepSummaryKey"
+          :refreshing-file-list="refreshingFileList"
+          @refresh-summary="loadStepSummary"
+          @summary-close="handleSummaryClose"
+          @refresh-file-list="refreshFileList"
+          @download-error-summary="downloadErrorSummary"
+          @view-file-data="viewFileData"
+          @view-error-detail="viewErrorDetail"
+          @back-to-prepare="currentStep = 0"
+          @start-pre-qc="startPreQC"
+          @download-template="downloadTemplate"
+          @file-uploaded="loadFileList(currentTask.taskId)"
         />
-
-        <div class="upload-section">
-
-          <!-- 批量上传区域 -->
-          <div class="batch-upload">
-            <!-- 拖拽上传区域（上传中时置灰） -->
-            <el-upload
-              ref="uploadRef"
-              class="upload-dragger"
-              :class="{ 'upload-disabled': isUploading }"
-              drag
-              action="#"
-              :auto-upload="false"
-              :on-change="handleFileChange"
-              accept=".zip,.rar,.xlsx"
-              :disabled="isUploading || uploadingFiles.length > 0"
-              :show-file-list="false"
-            >
-              <el-icon class="el-icon--upload">
-                <UploadFilled />
-              </el-icon>
-              <div class="el-upload__text">
-                拖拽ZIP，RAR压缩包或所有Excel文件到此处，或<em>点击上传</em>
-              </div>
-            </el-upload>
-
-            <!-- 上传进度由总览卡片显示，此处移除独立进度区域 -->
-
-            <!-- 上传结果总览（处理完成后显示） -->
-            <transition name="fade-slide">
-              <div v-if="uploadResult && !isUploading" class="upload-progress-section" style="position: relative; z-index: 0;">
-                <el-alert
-                  :type="uploadResult.failedCount > 0 ? 'warning' : 'success'"
-                  :closable="true"
-                  @close="closeResultSummary"
-                >
-                  <template #title>
-                    <div class="result-title">
-                      <el-icon><SuccessFilled v-if="uploadResult.failedCount === 0" /><WarningFilled v-else /></el-icon>
-                      <span>上传结果总览</span>
-                    </div>
-                  </template>
-
-                  <div class="result-content">
-                    <!-- 统计数据 -->
-                    <div class="result-stats">
-                      <div class="stat-item">
-                        <span class="stat-label">共处理</span>
-                        <span class="stat-value total">{{ uploadResult.totalFiles }}</span>
-                        <span class="stat-label">个文件</span>
-                      </div>
-                      <div class="stat-divider"></div>
-                      <div class="stat-item success">
-                        <el-icon><CircleCheckFilled /></el-icon>
-                        <span class="stat-label">成功:</span>
-                        <span class="stat-value">{{ uploadResult.successCount }}个</span>
-                      </div>
-                      <div class="stat-divider"></div>
-                      <div class="stat-item failed" v-if="uploadResult.failedCount > 0">
-                        <el-icon><CircleCloseFilled /></el-icon>
-                        <span class="stat-label">失败:</span>
-                        <span class="stat-value">{{ uploadResult.failedCount }}个</span>
-                      </div>
-                    </div>
-
-                    <!-- 基础错误列表 -->
-                    <div v-if="uploadResult.basicErrors && uploadResult.basicErrors.length > 0" class="basic-errors">
-                      <div class="error-title">
-                        <el-icon><Warning /></el-icon>
-                        <span>基础错误提示</span>
-                      </div>
-                      <ul class="error-list">
-                        <li v-for="(error, index) in uploadResult.basicErrors" :key="index" class="error-item">
-                          <el-icon :class="['error-icon', getErrorIconClass(error.errorType)]">
-                            <component :is="getBasicErrorIcon(error.errorType)" />
-                          </el-icon>
-                          <span class="error-message">{{ error.message }}</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <!-- 操作按钮 -->
-                    <div class="result-actions">
-                      <el-button
-                        size="small"
-                        @click="downloadErrorSummary"
-                        v-if="uploadResult.failedCount > 0"
-                      >
-                        <el-icon><Download /></el-icon>
-                        下载错误汇总
-                      </el-button>
-                    </div>
-                  </div>
-                </el-alert>
-              </div>
-            </transition>
-          </div>
-
-          <!-- 文件列表（带上传统计和刷新按钮） -->
-          <div class="table-header">
-            <span class="table-title">文件列表</span>
-
-            <!-- 上传统计（始终显示） -->
-            <div class="header-upload-stats">
-              <span class="stats-label">上传进度：</span>
-              <el-progress
-                :percentage="fileUploadPercentage"
-                :color="getProgressColor(fileUploadPercentage)"
-                :stroke-width="6"
-                class="stats-progress"
-              />
-              <span class="stats-count" :class="{ 'uploading': isUploading }">
-                {{ uploadedFileCount }}/{{ totalFileCount }}
-              </span>
-            </div>
-
-            <el-button
-              type="primary"
-              size="small"
-              :icon="RefreshRight"
-              :loading="refreshingFileList"
-              @click="refreshFileList"
-              circle
-            />
-          </div>
-          <el-table
-            :data="fileList"
-            :show-overflow-tooltip="true"
-          >
-            <el-table-column label="序号" width="80" type="index" align="center" />
-            <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center">
-              <template #default="scope">
-                <span class="font-bold">{{ scope.row.standardFileName }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center">
-              <template #default="scope">
-                <span class="font-bold">{{ scope.row.originalFileName }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="fileType" label="文件类型" width="150" align="center">
-              <template #default="{ row }">
-                <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="row.fileType" />
-              </template>
-            </el-table-column>
-            <el-table-column prop="uploadStatus" label="状态" width="120" align="center">
-              <template #default="{ row }">
-                <dict-tag :type="DICT_TYPE.UPLOAD_STATUS" :value="row.uploadStatus" />
-              </template>
-            </el-table-column>
-            <el-table-column label="上传进度" width="200" align="center">
-              <template #default="{ row }">
-                <div class="progress-wrapper">
-                  <!-- 正在上传：显示实时进度 -->
-                  <template v-if="uploadingFiles.includes(row.fileType) && uploadProgress[row.fileType]">
-                    <el-progress
-                      :percentage="uploadProgress[row.fileType]?.progress || 0"
-                      :status="getProgressStatus(uploadProgress[row.fileType]?.status)"
-                    />
-                    <div class="progress-message">
-                      {{ uploadProgress[row.fileType]?.currentStep || uploadProgress[row.fileType]?.phase || '处理中...' }}
-                    </div>
-                  </template>
-                  <!-- 未上传或已完成：显示固定状态 -->
-                  <template v-else>
-                    <el-progress
-                      :percentage="row.uploadStatus === 2 ? 100 : 0"
-                      :status="row.uploadStatus === 2 ? 'success' : undefined"
-                    />
-                    <div class="progress-message">
-                      {{ row.uploadStatus === 2 ? '已完成' : '等待上传' }}
-                    </div>
-                  </template>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="fileSize" label="文件大小" width="120" align="center">
-              <template #default="{ row }">
-                <span class="record-count">{{ formatFileSize(row.fileSize) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="fileFormat" label="文件格式" width="120" align="center">
-              <template #default="{ row }">
-                <span class="record-count">{{ row.fileFormat || '-' }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="recordCount" label="数据条数" width="120" align="center">
-              <template #default="{ row }">
-                <span class="record-count">{{ row.recordCount || '-' }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="errorCount" label="错误数" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag v-if="row.errorCount > 0" type="danger" size="small">
-                  {{ row.errorCount }}
-                </el-tag>
-                <span v-else class="text-success">0</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" fixed="right" width="250" align="center">
-              <template #default="{ row }">
-                <!-- 查看数据详情按钮 - 已上传状态 -->
-                <el-button
-                  v-if="row.uploadStatus === 2 && row.errorCount === 0"
-                  type="primary"
-                  size="small"
-                  @click="viewFileData(row)"
-                >
-                  <el-icon class="mr-5px"><Document /></el-icon>
-                  查看数据
-                </el-button>
-
-                <!-- 查看错误详情按钮 - 有错误时 -->
-                <el-button
-                  v-if="row.uploadStatus === 2 && row.errorCount > 0"
-                  type="danger"
-                  size="small"
-                  @click="viewErrorDetail(row)"
-                >
-                  <el-icon class="mr-5px"><WarningFilled /></el-icon>
-                  查看详情
-                </el-button>
-
-                <!-- 上传/重新上传按钮 -->
-                <el-upload
-                  v-if="[0, 1, 2, 3].includes(row.uploadStatus)"
-                  action="#"
-                  :auto-upload="false"
-                  :on-change="(file) => handleSingleFileUpload(file, row)"
-                  accept=".xlsx"
-                  :disabled="uploadingFiles.includes(row.fileType)"
-                  :show-file-list="false"
-                  class="inline-upload"
-                >
-                  <el-button
-                    :type="row.uploadStatus === 0 ? 'primary' : 'warning'"
-                    size="small"
-                    :loading="uploadingFiles.includes(row.fileType)"
-                  >
-                    <el-icon class="mr-5px" v-if="!uploadingFiles.includes(row.fileType)"><Upload /></el-icon>
-                    {{ uploadingFiles.includes(row.fileType) ? '上传中...' : (row.uploadStatus === 0 ? '上传' : '修复重传') }}
-                  </el-button>
-                </el-upload>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div class="upload-actions">
-            <el-button @click="currentStep = 0">
-              <el-icon class="mr-5px"><ArrowLeft /></el-icon>
-              返回准备
-            </el-button>
-            <el-tooltip
-              :content="!allFilesUploaded ? '请先完成所有文件的上传与基础校验' : '开始前置质控'"
-              placement="top"
-              :disabled="allFilesUploaded"
-            >
-              <span>
-                <el-button
-                  type="primary"
-                  @click="startPreQC"
-                  :disabled="!allFilesUploaded"
-                >
-                  <el-icon class="mr-5px"><CircleCheck /></el-icon>
-                  开始前置质控
-                </el-button>
-              </span>
-            </el-tooltip>
-          </div>
-        </div>
       </div>
 
       <!-- 步骤2: 前置质控 -->
@@ -1013,12 +744,12 @@
             <span class="stat-value">{{ errorDetailDialog.totalRows }}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">错误</span>
-            <span class="stat-value error">{{ errorDetailDialog.errorCount }}</span>
+            <span class="stat-label">错误行</span>
+            <span class="stat-value error">{{ errorDetailDialog.errorRows }}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">通过</span>
-            <span class="stat-value success">{{ errorDetailDialog.totalRows - errorDetailDialog.errorCount }}</span>
+            <span class="stat-label">通过行</span>
+            <span class="stat-value success">{{ errorDetailDialog.totalRows - errorDetailDialog.errorRows }}</span>
           </div>
         </div>
 
@@ -1037,7 +768,7 @@
         <div class="detail-header">
           <el-icon class="header-icon"><WarningFilled /></el-icon>
           <span class="header-title">错误详情</span>
-          <el-tag size="small" type="danger">共{{ errorDetailDialog.errorCount }}条</el-tag>
+          <el-tag size="small" type="danger">{{ errorDetailDialog.errorRows }}行 / {{ errorDetailDialog.errorCount }}处错误</el-tag>
         </div>
 
         <!-- 必填字段为空 -->
@@ -1211,6 +942,7 @@ import { ContentWrap } from '@/components/ContentWrap'
 import DictTag from '@/components/DictTag/src/DictTag.vue'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
 import StepSummaryCard from './components/StepSummaryCard.vue'
+import { UploadValidateTab } from './upload-validate'
 import {
   ReportDataApi
 } from '@/api/drug/reportdata'
@@ -1342,7 +1074,8 @@ const errorDetailDialog = ref({
   fileName: '',
   fileType: '',
   totalRows: 0,
-  errorCount: 0,
+  errorRows: 0,      // 错误行数（去重后）
+  errorCount: 0,     // 错误字段总数
   passRate: 0,
   requiredErrors: [] as any[],
   typeErrors: [] as any[],
@@ -1579,14 +1312,20 @@ const viewErrorDetail = async (row: any) => {
     // 从后端获取错误详情
     const result = await ReportDataApi.getFileValidationErrors(currentTask.value.taskId, row.fileType)
 
+    // 错误行数（去重后），用于计算通过率
+    const errorRows = result.errorRows || 0
+    // 错误字段总数（用于显示详情）
+    const errorFieldCount = result.errorCount || 0
+    
     errorDetailDialog.value = {
       visible: true,
       fileName: row.standardFileName || row.originalFileName,
       fileType: row.fileType,
       totalRows: result.totalRows || 0,
-      errorCount: result.errorCount || 0,
+      errorRows: errorRows,                // 错误行数
+      errorCount: errorFieldCount,         // 错误字段数（用于显示"共X条错误"）
       passRate: result.totalRows > 0
-        ? Math.round(((result.totalRows - result.errorCount) / result.totalRows) * 100)
+        ? Math.round(((result.totalRows - errorRows) / result.totalRows) * 100)
         : 0,
       requiredErrors: result.requiredErrors || [],
       typeErrors: result.typeErrors || [],
@@ -3939,7 +3678,6 @@ const handleSummaryClose = async () => {
 
 :deep(.el-table .el-table__row:hover) {
   background: #f9fafb !important;
-  transform: scale(1.001);
 }
 
 /* 错误行样式 - 覆盖全局hover样式 */
@@ -3949,7 +3687,6 @@ const handleSummaryClose = async () => {
 
 :deep(.el-table .el-table__row.error-row:hover) {
   background: #fde2e2 !important;
-  transform: scale(1.001);
 }
 
 :deep(.el-table .el-table__row.error-row > td) {

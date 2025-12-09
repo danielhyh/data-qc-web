@@ -190,6 +190,21 @@ export const ReportDataApi = {
   },
 
   // ==================== 文件上传相关API ====================
+  // 校验Excel表头字段
+  validateHeaders: (file: File, fileType?: string): Promise<any> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (fileType) {
+      formData.append('fileType', fileType)
+    }
+
+    return request.post({
+      url: '/drug/report-data/validate-headers',
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+
   // 验证并解析文件
   validateAndParseFile: (file: File, taskId: number): Promise<FileValidationResult> => {
     const formData = new FormData()
