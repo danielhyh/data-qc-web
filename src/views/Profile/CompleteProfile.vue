@@ -8,6 +8,15 @@
           <h2 class="alert-title">完善账户信息</h2>
           <p class="alert-desc">为了确保账户安全和系统合规,请先完善您的个人信息并修改初始密码</p>
         </div>
+        <el-button 
+          class="logout-btn" 
+          type="danger" 
+          :icon="SwitchButton" 
+          @click="handleLogout"
+          plain
+        >
+          退出系统
+        </el-button>
       </div>
 
       <!-- 步骤指示器 -->
@@ -113,11 +122,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus'
-import { WarningFilled } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { WarningFilled, SwitchButton } from '@element-plus/icons-vue'
 import { getUserProfile, updateUserProfile, updateUserPassword } from '@/api/system/user/profile'
 import { useUserStore } from '@/store/modules/user'
 
@@ -256,6 +265,24 @@ const handleGoHome = () => {
   router.replace('/')
 }
 
+// 退出系统
+const handleLogout = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '退出后需要重新登录，确定要退出系统吗？',
+      '温馨提示',
+      {
+        confirmButtonText: '确定退出',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await userStore.loginOut()
+  } catch (error) {
+    // 用户取消操作
+  }
+}
+
 // 初始化
 onMounted(() => {
   loadProfile()
@@ -288,6 +315,7 @@ onMounted(() => {
   padding: 24px 32px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
+  position: relative;
 
   .alert-icon {
     font-size: 48px;
@@ -308,6 +336,18 @@ onMounted(() => {
       font-size: 14px;
       opacity: 0.9;
       line-height: 1.6;
+    }
+  }
+
+  .logout-btn {
+    flex-shrink: 0;
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: #fff;
+      color: #fff;
     }
   }
 }

@@ -43,6 +43,7 @@
           ref="queryFormRef"
           :inline="true"
           label-width="80px"
+          @submit.prevent
         >
           <el-form-item label="填报专区" prop="zoneId">
             <el-select v-model="queryParams.zoneId" placeholder="请选择填报专区" clearable class="!w-240px">
@@ -65,6 +66,7 @@
               placeholder="请输入机构名称"
               clearable
               class="!w-200px"
+              @keyup.enter="handleQuery"
             />
           </el-form-item>
           <el-form-item label="填报状态" prop="reportStatus">
@@ -103,7 +105,7 @@
                   @click="handleExport"
                 >
                   <Icon icon="ep:download" class="mr-5px" />
-                  导出机构数据
+                  导出机构周上报药品信息
                 </el-button>
 
             </el-tooltip>
@@ -115,11 +117,11 @@
                 type="success"
                 plain
                 :disabled="!canExport2"
-                :loading="exportLoading"
+                :loading="exportLoading2"
                 @click="handleExport2"
               >
                 <Icon icon="ep:download" class="mr-5px" />
-                导出填报记录
+                导出本轮机构上报情况
               </el-button>
             </el-tooltip>
 
@@ -433,6 +435,7 @@ const selectedRegion = ref<any>(null) // 选中的地区节点
 const reportWeekOptions = ref<string[]>([]) // 填报周期选项
 const zoneOptions = ref<any[]>([]) // 填报专区选项
 const exportLoading = ref(false) // 导出按钮加载状态
+const exportLoading2 = ref(false) // 导出本轮机构上报情况按钮加载状态
 
 // 详情弹窗相关
 const detailDialogVisible = ref(false)
@@ -580,12 +583,12 @@ const loadReportProgress = async () => {
 const handleExport2 = async () => {
   try {
     await message.exportConfirm()
-    exportLoading.value = true
+    exportLoading2.value = true
     const data = await ReportRecordApi.exportReportDetail(queryParams)
     download.excel(data, '填报记录明细.xlsx')
     message.success('导出成功')
   } finally {
-    exportLoading.value = false
+    exportLoading2.value = false
   }
 }
 

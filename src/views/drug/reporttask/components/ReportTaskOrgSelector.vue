@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model="innerVisible"
-    title="配置可填报机构（不包含无法上报机构）"
+    title="配置可填报机构（不包含监测无法上报机构）"
     width="1080px"
     class="report-task-org-selector"
   >
@@ -156,23 +156,11 @@
             >
               <template #default="{ node, data }">
                 <div class="dept-node">
-                  <el-tooltip
-                    :content="getInstitutionCategoryLabel(data.institutionCategory)"
-                    placement="top"
-                  >
-                    <DictIcon
-                      :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
-                      :value="data.institutionCategory ?? ''"
-                      :size="16"
-                      default-color="#5b8def"
-                      class="dept-icon"
-                    />
-                  </el-tooltip>
                   <span class="dept-name" :title="node.label">{{ node.label }}</span>
                   <dict-tag
-                    v-if="data.hospitalLevel != null"
+                    v-if="data.hospitalLevelJ != null"
                     :type="DICT_TYPE.INSTITUTION_LEVEL"
-                    :value="data.hospitalLevel"
+                    :value="data.hospitalLevelJ"
                     class="ml-8px"
                     size="small"
                   />
@@ -207,7 +195,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { Dialog } from '@/components/Dialog'
 import { Icon } from '@/components/Icon'
 import DictIcon from '@/components/DictIcon'
-import { DICT_TYPE, getDictObj, getIntDictOptions } from '@/utils/dict'
+import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { defaultProps, handleTree } from '@/utils/tree'
 import { RegionsApi } from '@/api/system/regions'
 import * as DeptApi from '@/api/system/dept'
@@ -227,14 +215,10 @@ type RegionTreeNode = {
 type DeptTreeNode = {
   id: number
   name: string
-  hospitalLevel?: number | string
-  institutionCategory?: number | string
-  regionName?: string
-  areaName?: string
-  regionPath?: string
   parentId?: number
+  hospitalLevelJ?: string
+  regionPathName?: string
   children?: DeptTreeNode[]
-  [key: string]: any
 }
 
 const props = defineProps({
@@ -277,10 +261,6 @@ const levelOptions = computed(() => {
   return getIntDictOptions(DICT_TYPE.INSTITUTION_LEVEL) || []
 })
 
-// 获取机构类别标签
-const getInstitutionCategoryLabel = (value: string | number | boolean | undefined) => {
-  return getDictObj(DICT_TYPE.INSTITUTION_CATEGORY, value)?.label ?? '机构分类'
-}
 
 const areaTreeProps = {
   label: 'name',
@@ -291,7 +271,7 @@ const loadAreaTree = async () => {
   if (areaTreeLoading.value) return
   areaTreeLoading.value = true
   try {
-    const data = await RegionsApi.getRegionsTreeWithOrgCount()
+    const data = await RegionsApi.getRegionsTreeWithOrgCount('MONITOR')
     areaTree.value = Array.isArray(data) ? data : []
     defaultExpandedAreaCodes.value = areaTree.value.slice(0, 3).map((item) => item.code)
     if (!activeAreaCode.value && areaTree.value.length > 0) {
@@ -395,10 +375,11 @@ const loadDeptTree = async (areaCode: string) => {
   }
   deptTreeLoading.value = true
   try {
-    const response = await DeptApi.getDeptPage({
+    const response = await DeptApi.getDeptSimpleTree({
       areaCode,
       pageSize: -1,
-      excludeUnableReport: true
+      adminLevel: 0,
+      excludeModuleCode: 'MONITOR'
     } as DeptApi.DeptPageParam)
     const list: DeptTreeNode[] = Array.isArray(response?.list) ? response.list : response || []
     const tree = handleTree(list)
@@ -417,17 +398,17 @@ const applyDeptFilters = (nodes: DeptTreeNode[]): DeptTreeNode[] => {
   const levelFilters = new Set(selectedLevels.value)
   const useAll = levelFilters.size === 0
 
-  const matchesLevel = (level: any) => {
+  const matchesLevel = (levelJ: any) => {
     if (useAll) return true
-    if (level === undefined || level === null || level === '') return false
-    return Array.from(levelFilters).some((item) => String(item) === String(level))
+    if (levelJ === undefined || levelJ === null || levelJ === '') return false
+    return Array.from(levelFilters).some((item) => String(item) === String(levelJ))
   }
 
   const traverse = (items: DeptTreeNode[]): DeptTreeNode[] => {
     const result: DeptTreeNode[] = []
     items.forEach((item) => {
       const nameMatch = keyword ? item.name?.toLowerCase().includes(keyword) : true
-      const levelMatch = matchesLevel(item.hospitalLevel)
+      const levelMatch = matchesLevel(item.hospitalLevelJ)
       const children = item.children ? traverse(item.children) : []
       if ((nameMatch && levelMatch) || children.length > 0) {
         result.push({ ...item, children })
@@ -508,10 +489,7 @@ const collectDetailsFromTree = (ids: number[]): any[] => {
         details.push({
           id: node.id,
           name: node.name,
-          hospitalLevel: node.hospitalLevel,
-          regionName: node.regionName,
-          areaName: node.areaName,
-          regionPath: node.regionPath,
+          hospitalLevelJ: node.hospitalLevelJ,
           regionPathName: node.regionPathName || ''
         })
       }

@@ -77,7 +77,6 @@
       v-loading="loading"
       :data="list"
       :show-overflow-tooltip="true"
-      :row-class-name="getRowClassName"
     >
       <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px">
         <template #default="scope">
@@ -361,11 +360,6 @@ const handleCommand = (command: string, row: any) => {
   }
 }
 
-/** 表格行样式 */
-const getRowClassName = ({ row }) => {
-  return row.status === 2 ? 'active-row' : ''
-}
-
 /**
  * 计算任务剩余时间或逾期时间
  * @param endDate 截止时间字符串
@@ -432,15 +426,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 启用任务行样式 */
-:deep(.active-row) {
-  background-color: var(--el-color-success-light-9) !important;
-}
-
-:deep(.active-row:hover) {
-  background-color: var(--el-color-success-light-8) !important;
-}
-
 /* 时间选择器容器 */
 .date-range-container .flex {
   width: 100%;

@@ -38,7 +38,6 @@ const emit = defineEmits<{
 const rules = reactive<FormRules>({
   realName: [{ required: true, message: t('profile.rules.realName'), trigger: 'blur' }],
   email: [
-    { required: true, message: t('profile.rules.mail'), trigger: 'blur' },
     {
       type: 'email',
       message: t('profile.rules.truemail'),

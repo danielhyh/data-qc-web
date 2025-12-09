@@ -79,6 +79,11 @@ export const getDeptPage = async (params: DeptPageParam) => {
   return await request.get({ url: '/system/dept/page', params })
 }
 
+// 查询精简部门树列表（只返回必要字段，性能优化）
+export const getDeptSimpleTree = async (params: DeptPageParam) => {
+  return await request.get({ url: '/system/dept/simple-tree', params })
+}
+
 // 获取所有符合条件的部门ID（用于全选）
 export const getAllDeptIds = async (params: DeptPageParam) => {
   return await request.get({ url: '/system/dept/all-ids', params })

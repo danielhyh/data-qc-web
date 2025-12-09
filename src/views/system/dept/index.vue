@@ -293,25 +293,24 @@
                       <template #dropdown>
                         <el-dropdown-menu>
                           <!-- 编辑机构 -->
-                          <el-dropdown-item command="edit" v-hasPermi="['system:dept:update']">
+                          <el-dropdown-item command="edit" v-if="checkPermi(['system:dept:update'])">
                             <Icon icon="ep:edit" class="mr-5px" />编辑机构
                           </el-dropdown-item>
                           <!-- 维护短缺机构 - 仅医疗机构显示 -->
                           <el-dropdown-item
-                            v-if="scope.row.adminLevel === 0"
+                            v-if="scope.row.adminLevel === 0 && checkPermi(['system:monitoring-unable-report:create'])"
                             command="unableReport"
-                            v-hasPermi="['system:monitoring-unable-report:create']"
                           >
                             <Icon icon="ep:warning" class="mr-5px" />维护短缺机构
                           </el-dropdown-item>
                           <!-- 管理账号 -->
-                          <el-dropdown-item command="account" v-hasPermi="['system:user:query']">
+                          <el-dropdown-item command="account" v-if="checkPermi(['system:user:query'])">
                             <Icon icon="ep:user" class="mr-5px" />管理账号
                           </el-dropdown-item>
                           <!-- 停用/启用机构 -->
                           <el-dropdown-item
                             :command="scope.row.status === 0 ? 'disable' : 'enable'"
-                            v-hasPermi="['system:dept:update']"
+                            v-if="checkPermi(['system:dept:update'])"
                             :divided="true"
                           >
                             <Icon
@@ -438,6 +437,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { DICT_TYPE, getIntDictOptions, getStrDictOptions } from '@/utils/dict'
+import { checkPermi } from '@/utils/permission'
 import * as DeptApi from '@/api/system/dept'
 import DeptForm from './DeptForm.vue'
 import InstitutionSyncModal from './InstitutionSyncModal.vue'
