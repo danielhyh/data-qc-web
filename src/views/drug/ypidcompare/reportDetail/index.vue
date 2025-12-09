@@ -608,8 +608,7 @@ const getReasonLabel = (reason: string) => {
   min-height: calc(100vh - 50px);
 }
 
-.report-list-card,
-.report-detail-card {
+:deep(.el-card) {
   margin-bottom: 20px;
   border-radius: 8px;
 }

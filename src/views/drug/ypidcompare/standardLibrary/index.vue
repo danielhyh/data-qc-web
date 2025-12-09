@@ -281,7 +281,7 @@ const selectedYpid = ref(0)
 const tableHeight = computed(() => {
   // 数据少的时候不设置固定高度，让表格自适应内容
   if (drugList.value.length <= 20) {
-    return null
+    return undefined
   }
   return undefined // 使用 max-height 来限制
 })
@@ -295,7 +295,7 @@ const tableMaxHeight = computed(() => {
   switch (pageSize) {
     case 10:
       // 10条数据时不限制高度或设置较大值，避免留白
-      return dataCount > 15 ? '600px' : null
+      return dataCount > 15 ? '600px' : undefined
     case 20:
       // 20条数据时设置适中高度
       return '600px'
@@ -419,17 +419,16 @@ const handleBackClick = () => {
 
 <style scoped>
 .ypid-search-container {
-  min-height: calc(100vh - 50px);
   padding: 20px;
   background-color: #f5f5f5;
+  min-height: calc(100vh - 50px);
 }
 
 .stats-overview {
   margin-bottom: 20px;
 }
 
-.search-card,
-.result-card {
+:deep(.el-card) {
   margin-bottom: 20px;
   border-radius: 8px;
 }

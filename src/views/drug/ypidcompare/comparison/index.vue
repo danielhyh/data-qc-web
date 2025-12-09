@@ -47,19 +47,11 @@
     <!-- 操作区域 -->
     <el-card class="filter-card" shadow="never">
       <el-row :gutter="20">
-        <el-col :span="16">
+        <el-col :span="12">
           <!-- 创建任务按钮组 -->
-          <el-button type="primary" @click="createFromQc">
-            <Icon icon="ep:circle-check" />
-            从质控结果创建
-          </el-button>
           <el-button type="success" @click="createFromTemplate">
             <Icon icon="ep:upload" />
             从模板导入创建
-          </el-button>
-          <el-button type="success" @click="createFromTemplate2">
-            <Icon icon="ep:upload" />
-            导入result
           </el-button>
           <el-button @click="createFromStandardLibrary">
             <Icon icon="ep:folder" />
@@ -70,38 +62,35 @@
             下载导入模板
           </el-button>
         </el-col>
-        <el-col :span="8" class="flex-row-end">
+        <el-col :span="12">
           <!-- 查询条件 -->
-          <!-- <el-input
-            v-model="queryParams.keyword"
-            placeholder="任务编号/名称"
-            clearable
-            class="w-200px"
-            @keyup.enter="handleQuery"
-          /> -->
-          <el-form-item label="状态筛选" prop="status">
-            <el-select
-              v-model="queryParams.status"
-              placeholder="请选择任务状态"
-              clearable
-              class="!w-200px"
-            >
-              <el-option label="待处理" :value="0" />
-              <el-option label="处理中" :value="1" />
-              <el-option label="已完成" :value="2" />
-              <el-option label="已取消" :value="3" />
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button @click="handleQuery">
-              <Icon icon="ep:search" class="mr-5px" />
-              搜索
-            </el-button>
-            <el-button @click="resetQuery">
-              <Icon icon="ep:refresh" class="mr-5px" />
-              重置
-            </el-button>
-          </el-form-item>
+          <div class="filter-search-wrapper">
+            <el-form :inline="true" class="filter-form">
+              <el-form-item label="状态筛选" prop="status">
+                <el-select
+                  v-model="queryParams.status"
+                  placeholder="请选择任务状态"
+                  clearable
+                  class="!w-200px"
+                >
+                  <el-option label="待处理" :value="0" />
+                  <el-option label="处理中" :value="1" />
+                  <el-option label="已完成" :value="2" />
+                  <el-option label="已取消" :value="3" />
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button @click="handleQuery">
+                  <Icon icon="ep:search" class="mr-5px" />
+                  搜索
+                </el-button>
+                <el-button @click="resetQuery">
+                  <Icon icon="ep:refresh" class="mr-5px" />
+                  重置
+                </el-button>
+              </el-form-item>
+            </el-form>
+          </div>
         </el-col>
       </el-row>
     </el-card>
@@ -156,7 +145,7 @@
             <div class="progress-wrapper">
               <el-progress
                 :percentage="getMatchProgress(row)"
-                :status="getProgressStatus(row.status)"
+                :format="format"
               />
               <span class="progress-text"> {{ row.confirmedCount }}/{{ row.totalCount }} </span>
             </div>
@@ -328,6 +317,8 @@ const list = ref<YpidMatchTaskVO[]>([])
 const total = ref(0)
 const exportLoading = ref(false)
 
+const format = (percentage) => (percentage === 100 ? '100%' : `${percentage}%`)
+
 // 查询参数
 const queryParams = reactive({
   pageNo: 1,
@@ -378,7 +369,7 @@ const templateCreateForm = reactive({
 const tableHeight = computed(() => {
   // 数据少的时候不设置固定高度，让表格自适应内容
   if (list.value.length <= 15) {
-    return null
+    return undefined
   }
   return undefined // 使用 max-height 来限制
 })
@@ -392,7 +383,7 @@ const tableMaxHeight = computed(() => {
   switch (pageSize) {
     case 10:
       // 10条数据时不限制高度或设置较大值，避免留白
-      return dataCount > 12 ? '600px' : null
+      return dataCount > 12 ? '600px' : undefined
     case 20:
       // 20条数据时设置适中高度
       return '600px'
@@ -435,7 +426,7 @@ const getStatusText = (status: number) => {
 }
 
 // 获取状态标签类型
-const getStatusType = (status: number) => {
+const getStatusType = (status: number): 'success' | 'info' | 'warning' | 'danger' => {
   switch (status) {
     case 0:
       return 'info' // 待处理 - 灰色
@@ -446,7 +437,7 @@ const getStatusType = (status: number) => {
     case 3:
       return 'info' // 已取消 - 灰色
     default:
-      return ''
+      return 'info'
   }
 }
 
@@ -511,7 +502,7 @@ const getMatchProgress = (row: YpidMatchTaskVO) => {
     totalCount: row.totalCount,
     progress: progress
   })
-  return progress
+   return progress
 }
 
 // 计算比率
@@ -677,9 +668,9 @@ onMounted(() => {
 
 <style scoped>
 .ypid-task-container {
-  min-height: calc(100vh - 50px);
   padding: 20px;
   background-color: #f5f5f5;
+  min-height: calc(100vh - 50px);
 }
 
 .stats-overview {
@@ -690,6 +681,11 @@ onMounted(() => {
 .result-card {
   margin-bottom: 20px;
   border-radius: 8px;
+  background-color: #ffffff;
+}
+
+.filter-card :deep(.el-card__body) {
+  padding: 20px;
 }
 
 .card-header {
@@ -710,7 +706,8 @@ onMounted(() => {
 }
 
 .progress-wrapper {
-  display: flex;
+  display: grid;
+  grid-template-columns: 3fr 1fr;
   align-items: center;
   gap: 10px;
 }
@@ -732,8 +729,18 @@ onMounted(() => {
 .mr-5px {
   margin-right: 5px;
 }
-.flex-row-end {
+
+.filter-search-wrapper {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+}
+
+.filter-form {
+  margin-bottom: 0;
+}
+
+.filter-form :deep(.el-form-item) {
+  margin-bottom: 0;
 }
 </style>
