@@ -64,6 +64,7 @@
                     v-for="(url, index) in message.images.split(',')"
                     :key="index"
                     :src="url"
+                    :preview-teleported="true"
                     :preview-src-list="message.images.split(',')"
                     fit="cover"
                     class="message-image"
@@ -97,7 +98,7 @@
               />
             </el-form-item>
             <el-form-item label="图片上传" prop="images">
-              <UploadImgs v-model="formData.images" />
+              <UploadImgs :model-value="formData.images" height="200px" width="200px" />
             </el-form-item>
           </el-form>
           <div class="action-buttons">
