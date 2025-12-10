@@ -38,7 +38,7 @@ const remainingRouter: AppRouteRecordRaw[] = [
     component: Layout,
     name: 'Feedback',
     meta: {
-      title: '工单管理',
+      title: '反馈管理',
       icon: 'ep:ticket',
       alwaysShow: true
     },
@@ -48,7 +48,7 @@ const remainingRouter: AppRouteRecordRaw[] = [
         name: 'FeedbackList',
         component: () => import('@/views/drug/feedback/index.vue'),
         meta: {
-          title: '工单列表'
+          title: '反馈列表'
         }
       },
       {
@@ -56,7 +56,7 @@ const remainingRouter: AppRouteRecordRaw[] = [
         name: 'FeedbackDetail',
         component: () => import('@/views/drug/feedback/detail.vue'),
         meta: {
-          title: '工单详情',
+          title: '反馈详情',
           hidden: true,
           canTo: true,
           activeMenu: '/feedback/list'

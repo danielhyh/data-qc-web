@@ -5,7 +5,7 @@
         <div class="card-header">
           <div class="header-left">
             <el-icon class="header-icon"><Tickets /></el-icon>
-            <span>工单详情</span>
+            <span>反馈详情</span>
           </div>
           <el-button class="button" :icon="Back" @click="router.push('/feedback/list')">返回列表</el-button>
         </div>
@@ -24,7 +24,7 @@
           <div class="meta-info">
             <div class="meta-item">
               <el-icon><Document /></el-icon>
-              <span>工单编号：#{{ feedback.id }}</span>
+              <span>反馈编号：#{{ feedback.id }}</span>
             </div>
             <div class="meta-item">
               <el-icon><Clock /></el-icon>

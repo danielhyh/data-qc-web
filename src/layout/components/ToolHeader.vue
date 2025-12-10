@@ -79,6 +79,7 @@ export default defineComponent({
             onClick={() => router.push('/feedback/list')}
           >
             <Icon icon="ep:comment" color="var(--top-header-text-color)" />
+                      <span class="ml-5px">问题反馈</span>
           </div>
           <UserInfo></UserInfo>
           <Setting v-model={showSetting.value} />

@@ -1,11 +1,11 @@
 <template>
   <ContentWrap>
     <el-form ref="queryFormRef" :inline="true" :model="queryParams" class="demo-form-inline">
-      <el-form-item label="工单标题" prop="title">
-        <el-input v-model="queryParams.title" placeholder="请输入工单标题" />
+      <el-form-item label="反馈标题" prop="title">
+        <el-input v-model="queryParams.title" placeholder="请输入反馈标题" />
       </el-form-item>
-      <el-form-item label="工单状态" prop="status">
-        <el-select v-model="queryParams.status" placeholder="请选择工单状态" clearable style="width: 160px">
+      <el-form-item label="反馈状态" prop="status">
+        <el-select v-model="queryParams.status" placeholder="请选择反馈状态" clearable style="width: 160px">
           <el-option label="待处理" :value="0" />
           <el-option label="处理中" :value="1" />
           <el-option label="已解决" :value="2" />
@@ -26,12 +26,12 @@
 
     <el-button type="primary" @click="openForm('create')">
       <Icon icon="ep:plus" class="mr-5px" />
-      新建工单
+      新建反馈
     </el-button>
 
     <el-table v-loading="loading" :data="list">
-      <el-table-column align="center" prop="id" label="工单ID" />
-      <el-table-column align="center" prop="title" label="工单标题" />
+      <el-table-column align="center" prop="id" label="反馈ID" />
+      <el-table-column align="center" prop="title" label="反馈标题" />
       <el-table-column align="center" prop="type" label="问题类型">
         <template #default="scope">
           <span v-if="scope.row.type === 1">功能异常</span>
@@ -49,7 +49,7 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column align="center" prop="status" label="工单状态">
+      <el-table-column align="center" prop="status" label="反馈状态">
         <template #default="scope">
           <el-tag v-if="scope.row.status === 0">待处理</el-tag>
           <el-tag type="warning" v-if="scope.row.status === 1">处理中</el-tag>
@@ -79,10 +79,10 @@
     />
   </ContentWrap>
 
-  <el-dialog v-model="dialogVisible" title="新建工单" width="500px">
+  <el-dialog v-model="dialogVisible" title="新建反馈" width="500px">
     <el-form ref="formRef" :model="formData" :rules="formRules" label-width="80px">
-      <el-form-item label="工单标题" prop="title">
-        <el-input v-model="formData.title" placeholder="请输入工单标题" />
+      <el-form-item label="反馈标题" prop="title">
+        <el-input v-model="formData.title" placeholder="请输入反馈标题" />
       </el-form-item>
             <el-form-item label="问题类型" prop="type">
         <el-select v-model="formData.type" placeholder="请选择问题类型">
@@ -148,7 +148,7 @@ const formData = reactive({
   priority: null
 })
 const formRules = {
-  title: [{ required: true, message: '请输入工单标题', trigger: 'blur' }],
+  title: [{ required: true, message: '请输入反馈标题', trigger: 'blur' }],
   type: [{ required: true, message: '请选择问题类型', trigger: 'change' }],
   content: [{ required: true, message: '请输入问题描述', trigger: 'blur' }]
 }
