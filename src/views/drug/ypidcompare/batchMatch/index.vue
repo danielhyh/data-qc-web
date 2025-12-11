@@ -794,8 +794,8 @@ const openManualMatch = async (row: any) => {
   currentMatchRow.value = row
   manualMatchVisible.value = true
   try {
-    const progress = await YpidApi.getMatchProgressList(row.id)
-    recommendedCandidates.value = progress || []
+    // const progress = await YpidApi.getMatchProgressList(row.id)
+    recommendedCandidates.value = []
   } catch (error) {
     console.error('获取推荐匹配项列表查询失败:', error)
     recommendedCandidates.value = []
