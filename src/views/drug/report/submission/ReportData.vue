@@ -178,19 +178,24 @@
     </div>
   </div>
 
-  <!-- 错误详情对话框 - 分页表格展示 -->
-  <Dialog v-model="errorDialog.visible" title="质检错误详情" width="900px" top="5vh">
+  <!-- 错误/警告详情对话框 - 分页表格展示 -->
+  <Dialog 
+    v-model="errorDialog.visible" 
+    :title="errorDialog.isWarning ? '质检警告详情' : '质检错误详情'" 
+    width="900px" 
+    top="5vh"
+  >
     <div class="qc-error-details">
       <!-- 头部统计信息 -->
       <div class="error-header">
         <div class="header-info">
-          <el-icon class="header-icon error">
+          <el-icon :class="['header-icon', errorDialog.isWarning ? 'warning' : 'error']">
             <WarningFilled />
           </el-icon>
           <div class="header-content">
             <h3 class="header-title">{{ errorDialog.fileName }}</h3>
             <p class="header-subtitle">
-              共检测到 <span class="error-count-text">{{ errorDialog.totalErrors }}</span> 个错误
+              共检测到 <span :class="errorDialog.isWarning ? 'warning-count-text' : 'error-count-text'">{{ errorDialog.totalErrors }}</span> 个{{ errorDialog.isWarning ? '警告' : '错误' }}
               <span class="page-info">（当前显示第 {{ (errorDialog.currentPage - 1) * errorDialog.pageSize + 1 }}-{{ Math.min(errorDialog.currentPage * errorDialog.pageSize, errorDialog.totalErrors) }} 条）</span>
             </p>
           </div>
@@ -262,7 +267,7 @@
       <div class="dialog-footer">
         <el-button @click="errorDialog.visible = false">关闭</el-button>
         <el-button type="primary" @click="exportQCErrors" :icon="Download">
-          导出全部错误 ({{ errorDialog.totalErrors }}条)
+          导出全部{{ errorDialog.isWarning ? '警告' : '错误' }} ({{ errorDialog.totalErrors }}条)
         </el-button>
       </div>
     </template>
@@ -577,13 +582,15 @@ const errorDialog = ref<{
   totalErrors: number
   currentPage: number
   pageSize: number
+  isWarning: boolean  // 是否为警告模式（区分错误和警告）
 }>({
   visible: false,
   fileName: '',
   errors: [],
   totalErrors: 0,
   currentPage: 1,
-  pageSize: 50
+  pageSize: 50,
+  isWarning: false
 })
 
 // ==================== 上传进度跟踪 ====================
@@ -1386,31 +1393,40 @@ const simulateFileQCProgress = (fileIndex: number, start: number, end: number, d
 }
 
 const viewQCErrors = async (row: any) => {
-  if (row.qcStatus !== 4) {
+  // 支持查看错误(qcStatus=4)和警告(qcStatus=3)
+  if (row.qcStatus !== 4 && row.qcStatus !== 3) {
     return
   }
+  
+  const isWarning = row.qcStatus === 3
+  
   try {
     const response = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.fileType) as any
 
-    // 解析错误数据 - 处理多种可能的返回格式
+    // 解析数据 - 根据是否为警告模式选择正确的列表
+    // 后端返回格式: { warnings: [...], errors: [...] }
     let errorList: any[] = []
 
     if (response && typeof response === 'object') {
-      // 格式1: { data: { errors: [...] } }
-      if (response.data && Array.isArray(response.data.errors)) {
-        errorList = response.data.errors
-      }
-      // 格式2: { errors: [...] }
-      else if (Array.isArray(response.errors)) {
+      // 优先使用 warnings/errors 分离的结构
+      if (isWarning && Array.isArray(response.warnings)) {
+        errorList = response.warnings
+      } else if (!isWarning && Array.isArray(response.errors)) {
         errorList = response.errors
       }
-      // 格式3: 直接是数组
+      // 兼容旧格式: { data: { errors: [...], warnings: [...] } }
+      else if (response.data && typeof response.data === 'object') {
+        if (isWarning && Array.isArray(response.data.warnings)) {
+          errorList = response.data.warnings
+        } else if (Array.isArray(response.data.errors)) {
+          errorList = response.data.errors
+        } else if (Array.isArray(response.data)) {
+          errorList = response.data
+        }
+      }
+      // 直接是数组的情况
       else if (Array.isArray(response)) {
         errorList = response
-      }
-      // 格式4: { data: [...] }
-      else if (Array.isArray(response.data)) {
-        errorList = response.data
       }
     } else if (Array.isArray(response)) {
       errorList = response
@@ -1429,6 +1445,7 @@ const viewQCErrors = async (row: any) => {
     errorDialog.value.fileName = row.originalFileName || row.standardFileName || row.fileName
     errorDialog.value.currentPage = 1 // 重置到第一页
     errorDialog.value.pageSize = 50 // 默认每页50条
+    errorDialog.value.isWarning = isWarning // 设置是否为警告模式
     errorDialog.value.visible = true
   } catch (error) {
     console.error('获取错误详情失败:', error)
@@ -3023,6 +3040,22 @@ const handleSummaryClose = async () => {
   font-size: 18px;
   font-weight: 700;
   color: #ef4444;
+  padding: 0 4px;
+}
+
+.header-icon.warning {
+  font-size: 48px;
+  color: #f59e0b;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.warning-count-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f59e0b;
   padding: 0 4px;
 }
 
