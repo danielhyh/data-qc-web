@@ -17,7 +17,7 @@
     <el-table-column label="组织机构代码" align="center" prop="organizationCode" width="120" />
     <el-table-column label="医疗机构代码" align="center" prop="hospitalCode" width="150" />
     <el-table-column
-      label="组织机构名称"
+      label="医疗机构名称"
       align="center"
       prop="organizationName"
       min-width="200"

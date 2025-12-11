@@ -38,7 +38,7 @@
             <el-form-item label="机构名称" prop="organizationName">
               <el-input
                 v-model="formData.organizationName"
-                placeholder="请输入组织机构名称"
+                placeholder="请输入医疗机构名称"
                 maxlength="100"
               />
             </el-form-item>
@@ -292,8 +292,8 @@ const formRules = reactive({
     { len: 9, message: '组织机构代码必须为9位', trigger: 'blur' }
   ],
   organizationName: [
-    { required: true, message: '组织机构名称不能为空', trigger: 'blur' },
-    { max: 100, message: '组织机构名称不能超过100个字符', trigger: 'blur' }
+    { required: true, message: '医疗机构名称不能为空', trigger: 'blur' },
+    { max: 100, message: '医疗机构名称不能超过100个字符', trigger: 'blur' }
   ],
   domainCode: [
     { required: true, message: '省级行政区划代码不能为空', trigger: 'blur' },

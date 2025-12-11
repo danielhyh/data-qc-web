@@ -461,7 +461,7 @@
       <div v-if="currentStep === 2" class="step-content">
         <h3 class="step-title">前置质控结果</h3>
         
-        <!-- 🔥 质控进度条 -->
+        <!-- 质控进度条 -->
         <transition name="fade-slide">
           <div v-if="isQCProcessing" class="qc-progress-section">
             <el-card class="qc-progress-card">
@@ -665,7 +665,7 @@
         
         <div class="submit-section">
         
-        <!-- 🔥 审核状态卡片 -->
+        <!-- 审核状态卡片 -->
         <transition name="fade-slide">
           <div v-if="reviewStatus !== null" class="review-status-section">
             <el-card :class="['review-status-card', getReviewStatusClass()]">
@@ -1234,7 +1234,7 @@ const message = useMessage()
 const tableDefinitions = ref<any>({})
 const loadingTemplates = ref(false)
 const excelPreviewRef = ref()
-// 🔥 改为 ref 以便动态设置步骤
+// 改为 ref 以便动态设置步骤
 const currentStep = ref(0)
 const loading = ref(false)
 const refreshingFileList = ref(false)
@@ -1288,7 +1288,7 @@ const dataViewDialog = ref({
   loading: false,
   fileName: '',
   data: [],
-  errorRows: new Set() // 🔥 存储有错误的行号
+  errorRows: new Set() // 存储有错误的行号
 })
 const activeFile = ref()
 
@@ -1350,7 +1350,7 @@ const errorDetailDialog = ref({
   expandedTypes: [] as string[] // 控制是否展开全部
 })
 
-// 🔥 质控进度相关数据
+// 质控进度相关数据
 const isQCProcessing = ref(false)
 const qcProgress = ref(0)
 const qcCurrentPhase = ref('准备开始质控...')
@@ -1369,7 +1369,7 @@ const tableTypeNameMap: Record<string, string> = {
   'usage': '使用数据'
 }
 
-// 🔥 审核状态相关数据
+// 审核状态相关数据
 // 0=待审核, 1=审核通过, 2=审核驳回
 const reviewStatus = ref<number | null>(null)
 const reviewInfo = ref<any>(null)
@@ -1410,7 +1410,7 @@ const uploadedFileCount = computed(() => {
 
 // 计算整体上传进度（优先使用后端总进度，降级使用计算值）
 const overallProgress = computed(() => {
-  // 🔥 优先使用后端返回的总进度
+  // 优先使用后端返回的总进度
   if (overallProgressData.value && overallProgressData.value.overallProgress !== undefined) {
     return overallProgressData.value.overallProgress
   }
@@ -1801,7 +1801,7 @@ const startUpload = async () => {
   try {
     loading.value = true
     await updateCurrentStep(1)
-    currentStep.value = 1  // 🔥 更新页面显示步骤
+    currentStep.value = 1  // 更新页面显示步骤
     currentTask.value.currentStep = 1
     currentTask.value.maxCurrentStep = 1
   } finally {
@@ -1844,7 +1844,7 @@ const handleFileChange = async (uploadFile: any) => {
     const fileName = file.name
     const isZip = fileName.toLowerCase().endsWith('.zip')
 
-    // 🔥 前端模拟进度：开始上传
+    // 前端模拟进度：开始上传
     uploadProgress.value = {}
     overallProgressData.value = { overallProgress: 0 }
     
@@ -1932,7 +1932,7 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
       uploadingFiles.value.push(fileType)
     }
 
-    // 🔥 前端模拟单文件进度
+    // 前端模拟单文件进度
     uploadProgress.value[fileType] = { progress: 0, status: 'uploading' }
 
     const simulateSingleProgress = (start: number, end: number, duration: number) => {
@@ -2017,7 +2017,7 @@ const viewFileData = async (file: any) => {
   queryParams.value.pageNo = 1
   activeFile.value = file
   
-  // 🔥 获取错误信息
+  // 获取错误信息
   try {
     const errorInfo = await ReportDataApi.getFileValidationErrors(file.taskId, file.fileType)
     const errorRowsSet = new Set()
@@ -2058,7 +2058,7 @@ const getExcelDetailData = async () => {
       list.forEach((item, index) => {
         const rowNum = (queryParams.value.pageNo - 1) * queryParams.value.pageSize + index + 1
         item.orderNo = rowNum
-        // 🔥 标记是否有错误
+        // 标记是否有错误
         item.hasError = dataViewDialog.value.errorRows.has(rowNum)
       })
       dataViewDialog.value.data = list
@@ -2115,13 +2115,13 @@ const updateCurrentStep = async (step: number) => {
 const startPreQC = async () => {
   if (currentTask.value.maxCurrentStep === 1) {
     try {
-      // 🔥 1. 立即切换到步骤2并更新后端
+      // 1. 立即切换到步骤2并更新后端
       await updateCurrentStep(2)
       currentStep.value = 2
       currentTask.value.currentStep = 2
       currentTask.value.maxCurrentStep = 2
       
-      // 🔥 2. 显示质控进度动画
+      // 2. 显示质控进度动画
       isQCProcessing.value = true
       qcProgress.value = 0
       qcCurrentPhase.value = '准备开始质控...'
@@ -2156,7 +2156,7 @@ const startPreQC = async () => {
       qcCurrentPhase.value = '正在执行质控规则...'
       await simulateQCProgress(70, 85, 2000)
       
-      // 🔥 3. 调用后端质控接口
+      // 3. 调用后端质控接口
       qcCurrentPhase.value = '正在调用后端质控接口...'
       await operateQCResults(currentTask.value.taskId)
       
@@ -2164,7 +2164,7 @@ const startPreQC = async () => {
       qcCurrentPhase.value = '质控完成，正在生成报告...'
       await simulateQCProgress(85, 100, 1500)
       
-      // 🔥 4. 加载质控结果
+      // 4. 加载质控结果
       await loadQCResults(currentTask.value.taskId)
       
       message.success('前置质控完成，所有文件质控通过')
@@ -2179,7 +2179,7 @@ const startPreQC = async () => {
     }
   } else {
     try {
-      // 🔥 重新质控：先切换步骤，再显示进度
+      // 重新质控：先切换步骤，再显示进度
       currentStep.value = 2
       currentTask.value.currentStep = 2
       
@@ -2208,7 +2208,7 @@ const startPreQC = async () => {
   }
 }
 
-// 🔥 模拟质控进度
+// 模拟质控进度
 const simulateQCProgress = (start: number, end: number, duration: number) => {
   return new Promise(resolve => {
     const step = (end - start) / (duration / 50)
@@ -2224,7 +2224,7 @@ const simulateQCProgress = (start: number, end: number, duration: number) => {
   })
 }
 
-// 🔥 模拟单个文件质控进度
+// 模拟单个文件质控进度
 const simulateFileQCProgress = (fileIndex: number, start: number, end: number, duration: number) => {
   return new Promise(resolve => {
     const step = (end - start) / (duration / 50)
@@ -2407,10 +2407,10 @@ const submitReport = async () => {
     await ReportDataApi.submitReport(currentTask.value.taskId, fileIds)
     message.success('数据已成功提交上报，等待后台审核...')
     
-    // 🔥 重新加载任务信息，获取最新的 reportStatus
+    // 重新加载任务信息，获取最新的 reportStatus
     await loadCurrentTask()
     
-    // 🔥 显示审核状态
+    // 显示审核状态
     reviewStatus.value = 0 // 待审核
     reviewInfo.value = {
       submitTime: new Date(),
@@ -2432,7 +2432,7 @@ const submitReport = async () => {
   }
 }
 
-// 🔥 审核状态相关方法
+// 审核状态相关方法
 
 /** 获取审核状态样式类 */
 const getReviewStatusClass = () => {
@@ -2584,7 +2584,7 @@ const stopReviewPolling = () => {
 /** 进入国家平台提交 */
 const goToNationalSubmit = async () => {
   try {
-    // 🔥 直接跳转到步骤4
+    // 直接跳转到步骤4
     currentStep.value = 4
     currentTask.value.currentStep = 4
     currentTask.value.maxCurrentStep = 4
@@ -2606,7 +2606,7 @@ const backToUploadForResubmit = async () => {
   try {
     await message.confirm('返回后需要重新上传文件并提交，确认继续？')
     
-    // 🔥 重置步骤到上传阶段
+    // 重置步骤到上传阶段
     currentStep.value = 1
     currentTask.value.currentStep = 1
     currentTask.value.maxCurrentStep = 1
@@ -2690,7 +2690,7 @@ const loadCurrentTask = async () => {
       task.currentStep = task.currentStep ?? 0
       currentTask.value = task
       
-      // 🔥 根据 reportStatus 决定显示哪个步骤
+      // 根据 reportStatus 决定显示哪个步骤
       // 0: 未上报 -> 正常流程（步骤0-3）
       // 1/5: 已上报/审核中 -> 显示审核状态页（步骤3）
       // 2: 已退回 -> 跳回步骤1重新上报
@@ -2733,7 +2733,7 @@ const loadCurrentTask = async () => {
           }
         }
         
-        // 🔥 如果 reportStatus 为 1/5（审核中），显示审核状态
+        // 如果 reportStatus 为 1/5（审核中），显示审核状态
         if (task.reportStatus === 1 || task.reportStatus === 5) {
           reviewStatus.value = 0 // 待审核
           reviewInfo.value = {

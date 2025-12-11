@@ -82,7 +82,7 @@
             <el-input
               v-model="formData.descriptionText"
               :rows="3"
-              maxlength="1000"
+              maxlength="2000"
               placeholder="请输入Excel第2行的说明文本，支持长文本编辑"
               show-word-limit
               type="textarea"

@@ -52,7 +52,7 @@
       <el-table-column label="省级行政区划代码" align="center" prop="domainCode" width="130" />
       <el-table-column label="组织机构代码" align="center" prop="organizationCode" width="120" />
       <el-table-column label="医疗机构代码" align="center" prop="hospitalCode" width="150" />
-      <el-table-column label="组织机构名称" align="center" prop="organizationName" min-width="200" show-overflow-tooltip />
+      <el-table-column label="医疗机构名称" align="center" prop="organizationName" min-width="200" show-overflow-tooltip />
       <el-table-column label="国家药品编码（YPID）" align="center" prop="ypid" width="150" />
       <el-table-column label="院内药品唯一码" align="center" prop="hospitalDrugId" width="130" />
       <el-table-column label="省级药品集中采购平台药品编码" align="center" prop="provinceDrugId" width="180" />

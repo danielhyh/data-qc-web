@@ -28,9 +28,9 @@
                     <Icon icon="ep:view" class="mr-5px" />
                     {{ showExampleData ? '隐藏' : '显示' }}示例数据
                   </el-button>
-                  <el-button size="small" type="primary" @click="downloadTemplate">
+                  <el-button size="small" type="primary" :loading="downloading" @click="downloadTemplate">
                     <Icon icon="ep:download" class="mr-5px" />
-                    下载模板
+                    {{ downloading ? '下载中...' : '下载模板' }}
                   </el-button>
                 </div>
               </div>
@@ -90,9 +90,9 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="downloadTemplate">
+        <el-button type="primary" :loading="downloading" @click="downloadTemplate">
           <Icon icon="ep:download" class="mr-5px" />
-          下载模板
+          {{ downloading ? '下载中...' : '下载模板' }}
         </el-button>
       </div>
     </template>
@@ -120,6 +120,7 @@ defineOptions({ name: 'ExcelPreviewDialog' })
 // ========================= 响应式数据 =========================
 const dialogVisible = ref(false)
 const loading = ref(false)
+const downloading = ref(false)
 const showExampleData = ref(true)
 const currentTemplateId = ref<number>()
 
@@ -275,6 +276,7 @@ const toggleExampleData = () => {
 const downloadTemplate = async () => {
   if (!currentTemplateId.value) return
 
+  downloading.value = true
   try {
     // 使用默认参数直接下载模板
     const data = await ImportTemplateApi.downloadImportTemplateBlob(
@@ -300,6 +302,8 @@ const downloadTemplate = async () => {
   } catch (error) {
     console.error('下载失败:', error)
     ElMessage.error('下载失败，请重试')
+  } finally {
+    downloading.value = false
   }
 }
 

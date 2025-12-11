@@ -65,7 +65,7 @@
 | ESLint                        | 脚本代码检查              |
 | DotENV                        | env 文件高亮            |
 
-## 🔥 后端架构
+## 后端架构
 
 支持 Spring Boot、Spring Cloud 两种架构：
 

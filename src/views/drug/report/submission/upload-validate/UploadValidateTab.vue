@@ -23,26 +23,32 @@
     <div class="upload-section">
       <!-- 批量上传区域 -->
       <div class="batch-upload">
-        <!-- 拖拽上传区域（上传中时置灰） -->
-        <el-upload
-          ref="uploadRef"
-          class="upload-dragger"
-          :class="{ 'upload-disabled': isUploading }"
-          drag
-          action="#"
-          :auto-upload="false"
-          :on-change="handleFileChange"
-          accept=".zip,.rar,.xlsx"
-          :disabled="isUploading || uploadingFiles.length > 0"
-          :show-file-list="false"
+        <!-- 拖拽上传区域（上传中或不允许操作时置灰） -->
+        <el-tooltip 
+          :content="operationDisabledReason" 
+          placement="top" 
+          :disabled="canUploadAndQC"
         >
+          <el-upload
+            ref="uploadRef"
+            class="upload-dragger"
+            :class="{ 'upload-disabled': isUploading || !canUploadAndQC }"
+            drag
+            action="#"
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            accept=".zip,.rar,.xlsx"
+            :disabled="isUploading || uploadingFiles.length > 0 || !canUploadAndQC"
+            :show-file-list="false"
+          >
           <el-icon class="el-icon--upload">
             <UploadFilled />
           </el-icon>
           <div class="el-upload__text">
             拖拽ZIP，RAR压缩包或所有Excel文件到此处，或<em>点击上传</em>
           </div>
-        </el-upload>
+          </el-upload>
+        </el-tooltip>
 
         <!-- 上传结果总览（处理完成后显示） -->
         <transition name="fade-slide">
@@ -205,19 +211,19 @@
             <span class="record-count">{{ row.recordCount || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="errorCount" label="错误数" width="100" align="center">
+        <el-table-column prop="validationErrorCount" label="校验错误" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.errorCount > 0" type="danger" size="small">
-              {{ row.errorCount }}
+            <el-tag v-if="row.validationErrorCount > 0" type="danger" size="small">
+              {{ row.validationErrorCount }}
             </el-tag>
             <span v-else class="text-success">0</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" fixed="right" width="250" align="center">
           <template #default="{ row }">
-            <!-- 查看数据详情按钮 - 已上传状态 -->
+            <!-- 查看数据详情按钮 - 已上传状态且无校验错误 -->
             <el-button
-              v-if="row.uploadStatus === 2 && row.errorCount === 0"
+              v-if="row.uploadStatus === 2 && row.validationErrorCount === 0"
               type="primary"
               size="small"
               @click="$emit('view-file-data', row)"
@@ -226,9 +232,9 @@
               查看数据
             </el-button>
 
-            <!-- 查看错误详情按钮 - 上传失败(3)或有错误时 -->
+            <!-- 查看错误详情按钮 - 上传失败(3)或有校验错误时 -->
             <el-button
-              v-if="row.uploadStatus === 3 || (row.uploadStatus === 2 && row.errorCount > 0)"
+              v-if="row.uploadStatus === 3 || (row.uploadStatus === 2 && row.validationErrorCount > 0)"
               type="danger"
               size="small"
               @click="$emit('view-error-detail', row)"
@@ -267,15 +273,15 @@
           返回准备
         </el-button>
         <el-tooltip
-          :content="!allFilesUploaded ? '请先完成所有文件的上传与基础校验' : '开始前置质控'"
+          :content="getQCButtonTooltip"
           placement="top"
-          :disabled="allFilesUploaded"
+          :disabled="canStartQC"
         >
           <span>
             <el-button
               type="primary"
               @click="$emit('start-pre-qc')"
-              :disabled="!allFilesUploaded"
+              :disabled="!canStartQC"
             >
               <el-icon class="mr-5px"><CircleCheck /></el-icon>
               开始前置质控
@@ -330,9 +336,14 @@ interface Props {
   fileList: any[]
   stepSummaryKey: number
   refreshingFileList: boolean
+  canUploadAndQC?: boolean  // 是否允许上传和质控操作
+  operationDisabledReason?: string  // 不允许操作时的提示信息
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  canUploadAndQC: true,
+  operationDisabledReason: ''
+})
 
 // Emits定义
 const emit = defineEmits<{
@@ -375,6 +386,27 @@ const uploadedFileCount = computed(() => {
 
 const allFilesUploaded = computed(() => {
   return props.fileList.length > 0 && props.fileList.every((file) => file.uploadStatus === 2)
+})
+
+/**
+ * 是否可以开始质控
+ * 需要同时满足：1. 所有文件已上传 2. 当前状态允许操作
+ */
+const canStartQC = computed(() => {
+  return allFilesUploaded.value && props.canUploadAndQC
+})
+
+/**
+ * 获取质控按钮的提示信息
+ */
+const getQCButtonTooltip = computed(() => {
+  if (!props.canUploadAndQC) {
+    return props.operationDisabledReason
+  }
+  if (!allFilesUploaded.value) {
+    return '请先完成所有文件的上传与基础校验'
+  }
+  return '开始前置质控'
 })
 
 const fileUploadPercentage = computed(() => {
@@ -468,7 +500,7 @@ const downloadTemplate = async () => {
   }
 }
 
-// 🔥 保存待上传的文件信息（用于校验通过后继续上传）
+// 保存待上传的文件信息（用于校验通过后继续上传）
 const pendingUploadFile = ref<File | null>(null)
 const pendingUploadRow = ref<any>(null)  // 单文件上传时保存行信息
 
@@ -482,13 +514,13 @@ const handleFileChange = async (uploadFile: any) => {
   try {
     const fileName = file.name
     
-    // 🔥 Step 1: 先校验表头字段（ZIP和Excel都需要）
+    // Step 1: 先校验表头字段（ZIP和Excel都需要）
     message.info('正在校验文件字段...')
     
     try {
       const validationResult = await ReportDataApi.validateHeaders(file, undefined)
       
-      // 🔥 无论通过与否，都显示弹框让用户确认
+      // 无论通过与否，都显示弹框让用户确认
       headerValidationDialog.value.visible = true
       headerValidationDialog.value.fileName = fileName
       headerValidationDialog.value.uploadFileType = validationResult.uploadFileType
@@ -515,7 +547,7 @@ const handleFileChange = async (uploadFile: any) => {
 }
 
 /**
- * 🔥 用户确认继续上传（校验通过后）
+ * 用户确认继续上传（校验通过后）
  */
 const handleContinueUpload = async () => {
   const file = pendingUploadFile.value
@@ -535,7 +567,7 @@ const handleContinueUpload = async () => {
 }
 
 /**
- * 🔥 真正执行批量文件上传（用户确认后调用）
+ * 真正执行批量文件上传（用户确认后调用）
  */
 const doBatchFileUpload = async (file: File) => {
   try {
@@ -621,13 +653,13 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
   const displayName = row.standardFileName || row.fileName
 
   try {
-    // 🔥 先校验表头
+    // 先校验表头
     message.info(`正在校验${displayName}字段...`)
     
     try {
       const validationResult = await ReportDataApi.validateHeaders(file, fileType)
       
-      // 🔥 无论通过与否，都显示弹框让用户确认
+      // 无论通过与否，都显示弹框让用户确认
       headerValidationDialog.value.visible = true
       headerValidationDialog.value.fileName = displayName
       headerValidationDialog.value.uploadFileType = validationResult.uploadFileType
@@ -654,7 +686,7 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
 }
 
 /**
- * 🔥 真正执行单文件上传（用户确认后调用）
+ * 真正执行单文件上传（用户确认后调用）
  */
 const doSingleFileUpload = async (file: File, row: any) => {
   const fileType = row.fileType
@@ -876,7 +908,6 @@ const doSingleFileUpload = async (file: File, row: any) => {
   .table-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     margin-bottom: 16px;
     padding: 12px 16px;
     background: #f5f7fa;
@@ -887,13 +918,17 @@ const doSingleFileUpload = async (file: File, row: any) => {
       font-size: 16px;
     }
     
+    // 刷新按钮靠右
+    > :last-child {
+      margin-left: auto;
+    }
+    
     .header-upload-stats {
       display: flex;
       align-items: center;
       gap: 12px;
-      flex: 1;
-      max-width: 400px;
-      margin: 0 20px;
+      width: 280px;
+      margin-left: 16px;
       
       .stats-label {
         white-space: nowrap;

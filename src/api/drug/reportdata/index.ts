@@ -329,6 +329,14 @@ export const ReportDataApi = {
     })
   },
 
+  // 重置质控状态（重新上传文件后调用）
+  resetQcStatus: (taskId: number): Promise<boolean> => {
+    return request.put({
+      url: '/drug/report-data/qc/reset-status',
+      params: { taskId }
+    })
+  },
+
   // ==================== 上报提交相关API ====================
   // 提交上报
   submitReport: (taskId: number, fileIds: Array<number>): Promise<boolean> => {
