@@ -667,6 +667,19 @@ const remainingRouter: AppRouteRecordRaw[] = [
         }
       },
       {
+        path: 'report-record',
+        name: 'ShortageReportRecord',
+        component: () => import('@/views/shortage/reportrecord/index.vue'),
+        meta: {
+          title: '填报记录',
+          icon: 'ep:document',
+          noCache: true,
+          canTo: true,
+          hidden: true,
+          activeMenu: '/shortage/report-period'  // 高亮周期管理菜单
+        }
+      },
+      {
         path: 'report-view/:taskId',
         name: 'ShortageReportView',
         component: () => import('@/views/shortage/reportrecord/components/Report.vue'),
@@ -676,7 +689,7 @@ const remainingRouter: AppRouteRecordRaw[] = [
           noCache: true,
           canTo: true,
           hidden: true,
-          activeMenu: '/shortage/reportrecord'
+          activeMenu: '/shortage/report-period'
         }
       }
     ]

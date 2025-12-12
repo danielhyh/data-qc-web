@@ -24,10 +24,17 @@ export interface OrgItem {
 }
 
 // 获取区域树（完整树，包含所有子节点）
-export const getAreaTree = (excludeModuleCode?: string) => {
+export const getAreaTree = (excludeModuleCode?: string, onlyMedical?: boolean) => {
+  const params: Record<string, any> = {}
+  if (excludeModuleCode) {
+    params.excludeModuleCode = excludeModuleCode
+  }
+  if (onlyMedical !== undefined) {
+    params.onlyMedical = onlyMedical
+  }
   return request.get<AreaNode[]>({
     url: '/system/area-org/area-tree',
-    params: excludeModuleCode ? { excludeModuleCode } : {}
+    params
   })
 }
 

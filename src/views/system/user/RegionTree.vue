@@ -156,13 +156,15 @@ const props = withDefaults(
     showCollapseButton?: boolean // 是否显示内部的收起按钮
     selectedRegionData?: any // 当前选中的地区数据（用于底部显示）
     excludeModuleCode?: string // 排除指定模块的无法上报机构（如 SHORTAGE）
+    onlyMedical?: boolean // 是否只统计医疗机构（admin_level=0），不传则统计所有机构
   }>(),
   {
     autoSelectFirst: true, // 默认自动选中
     showOrgCount: false, // 默认不显示机构数量
     showCollapseButton: false, // 默认不显示，交由外部控制
     selectedRegionData: null, // 默认无选中
-    excludeModuleCode: undefined // 默认不排除
+    excludeModuleCode: undefined, // 默认不排除
+    onlyMedical: undefined // 默认不传，统计所有机构
   }
 )
 
@@ -199,8 +201,8 @@ const collectExpandKeys = (nodes: Tree[]): string[] => {
 const getTree = async () => {
   loading.value = true
   try {
-    // 使用带机构数量的地区树API（支持排除指定模块的无法上报机构）
-    const res = await AreaOrgApi.getAreaTree(props.excludeModuleCode)
+    // 使用带机构数量的地区树API（支持排除指定模块的无法上报机构、可选只统计医疗机构）
+    const res = await AreaOrgApi.getAreaTree(props.excludeModuleCode, props.onlyMedical)
     regionList.value = res || []
 
     // 收集默认展开的节点（展开到市级）

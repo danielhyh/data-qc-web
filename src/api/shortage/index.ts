@@ -80,9 +80,13 @@ export const ReportZoneApi = {
   checkReportTime: (zoneId: number): Promise<ReportTimeCheckRespVO> =>
     request.get({ url: `/shortage/report-zone/check-time/${zoneId}` }),
 
-  // 获取可用专区选项
+  // 获取可用专区选项（status=0）
   getOptions: () =>
     request.get({ url: '/shortage/report-zone/options' }),
+
+  // 获取所有专区选项（不过滤status，用于周期管理等场景）
+  getAllOptions: () =>
+    request.get({ url: '/shortage/report-zone/options-all' }),
 
   // 开启填报专区并生成首批任务
   enableZone: (id: number) =>

@@ -86,15 +86,21 @@
             {{ formatDeadlineTime(scope.row.deadlineTime) }}
           </template>
         </el-table-column>
+        <el-table-column label="周期状态" align="center" width="100px">
+          <template #default="scope">
+            <el-tag v-if="scope.row.periodStatus === 0" type="info">未开始</el-tag>
+            <el-tag v-else-if="scope.row.periodStatus === 1" type="primary">填报中</el-tag>
+            <el-tag v-else-if="scope.row.periodStatus === 2" type="danger">已结束</el-tag>
+            <el-tag v-else type="info">-</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="任务剩余时间" align="center" width="150px">
           <template #default="scope">
-            <!-- 已逾期状态直接显示已逾期 -->
-            <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已结束</span>
-            <!-- 准备中状态显示距开始剩余时间 -->
-            <span v-else-if="scope.row.reportStatus === 4" :class="getRemainingTimeClass(scope.row.startTime)">
-              {{ calculateRemainingTime(scope.row.startTime, true) }}
-            </span>
-            <!-- 其他状态显示距截止剩余时间 -->
+            <!-- 周期已结束显示已结束 -->
+            <span v-if="scope.row.periodStatus === 2" class="text-gray-400">已结束</span>
+            <!-- 已提交状态显示已完成 -->
+            <span v-else-if="scope.row.reportStatus === 2" class="text-green-500">已完成</span>
+            <!-- 待填报和草稿状态显示距截止剩余时间 -->
             <span v-else :class="getRemainingTimeClass(scope.row.deadlineTime)">
               {{ calculateRemainingTime(scope.row.deadlineTime) }}
             </span>
@@ -120,30 +126,10 @@
       <el-table-column label="操作" align="center" width="200px" fixed="right">
         <template #default="scope">
           <div class="action-links">
-            <!-- 填报中或草稿状态：显示填报按钮 -->
+            <!-- 周期已结束：只能查看 -->
             <el-button
-              v-if="scope.row.reportStatus === 0 || scope.row.reportStatus === 1"
-              type="primary"
-              size="small"
-              @click="handleReport(scope.row.id)"
-            >
-              <Icon icon="ep:edit" class="mr-1" />
-              填报
-            </el-button>
-            
-            <!-- 已提交状态：在填报时间内显示修改按钮，否则显示查看按钮 -->
-            <el-button
-              v-if="scope.row.reportStatus === 2 && isInReportTimeRange(scope.row)"
-              type="primary"
-              size="small"
-              @click="handleReport(scope.row.id)"
-            >
-              <Icon icon="ep:edit" class="mr-1" />
-              修改
-            </el-button>
-            <el-button
-              v-if="scope.row.reportStatus === 2 && !isInReportTimeRange(scope.row)"
-              type="success"
+              v-if="scope.row.periodStatus === 2"
+              type="info"
               size="small"
               plain
               @click="handleView(scope.row.id)"
@@ -152,28 +138,36 @@
               查看
             </el-button>
             
-            <!-- 已逾期状态：显示逾期查看按钮 -->
+            <!-- 周期未结束且待填报或草稿状态：显示填报按钮 -->
             <el-button
-              v-if="scope.row.reportStatus === 3"
-              type="warning"
+              v-else-if="scope.row.reportStatus === 0 || scope.row.reportStatus === 1"
+              type="primary"
               size="small"
-              plain
-              @click="handleView(scope.row.id)"
+              @click="handleReport(scope.row.id)"
             >
-              <Icon icon="ep:warning" class="mr-1" />
-              逾期查看
+              <Icon icon="ep:edit" class="mr-1" />
+              填报
             </el-button>
             
-            <!-- 准备中状态：显示查看按钮 -->
+            <!-- 周期未结束且已提交状态：在填报时间内显示修改按钮，否则显示查看按钮 -->
             <el-button
-              v-if="scope.row.reportStatus === 4"
-              type="info"
+              v-else-if="scope.row.reportStatus === 2 && isInReportTimeRange(scope.row)"
+              type="primary"
+              size="small"
+              @click="handleReport(scope.row.id)"
+            >
+              <Icon icon="ep:edit" class="mr-1" />
+              修改
+            </el-button>
+            <el-button
+              v-else-if="scope.row.reportStatus === 2 && !isInReportTimeRange(scope.row)"
+              type="success"
               size="small"
               plain
               @click="handleView(scope.row.id)"
             >
-              <Icon icon="ep:view" class="mr-1" />
-              预览
+              <Icon icon="ep:document" class="mr-1" />
+              查看
             </el-button>
           </div>
         </template>
@@ -375,14 +369,15 @@ const handleReport = (id: number) => {
   // 从列表中找到对应的任务
   const task = list.value.find((t) => t.id === id)
   if (!task) return
-  // 跳转到填报页面,传递专区ID、周期和填报状态
+  // 跳转到填报页面,传递专区ID、周期、填报状态和周期状态
   router.push({
     name: 'ShortageReport',
     params: { taskId: id.toString() },
     query: {
       zoneId: task.zoneId?.toString(),
       reportWeek: task.reportWeek,
-      reportStatus: task.reportStatus?.toString()
+      reportStatus: task.reportStatus?.toString(),
+      periodStatus: task.periodStatus?.toString()
     }
   })
 }
@@ -393,14 +388,15 @@ const handleView = (id: number) => {
   const task = list.value.find((t) => t.id === id)
   if (!task) return
 
-  // 跳转到查看页面,传递专区ID、周期和填报状态
+  // 跳转到查看页面,传递专区ID、周期、填报状态和周期状态
   router.push({
     name: 'ShortageReport',
     params: { taskId: id.toString() },
     query: {
       zoneId: task.zoneId?.toString(),
       reportWeek: task.reportWeek,
-      reportStatus: task.reportStatus?.toString()
+      reportStatus: task.reportStatus?.toString(),
+      periodStatus: task.periodStatus?.toString()
     }
   })
 }

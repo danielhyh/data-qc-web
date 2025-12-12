@@ -134,23 +134,6 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="机构是否使用" width="150" align="center" class-name="header-bold">
-            <template #default="scope">
-              <el-select
-                :model-value="scope.row.notAvailable ? 0 : 1"
-                :disabled="isReadOnly"
-                style="width: 100%"
-                @change="(val) => {
-                  scope.row.notAvailable = val === 0
-                  handleNotAvailableChange(scope.row)
-                }"
-              >
-                <el-option label="是" :value="1" />
-                <el-option label="否" :value="0" />
-              </el-select>
-            </template>
-          </el-table-column>
-
           <el-table-column
             label="本周累计使用量"
             width="160"
@@ -161,7 +144,7 @@
               <div class="usage-input">
                 <el-input
                   v-model="scope.row.weekUsageAmount"
-                  :disabled="isReadOnly || scope.row.notAvailable"
+                  :disabled="isReadOnly || scope.row.supplyStatus === 5"
                   style="width: 100%"
                   placeholder="请输入本周累计使用量"
                   @input="handleUsageInput(scope.row)"
@@ -181,7 +164,7 @@
               <div class="stock-input">
                 <el-input
                   v-model="scope.row.currentStockAmount"
-                  :disabled="isReadOnly || scope.row.notAvailable"
+                  :disabled="isReadOnly || scope.row.supplyStatus === 5"
                   style="width: 100%"
                   placeholder="请输入当日实时库存量"
                   @input="handleStockInput(scope.row)"
@@ -201,25 +184,23 @@
               <div class="supply-input-wrapper">
                 <el-select
                   v-model="scope.row.supplyStatus"
-                  :disabled="isReadOnly || scope.row.notAvailable"
+                  :disabled="isReadOnly"
                   style="width: 100%"
                   placeholder="请选择"
                   clearable
-                  :class="{ 'required-field': isSupplyStatusRequired(scope.row) }"
-                  :key="`supply-${scope.$index}-${scope.row.weekUsageAmount}-${scope.row.currentStockAmount}`"
+                  :class="{ 'required-field': !scope.row.supplyStatus }"
                   @change="(val) => handleSupplyStatusChange(scope.row, val)"
                 >
                   <el-option
-                    v-for="status in getAvailableSupplyOptions(scope.row)"
+                    v-for="status in getIntDictOptions(DICT_TYPE.SUPPLY_STATUS)"
                     :key="status.value"
                     :label="status.label"
                     :value="status.value"
                   />
                 </el-select>
                 <span
-                  v-if="isSupplyStatusRequired(scope.row)"
+                  v-if="!scope.row.supplyStatus"
                   class="required-indicator"
-                  :key="`required-${scope.$index}-${scope.row.weekUsageAmount}-${scope.row.currentStockAmount}`"
                   >*</span
                 >
               </div>
@@ -322,16 +303,18 @@ const taskId = ref<string>(route.params.taskId as string)
 const routeZoneId = ref<string | undefined>(route.query.zoneId as string | undefined)
 const routeReportWeek = ref<string | undefined>(route.query.reportWeek as string | undefined)
 const reportStatus = ref<number>(route.query.reportStatus ? Number(route.query.reportStatus) : 0)
+const periodStatus = ref<number>(route.query.periodStatus ? Number(route.query.periodStatus) : 1)
 
-// 根据填报状态判断是否为只读模式
-// - 已逾期(3)/准备中(4)：始终只读
+// 根据填报状态和周期状态判断是否为只读模式
+// - 周期已结束(2)：只读
 // - 已提交(2)：填报时间内可编辑，填报时间外只读
+// - 待填报(0)/草稿(1)：可编辑
 const isReadOnly = computed(() => {
-  // 逾期和准备中始终只读
-  if (reportStatus.value === 3 || reportStatus.value === 4) return true
+  // 周期已结束：只读
+  if (periodStatus.value === 2) return true
   // 已提交状态：在填报时间内可编辑
   if (reportStatus.value === 2) return !isInReportTime.value
-  // 其他状态（填报中/草稿）可编辑
+  // 其他状态（待填报/草稿）可编辑
   return false
 })
 
@@ -444,13 +427,7 @@ const timeConfigDisplay = ref('加载中...')
 
 // 通知标题（包含剩余时间信息）
 const noticeTitle = computed(() => {
-  // 准备中状态
-  if (reportStatus.value === 4 && taskDetail.value?.startTime) {
-    const timeToStart = calculateRemainingTimeFromTarget(taskDetail.value.startTime, true)
-    return `填报须知（${timeToStart}）`
-  }
-  
-  // 填报中状态（reportStatus === 0 或 1） - 使用 taskDetail.deadlineTime 计算剩余时间
+  // 待填报/草稿状态 - 显示剩余时间
   if ((reportStatus.value === 0 || reportStatus.value === 1) && taskDetail.value?.deadlineTime) {
     const remaining = calculateRemainingTimeFromTarget(taskDetail.value.deadlineTime, false)
     return `填报须知（${remaining}）`
@@ -459,11 +436,6 @@ const noticeTitle = computed(() => {
   // 已提交状态 - 不显示剩余时间
   if (reportStatus.value === 2) {
     return '填报须知'
-  }
-  
-  // 已逾期状态
-  if (reportStatus.value === 3) {
-    return '填报须知（已逾期）'
   }
   
   return '填报须知'
@@ -534,23 +506,18 @@ const calculateTimeToStart = (startTime: string): string => {
   return `距填报开始还有 ${minutes}分钟`
 }
 
-// 是否有填写的数据 - 只要有任意一项填写（包括0）或勾选了"本机构未使用此药品"就可以保存草稿
+// 是否有填写的数据 - 只要有任意一项填写了供应情况就可以保存草稿
 const hasNoFilledData = computed(() => {
   return !reportList.value.some((item) => {
-    // 勾选了"本机构未使用此药品"也算作已填写
-    if (item.notAvailable) {
-      return true
-    }
-    const hasWeekUsage = item.weekUsageAmount !== undefined && item.weekUsageAmount !== null
-    const hasCurrentStock = item.currentStockAmount !== undefined && item.currentStockAmount !== null
-    return hasWeekUsage || hasCurrentStock
+    // 填写了供应情况就算已填写
+    return item.supplyStatus !== undefined && item.supplyStatus !== null
   })
 })
 
 // 保存草稿按钮提示
 const getSaveDraftTooltip = computed(() => {
   if (hasNoFilledData.value) {
-    return '请至少填写一项数据或勾选"本机构未使用此药品"'
+    return '请至少填写一项供应情况'
   }
   return '保存当前填写的数据为草稿'
 })
@@ -563,7 +530,7 @@ const getSubmitTooltip = computed(() => {
     }
     return '当前不在填报时间内'
   }
-  return '提交填报数据（提交后将无法修改）'
+  return '提交填报数据（填报时间内可修改重报）'
 })
 
 // 验证数据完整性
@@ -571,8 +538,19 @@ const validateData = (): { valid: boolean; message: string; incompleteItems: any
   const incompleteItems: any[] = []
 
   reportList.value.forEach((item, index) => {
-    // 跳过标记为"无此药品"的项
-    if (item.notAvailable) {
+    // 检查供应情况是否已填写
+    if (!item.supplyStatus) {
+      incompleteItems.push({
+        index: index + 1,
+        drugName: item.drugName,
+        category: item.drugCategory,
+        missingSupplyStatus: true
+      })
+      return
+    }
+    
+    // 如果供应情况为"未使用"(5)，跳过用量和库存校验
+    if (item.supplyStatus === 5) {
       return
     }
     
@@ -588,25 +566,6 @@ const validateData = (): { valid: boolean; message: string; incompleteItems: any
         missingWeekUsage: !hasWeekUsage,
         missingCurrentStock: !hasCurrentStock
       })
-    }
-
-    // 使用相同的逻辑检查是否需要必填供应情况
-    const isRequired = getIsSupplyStatusRequired(item)
-
-    // 如果需要必填，供应情况必须填写
-    if (isRequired && (!item.supplyStatus || item.supplyStatus === 0)) {
-      // 如果还没有记录这个项目，添加进去
-      const existingItem = incompleteItems.find(incomplete => incomplete.index === index + 1)
-      if (existingItem) {
-        existingItem.missingSupplyStatus = true
-      } else {
-        incompleteItems.push({
-          index: index + 1,
-          drugName: item.drugName,
-          category: item.drugCategory,
-          missingSupplyStatus: true
-        })
-      }
     }
   })
 
@@ -631,62 +590,15 @@ const validateData = (): { valid: boolean; message: string; incompleteItems: any
   return { valid: true, message: '', incompleteItems: [] }
 }
 
-// 判断供应情况是否必填 - 使用计算属性确保响应式更新
-const getIsSupplyStatusRequired = (row: ReportRecordVO): boolean => {
-  // 显式检查数值，确保响应式更新
-  const weekUsage = row.weekUsageAmount
-  const stockAmount = row.currentStockAmount
-
-  // 只有用量或库存大于0时，才需要填供应情况（0值不需要必填）
-  return (
-    (weekUsage !== undefined && weekUsage !== null && weekUsage > 0) ||
-    (stockAmount !== undefined && stockAmount !== null && stockAmount > 0)
-  )
-}
-
-// 为了在模板中使用，创建一个方法
-const isSupplyStatusRequired = (row: ReportRecordVO): boolean => {
-  return getIsSupplyStatusRequired(row)
-}
-
-// 获取可用的供应情况选项 - 用量和库存都是0时不能选"充足"和"较充足"
-const getAvailableSupplyOptions = (row: ReportRecordVO) => {
-  const allOptions = getIntDictOptions(DICT_TYPE.SUPPLY_STATUS)
-  const weekUsage = row.weekUsageAmount ?? 0
-  const stockAmount = row.currentStockAmount ?? 0
-  
-  // 如果用量和库存都是0，排除"充足"(1)和"较充足"(2)选项
-  if (weekUsage === 0 && stockAmount === 0) {
-    return allOptions.filter(opt => opt.value !== 1 && opt.value !== 2)
-  }
-  return allOptions
-}
-
-// 处理供应情况变化 - 校验逻辑
+// 处理供应情况变化
 const handleSupplyStatusChange = (row: ReportRecordVO, val: number) => {
-  const weekUsage = row.weekUsageAmount ?? 0
-  const stockAmount = row.currentStockAmount ?? 0
-  
-  // 如果用量和库存都是0，但选择了"充足"或"较充足"，给出提示并清空
-  if (weekUsage === 0 && stockAmount === 0 && (val === 1 || val === 2)) {
-    message.warning('用量和库存都为0时，不能选择"充足"或"较充足"')
-    // @ts-ignore
-    row.supplyStatus = undefined
-  }
-}
-
-// 处理"无此药品"状态变化
-const handleNotAvailableChange = (row: ReportRecordVO) => {
-  if (row.notAvailable) {
-    // 勾选"无此药品"时，清空所有填报数据
+  // 如果选择了"未使用"(5)，清空用量和库存
+  if (val === 5) {
     // @ts-ignore
     row.weekUsageAmount = undefined
     // @ts-ignore
     row.currentStockAmount = undefined
-    // @ts-ignore
-    row.supplyStatus = undefined
   }
-  // 如果取消勾选，不做任何操作，让用户重新填写
 }
 
 // 处理用量输入 - 只允许数字
@@ -719,25 +631,12 @@ const handleStockInput = (row: ReportRecordVO) => {
 
 // 处理用量变化
 const handleUsageChange = (row: ReportRecordVO) => {
-  checkAndClearSupplyStatus(row)
+  // 不再自动清空供应情况
 }
 
 // 处理库存变化
 const handleStockChange = (row: ReportRecordVO) => {
-  checkAndClearSupplyStatus(row)
-}
-
-// 检查并清空供应情况
-const checkAndClearSupplyStatus = (row: ReportRecordVO) => {
-  // 如果两个值都未填写或都为0，清空供应情况
-  const weekUsage = row.weekUsageAmount ?? 0
-  const stockAmount = row.currentStockAmount ?? 0
-
-  // 只有当两个值都是0或都未填写时，才清空供应情况
-  if (weekUsage === 0 && stockAmount === 0) {
-    // @ts-ignore - 清空供应情况
-    row.supplyStatus = undefined
-  }
+  // 不再自动清空供应情况
 }
 
 // 完成度统计 - 按药品名称去重统计（一个药品多个剂型只算一个）
@@ -747,7 +646,7 @@ const totalCount = computed(() => {
   return drugNames.size
 })
 
-// 已完成数：按药品名称去重，一个药品的所有剂型都填写完才算完成
+// 已完成数：按药品名称去重，一个药品的所有剂型都填写了供应情况才算完成
 const completedCount = computed(() => {
   // 按药品名称分组
   const drugMap = new Map<string, any[]>()
@@ -759,14 +658,12 @@ const completedCount = computed(() => {
     drugMap.get(drugName)!.push(item)
   })
 
-  // 统计完成的药品数量（一个药品的所有剂型都填写完才算完成）
+  // 统计完成的药品数量（一个药品的所有剂型都填写了供应情况才算完成）
   let count = 0
   drugMap.forEach((items) => {
     const allCompleted = items.every(item => {
-      if (item.notAvailable) return true
-      const hasWeekUsage = item.weekUsageAmount !== undefined && item.weekUsageAmount !== null
-      const hasCurrentStock = item.currentStockAmount !== undefined && item.currentStockAmount !== null
-      return hasWeekUsage || hasCurrentStock
+      // 填写了供应情况就算完成
+      return item.supplyStatus !== undefined && item.supplyStatus !== null
     })
     if (allCompleted) count++
   })
@@ -867,16 +764,15 @@ const loadDrugList = async () => {
     )
 
     // 处理后端返回的数据：null转为undefined让输入框显示为空
-    // 如果notAvailable=true，数值字段也应该清空（兼容历史脏数据）
+    // 如果supplyStatus=5（未使用），数值字段应该清空
     reportList.value = data.map(item => {
-      const isNotAvailable = item.notAvailable || false
+      const isNotUsed = item.supplyStatus === 5
       return {
         ...item,
-        notAvailable: isNotAvailable,
-        // 如果勾选了"否"，数值字段强制清空（兼容数据库中存的0）
-        weekUsageAmount: isNotAvailable ? undefined : (item.weekUsageAmount === null ? undefined : item.weekUsageAmount),
-        currentStockAmount: isNotAvailable ? undefined : (item.currentStockAmount === null ? undefined : item.currentStockAmount),
-        supplyStatus: isNotAvailable ? undefined : (item.supplyStatus === null ? undefined : item.supplyStatus)
+        // 如果供应情况为"未使用"，数值字段强制清空
+        weekUsageAmount: isNotUsed ? undefined : (item.weekUsageAmount === null ? undefined : item.weekUsageAmount),
+        currentStockAmount: isNotUsed ? undefined : (item.currentStockAmount === null ? undefined : item.currentStockAmount),
+        supplyStatus: item.supplyStatus === null ? undefined : item.supplyStatus
       }
     })
 
@@ -913,8 +809,8 @@ const loadDrugList = async () => {
 
 // 获取行样式类名
 const getRowClassName = ({ row }: { row: ReportRecordVO }): string => {
-  if (row.supplyStatus === 4) return 'severe-shortage-row'
   if (row.supplyStatus === 3) return 'shortage-row'
+  if (row.supplyStatus === 5) return 'not-used-row'
   return ''
 }
 
@@ -946,14 +842,13 @@ const handleSubmit = async () => {
     // 提交所有数据 - 过滤掉临时显示属性，undefined转为null
     const submitData = reportList.value.map((item) => {
       const { drugIndex, showDrugName, rowspan, ...cleanItem } = item as any
-      const isNotAvailable = item.notAvailable || false
+      const isNotUsed = item.supplyStatus === 5
       return {
         ...cleanItem,
-        notAvailable: isNotAvailable,
-        // 如果勾选了"否"（不使用此药品），则数值字段强制设为null
-        supplyStatus: isNotAvailable ? null : (item.supplyStatus ?? null),
-        weekUsageAmount: isNotAvailable ? null : (item.weekUsageAmount ?? null),
-        currentStockAmount: isNotAvailable ? null : (item.currentStockAmount ?? null)
+        // 如果供应情况为"未使用"(5)，则数值字段强制设为null
+        supplyStatus: item.supplyStatus ?? null,
+        weekUsageAmount: isNotUsed ? null : (item.weekUsageAmount ?? null),
+        currentStockAmount: isNotUsed ? null : (item.currentStockAmount ?? null)
       }
     })
 
@@ -982,25 +877,21 @@ const handleSaveDraft = async () => {
     savingDraft.value = true
 
     // 只保存用户填写过的记录，避免把空记录也保存到数据库
-    // 判断条件：勾选了notAvailable，或者填写了用量/库存
+    // 判断条件：填写了供应情况就保存（包括未使用=5）
     const filledItems = reportList.value.filter((item) => {
-      if (item.notAvailable) return true
-      const hasWeekUsage = item.weekUsageAmount !== undefined && item.weekUsageAmount !== null
-      const hasCurrentStock = item.currentStockAmount !== undefined && item.currentStockAmount !== null
-      return hasWeekUsage || hasCurrentStock
+      return item.supplyStatus !== undefined && item.supplyStatus !== null
     })
 
     // 过滤并格式化数据 - 过滤掉临时显示属性，undefined转为null
     const draftData = filledItems.map((item) => {
       const { drugIndex, showDrugName, rowspan, ...cleanItem } = item as any
-      const isNotAvailable = item.notAvailable || false
+      const isNotUsed = item.supplyStatus === 5
       return {
         ...cleanItem,
-        notAvailable: isNotAvailable,
-        // 如果勾选了"否"（不使用此药品），则数值字段强制设为null
-        supplyStatus: isNotAvailable ? null : (item.supplyStatus ?? null),
-        weekUsageAmount: isNotAvailable ? null : (item.weekUsageAmount ?? null),
-        currentStockAmount: isNotAvailable ? null : (item.currentStockAmount ?? null)
+        // 如果供应情况为“未使用”(5)，则数值字段强制设为null
+        supplyStatus: item.supplyStatus ?? null,
+        weekUsageAmount: isNotUsed ? null : (item.weekUsageAmount ?? null),
+        currentStockAmount: isNotUsed ? null : (item.currentStockAmount ?? null)
       }
     })
 

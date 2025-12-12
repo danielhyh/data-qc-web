@@ -296,12 +296,12 @@
                           <el-dropdown-item command="edit" v-if="checkPermi(['system:dept:update'])">
                             <Icon icon="ep:edit" class="mr-5px" />编辑机构
                           </el-dropdown-item>
-                          <!-- 维护短缺机构 - 仅医疗机构显示 -->
+                          <!-- 维护无法上报机构 - 仅医疗机构显示 -->
                           <el-dropdown-item
                             v-if="scope.row.adminLevel === 0 && checkPermi(['system:monitoring-unable-report:create'])"
                             command="unableReport"
                           >
-                            <Icon icon="ep:warning" class="mr-5px" />维护短缺机构
+                            <Icon icon="ep:warning" class="mr-5px" />维护无法上报机构
                           </el-dropdown-item>
                           <!-- 管理账号 -->
                           <el-dropdown-item command="account" v-if="checkPermi(['system:user:query'])">
@@ -863,10 +863,11 @@ const openDetail = (row: any) => {
   detailDrawerRef.value?.open(row)
 }
 
-// ========== 维护短缺机构相关 ==========
+// ========== 维护无法上报机构相关 ==========
 const unableReportFormRef = ref()
 const openUnableReportConfig = (row: any) => {
-  unableReportFormRef.value?.open('create', undefined, row.id, selectedRegionCode.value)
+  // 传递机构的businessType，用于限制可选模块
+  unableReportFormRef.value?.open('create', undefined, row.id, selectedRegionCode.value, row.businessType)
 }
 
 // ========== 业务类型配置相关 ==========

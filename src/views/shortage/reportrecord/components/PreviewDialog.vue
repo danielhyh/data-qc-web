@@ -37,13 +37,13 @@
           </div>
         </el-col>
         <el-col :span="6">
-          <div class="stat-card danger">
+          <div class="stat-card info">
             <div class="stat-icon">
-              <Icon icon="ep:circle-close" />
+              <Icon icon="ep:remove" />
             </div>
             <div class="stat-content">
-              <div class="stat-value">{{ statistics.severeShortageCount }}</div>
-              <div class="stat-label">严重短缺</div>
+              <div class="stat-value">{{ statistics.notUsedCount }}</div>
+              <div class="stat-label">未使用</div>
             </div>
           </div>
         </el-col>
@@ -104,17 +104,6 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="本机构未使用此药品"
-          width="150"
-          align="center"
-          class-name="header-bold"
-        >
-          <template #default="scope">
-            <el-tag v-if="scope.row.notAvailable" type="info" size="small">是</el-tag>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column
           label="本周累计使用量"
           prop="weekUsageAmount"
           width="180"
@@ -130,7 +119,7 @@
             </div>
           </template>
           <template #default="scope">
-            <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+            <span v-if="scope.row.supplyStatus === 5" class="not-available-text">-</span>
             <span v-else class="number-value usage">
               {{ formatNumber(scope.row.weekUsageAmount) }}
             </span>
@@ -152,7 +141,7 @@
             </div>
           </template>
           <template #default="scope">
-            <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+            <span v-if="scope.row.supplyStatus === 5" class="not-available-text">-</span>
             <span v-else class="number-value stock">
               {{ formatNumber(scope.row.currentStockAmount) }}
             </span>
@@ -166,8 +155,7 @@
           class-name="header-bold"
         >
           <template #default="scope">
-            <span v-if="scope.row.notAvailable" class="not-available-text">-</span>
-            <dict-tag v-else :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
+            <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
           </template>
         </el-table-column>
         <el-table-column
@@ -177,7 +165,7 @@
           class-name="header-bold"
         >
           <template #default="scope">
-            <span v-if="scope.row.notAvailable" class="not-available-text">-</span>
+            <span v-if="scope.row.supplyStatus === 5" class="not-available-text">-</span>
             <div v-else class="stock-days" :class="getStockDaysClass(scope.row)">
               <Icon :icon="getStockDaysIcon(scope.row)" class="days-icon" />
               <span>{{ calculateStockDays(scope.row) }}</span>
@@ -219,7 +207,7 @@ interface Statistics {
   totalDrugs: number
   sufficientCount: number
   shortageCount: number
-  severeShortageCount: number
+  notUsedCount: number
 }
 
 const message = useMessage()
@@ -230,25 +218,19 @@ const displayData = ref<ReportRecordVO[]>([])
 const statistics = computed((): Statistics | null => {
   if (!displayData.value.length) return null
 
-  const availableData = displayData.value.filter(item => !item.notAvailable)
-
   return {
     totalDrugs: displayData.value.length,
-    sufficientCount: availableData.filter(
-      (item) => item.supplyStatus === 1 || item.supplyStatus === 2
-    ).length,
-    shortageCount: availableData.filter((item) => item.supplyStatus === 3).length,
-    severeShortageCount: availableData.filter((item) => item.supplyStatus === 4).length
+    sufficientCount: displayData.value.filter((item) => item.supplyStatus === 1).length,
+    shortageCount: displayData.value.filter((item) => item.supplyStatus === 3).length,
+    notUsedCount: displayData.value.filter((item) => item.supplyStatus === 5).length
   }
 })
 
 // 打开对话框
 const open = (data: ReportRecordVO[] = []) => {
-  // 根据用量和库存字段来判断用户是否填报了数据，或标记本机构未使用此药品
+  // 根据供应情况字段来判断用户是否填报了数据
   const filteredData = data.filter(item =>
-    item.notAvailable ||
-    (item.weekUsageAmount !== undefined && item.weekUsageAmount !== null) ||
-    (item.currentStockAmount !== undefined && item.currentStockAmount !== null)
+    item.supplyStatus !== undefined && item.supplyStatus !== null
   )
   displayData.value = [...filteredData]
   dialogVisible.value = true
@@ -302,9 +284,8 @@ const getStockDaysIcon = (row: ReportRecordVO): string => {
 
 // 获取行样式
 const getRowClassName = ({ row }: { row: ReportRecordVO }): string => {
-  if (row.supplyStatus === 4) return 'severe-shortage-row'
   if (row.supplyStatus === 3) return 'shortage-row'
-  if (row.supplyStatus === 2) return 'warning-row'
+  if (row.supplyStatus === 5) return 'not-used-row'
   return ''
 }
 

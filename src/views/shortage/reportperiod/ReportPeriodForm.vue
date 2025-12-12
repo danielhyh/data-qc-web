@@ -10,8 +10,8 @@
       <el-form-item label="所属专区ID" prop="zoneId">
         <el-input v-model="formData.zoneId" placeholder="请输入所属专区ID" />
       </el-form-item>
-      <el-form-item label="周期标识(如:2025-W47)" prop="periodCode">
-        <el-input v-model="formData.periodCode" placeholder="请输入周期标识(如:2025-W47)" />
+      <el-form-item label="周期标识(如:2025-47)" prop="periodCode">
+        <el-input v-model="formData.periodCode" placeholder="请输入周期标识(如:2025-47)" />
       </el-form-item>
       <el-form-item label="年份" prop="year">
         <el-input v-model="formData.year" placeholder="请输入年份" />
@@ -111,7 +111,7 @@ const formData = ref({
 })
 const formRules = reactive({
   zoneId: [{ required: true, message: '所属专区ID不能为空', trigger: 'blur' }],
-  periodCode: [{ required: true, message: '周期标识(如:2025-W47)不能为空', trigger: 'blur' }],
+  periodCode: [{ required: true, message: '周期标识(如:2025-47)不能为空', trigger: 'blur' }],
   year: [{ required: true, message: '年份不能为空', trigger: 'blur' }],
   weekNum: [{ required: true, message: '周数不能为空', trigger: 'blur' }],
   dataStartTime: [{ required: true, message: '数据开始时间(上周六00:00)不能为空', trigger: 'blur' }],

@@ -1,16 +1,64 @@
 <!--填报记录管理页面-->
 <template>
   <div class="report-record-page">
+    <!-- 固定头部卡片（含返回按钮） -->
+    <ContentWrap class="header-card">
+      <div class="header-content">
+        <div class="header-left">
+          <el-button class="back-button" @click="handleBack" text>
+            <el-icon class="back-icon">
+              <ArrowLeft />
+            </el-icon>
+            <span>返回</span>
+          </el-button>
+          <div class="header-divider"></div>
+          <div class="header-info">
+            <h2 class="page-title">{{ pageTitle }}</h2>
+            <p class="page-subtitle">查看各机构的填报记录详情</p>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="meta-item">
+            <span class="meta-label">填报周期：</span>
+            <el-tag type="primary" effect="plain">
+              <Icon icon="ep:calendar" class="mr-1" />
+              {{ queryParams.reportWeek || '-' }}
+            </el-tag>
+          </div>
+          <div class="meta-divider"></div>
+          <div class="progress-info" v-if="progressData.totalCount > 0">
+            <div class="progress-item">
+              <span class="progress-label">需上报</span>
+              <span class="progress-value total">{{ progressData.totalCount }}</span>
+            </div>
+            <div class="progress-item">
+              <span class="progress-label">已上报</span>
+              <span class="progress-value reported">{{ progressData.reportedCount }}</span>
+            </div>
+            <div class="progress-item">
+              <span class="progress-label">完成率</span>
+              <span class="progress-value" :class="progressData.reportRate >= 100 ? 'success' : 'warning'">
+                {{ progressData.reportRate }}%
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ContentWrap>
+
     <div class="flex record-container">
-    <!-- 左侧地区树选择器（排除短缺无法上报机构） -->
+    <!-- 左侧地区树选择器（排除短缺无法上报机构，底部自带当前地区显示） -->
     <RegionTree
       ref="regionTreeRef"
       :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
       :auto-select-first="false"
       :show-org-count="true"
       :show-collapse-button="true"
+      :only-medical="true"
+      :selected-region-data="selectedRegion"
       exclude-module-code="SHORTAGE"
       @node-click="handleRegionSelect"
+      @clear="handleClearRegion"
     />
 
     <!-- 拖拽分隔条 -->
@@ -21,20 +69,6 @@
 
     <!-- 右侧内容区域 -->
     <div class="flex-1 ml-5 main-content">
-      <!-- 当前选择的地区信息 - 始终显示 -->
-      <div class="mb-15px">
-        <el-tag
-          type="primary"
-          size="large"
-          class="region-tag"
-          :closable="!!selectedRegion"
-          @close="handleClearRegion"
-        >
-          <Icon icon="ep:location" class="mr-5px" />
-          {{ selectedRegion ? `当前地区：${getRegionDisplayName(selectedRegion)}` : '全部机构' }}
-        </el-tag>
-      </div>
-
       <ContentWrap>
         <!-- 搜索工作栏 -->
         <el-form
@@ -42,46 +76,39 @@
           :model="queryParams"
           ref="queryFormRef"
           :inline="true"
-          label-width="80px"
+          label-width="68px"
           @submit.prevent
         >
-          <el-form-item label="填报专区" prop="zoneId">
-            <el-select v-model="queryParams.zoneId" placeholder="请选择填报专区" clearable class="!w-240px">
-              <el-option
-                v-for="zone in zoneOptions"
-                :key="zone.id"
-                :label="zone.zoneName"
-                :value="zone.id"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="填报周期" prop="reportWeek">
-            <el-select v-model="queryParams.reportWeek" placeholder="请选择填报周期" class="!w-200px">
-              <el-option v-for="week in reportWeekOptions" :key="week" :label="week" :value="week" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="机构名称" prop="deptName">
+          <el-form-item label="关键字" prop="keyword">
             <el-input
-              v-model="queryParams.deptName"
-              placeholder="请输入机构名称"
+              v-model="queryParams.keyword"
+              placeholder="机构名称/代码/联络员/电话"
               clearable
-              class="!w-200px"
+              class="!w-240px"
               @keyup.enter="handleQuery"
             />
           </el-form-item>
           <el-form-item label="填报状态" prop="reportStatus">
             <el-select
               v-model="queryParams.reportStatus"
-              placeholder="请选择填报状态"
+              placeholder="请选择"
               clearable
-              class="!w-160px"
+              class="!w-120px"
             >
-              <el-option
-                v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_REPORT_STATUS)"
-                :key="dict.value"
-                :label="dict.label"
-                :value="dict.value"
-              />
+              <el-option label="待填报" :value="0" />
+              <el-option label="草稿" :value="1" />
+              <el-option label="已提交" :value="2" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="提交情况" prop="submitType">
+            <el-select
+              v-model="queryParams.submitType"
+              placeholder="请选择"
+              clearable
+              class="!w-120px"
+            >
+              <el-option label="未提交" :value="0" />
+              <el-option label="已提交" :value="1" />
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -95,130 +122,106 @@
             </el-button>
             <el-tooltip
               placement="top"
-              content="请选择填报专区、填报周期，并筛选到已提交状态后再导出"
-            >
-                <el-button
-                  type="success"
-                  plain
-                  :disabled="!canExport"
-                  :loading="exportLoading"
-                  @click="handleExport"
-                >
-                  <Icon icon="ep:download" class="mr-5px" />
-                  导出机构周上报药品信息
-                </el-button>
-
-            </el-tooltip>
-            <el-tooltip
-              placement="top"
-              content="请选择填报专区、填报周期，并筛选后再导出"
+              content="请将提交情况筛选为已提交后再导出"
+              :disabled="canExport"
             >
               <el-button
                 type="success"
                 plain
-                :disabled="!canExport2"
-                :loading="exportLoading2"
-                @click="handleExport2"
+                :disabled="!canExport"
+                :loading="exportLoading"
+                @click="handleExport"
               >
                 <Icon icon="ep:download" class="mr-5px" />
-                导出本轮机构上报情况
+                导出药品信息
               </el-button>
             </el-tooltip>
+            <el-button
+              type="success"
+              plain
+              :loading="exportLoading2"
+              @click="handleExport2"
+            >
+              <Icon icon="ep:download" class="mr-5px" />
+              导出上报情况
+            </el-button>
 
           </el-form-item>
         </el-form>
       </ContentWrap>
 
-      <!-- 进度统计 -->
-      <ContentWrap v-if="queryParams.reportWeek">
-        <div class="progress-stats">
-          <div class="progress-item">
-            <span class="label">总机构数：</span>
-            <span class="value">{{ progressData.totalCount || 0 }}</span>
-          </div>
-          <div class="progress-item success">
-            <span class="label">已上报：</span>
-            <span class="value">{{ progressData.reportedCount || 0 }}</span>
-          </div>
-          <div class="progress-item warning">
-            <span class="label">未上报：</span>
-            <span class="value">{{ progressData.unreportedCount || 0 }}</span>
-          </div>
-          <div class="progress-item primary">
-            <span class="label">上报率：</span>
-            <span class="value">{{ progressData.reportRate || 0 }}%</span>
-          </div>
-          <el-progress
-            :percentage="progressData.reportRate || 0"
-            :stroke-width="10"
-            style="width: 200px; margin-left: 16px"
-          />
-        </div>
-      </ContentWrap>
-
       <!-- 列表 -->
       <ContentWrap>
         <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
-          <el-table-column label="序号" width="80" type="index" align="center" />
-          <el-table-column label="所属地区" align="center" prop="regionPath" min-width="180">
+<!--          <el-table-column label="序号" width="60" type="index" align="center" />-->
+          <!-- 机构名称 -->
+          <el-table-column label="机构名称" prop="deptName" min-width="180">
             <template #default="scope">
-              <span class="region-path">{{ scope.row.regionPath || '-' }}</span>
+              <span class="font-bold">{{ scope.row.deptName }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="机构名称" align="center" prop="deptName" min-width="180">
+          <!-- 机构代码 -->
+          <el-table-column prop="orgCode" label="机构代码" width="130" show-overflow-tooltip />
+          <!-- 行政区划 -->
+          <el-table-column prop="districtName" label="行政区划" width="100" show-overflow-tooltip />
+          <!-- 机构类别 -->
+          <el-table-column prop="deptClassName" label="机构类别" width="120" show-overflow-tooltip />
+          <!-- 等级 -->
+          <el-table-column prop="hospitalLevelJ" label="等级" width="70" align="center">
             <template #default="scope">
-              <div class="institution-name-cell">
-                <el-tooltip
-                  :content="getInstitutionCategoryLabel(scope.row.institutionCategory)"
-                  placement="top"
-                >
-                  <DictIcon
-                    :dict-type="DICT_TYPE.INSTITUTION_CATEGORY"
-                    :value="scope.row.institutionCategory ?? ''"
-                    :size="18"
-                    default-color="#5b8def"
-                  />
-                </el-tooltip>
-                <span class="institution-name-text font-bold">{{ scope.row.deptName }}</span>
-              </div>
+              <dict-tag
+                v-if="scope.row.hospitalLevelJ"
+                :type="DICT_TYPE.INSTITUTION_LEVEL"
+                :value="scope.row.hospitalLevelJ"
+              />
+              <span v-else class="text-gray-400">-</span>
             </template>
           </el-table-column>
-          <el-table-column label="联系人" align="center" prop="contactPerson" width="100" />
-          <el-table-column label="联系电话" align="center" prop="contactPhone" width="120" />
-          <el-table-column label="填报周期" align="center" prop="reportWeek" width="100" />
-          <el-table-column label="截止时间" align="center" width="150px">
+          <!-- 等次 -->
+          <el-table-column prop="hospitalGrade" label="等次" width="70" align="center">
             <template #default="scope">
-              {{ formatDeadlineTime(scope.row.deadlineTime) }}
+              <dict-tag
+                v-if="scope.row.hospitalGrade"
+                :type="DICT_TYPE.HOSPITAL_GRADE"
+                :value="scope.row.hospitalGrade"
+              />
+              <span v-else class="text-gray-400">-</span>
             </template>
           </el-table-column>
-          <el-table-column label="剩余时间" align="center" width="150px">
+          <!-- 联络员 -->
+          <el-table-column prop="contactPerson" label="联络员" width="90" />
+          <!-- 联络电话 -->
+          <el-table-column prop="contactPhone" label="联络电话" width="120" />
+          <!-- 填报完成度 -->
+          <el-table-column label="完成度" align="center" prop="completionRate" width="140">
             <template #default="scope">
-              <span v-if="scope.row.reportStatus === 3" class="text-gray-400">已结束</span>
-              <span v-else :class="getRemainingTimeClass(scope.row.deadlineTime)">
-                {{ calculateRemainingTime(scope.row.deadlineTime) }}
-              </span>
+              <el-progress
+                :percentage="scope.row.completionRate || 0"
+                :color="getProgressColor(scope.row.completionRate)"
+                :stroke-width="8"
+              />
             </template>
           </el-table-column>
-          <el-table-column label="填报完成度" align="center" prop="completionRate" width="180px">
+          <!-- 填报状态 -->
+          <el-table-column label="状态" align="center" prop="reportStatus" width="80">
             <template #default="scope">
-              <div class="flex items-center gap-2">
-                <el-progress
-                  :percentage="scope.row.completionRate || 0"
-                  :color="getProgressColor(scope.row.completionRate)"
-                  :stroke-width="8"
-                  style="flex: 1"
-                />
-              </div>
+              <el-tag :type="getReportStatusTagType(scope.row.reportStatus)" size="small">
+                {{ getReportStatusLabel(scope.row.reportStatus) }}
+              </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="填报状态" align="center" prop="reportStatus" width="100px">
+          <!-- 提交时间 -->
+          <el-table-column label="提交时间" align="center" width="160">
             <template #default="scope">
-              <dict-tag :type="DICT_TYPE.DRUG_REPORT_STATUS" :value="scope.row.reportStatus" />
+              <span v-if="scope.row.submitTime">{{ formatDeadlineTime(scope.row.submitTime) }}</span>
+              <span v-else class="text-gray-400">-</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" align="center" width="100px" fixed="right">
+          <!-- 操作 -->
+          <el-table-column label="操作" align="center" width="80" fixed="right">
             <template #default="scope">
               <el-button type="primary" size="small" @click="handleDetail(scope.row)">
+                <Icon icon="ep:view" />
                 详情
               </el-button>
             </template>
@@ -333,17 +336,6 @@
                 </template>
               </el-table-column>
               <el-table-column
-                label="本机构未使用此药品"
-                width="150"
-                align="center"
-                class-name="header-bold"
-              >
-                <template #default="scope">
-                  <el-tag v-if="scope.row.notAvailable" type="info" size="small">是</el-tag>
-                  <span v-else>-</span>
-                </template>
-              </el-table-column>
-              <el-table-column
                 label="本周累计使用量"
                 prop="weekUsageAmount"
                 width="140"
@@ -351,7 +343,7 @@
                 class-name="header-bold"
               >
                 <template #default="scope">
-                  <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+                  <span v-if="scope.row.supplyStatus === 5" class="not-available-text">-</span>
                   <span v-else class="number-value usage">
                     {{ formatNumber(scope.row.weekUsageAmount) }}
                   </span>
@@ -365,7 +357,7 @@
                 class-name="header-bold"
               >
                 <template #default="scope">
-                  <span v-if="scope.row.notAvailable" class="not-available-text">未使用</span>
+                  <span v-if="scope.row.supplyStatus === 5" class="not-available-text">-</span>
                   <span v-else class="number-value stock">
                     {{ formatNumber(scope.row.currentStockAmount) }}
                   </span>
@@ -379,8 +371,7 @@
                 class-name="header-bold"
               >
                 <template #default="scope">
-                  <span v-if="scope.row.notAvailable" class="not-available-text">-</span>
-                  <dict-tag v-else :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
+                  <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
                 </template>
               </el-table-column>
 <!--              <el-table-column
@@ -411,22 +402,24 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, computed } from 'vue'
-import { getIntDictOptions, DICT_TYPE, getDictLabel, getDictObj } from '@/utils/dict'
+import { useRoute, useRouter } from 'vue-router'
+import { DICT_TYPE, getDictLabel, getDictObj } from '@/utils/dict'
 import { ReportRecordApi, ReportZoneApi } from '@/api/shortage'
 import download from '@/utils/download'
 import RegionTree from '@/views/system/user/RegionTree.vue'
-import DictIcon from '@/components/DictIcon'
 import { useMessage } from '@/hooks/web/useMessage'
 import { Dialog } from '@/components/Dialog'
 import { ContentWrap } from '@/components/ContentWrap'
 import { Icon } from '@/components/Icon'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 
 /** 填报记录查询列表 */
 defineOptions({ name: 'ReportRecordList' })
 
+const route = useRoute()
+const router = useRouter()
 const message = useMessage() // 消息弹窗
-const SUBMITTED_STATUS = 2
 
 const loading = ref(true) // 列表的加载中
 const list = ref<any[]>([]) // 列表的数据
@@ -436,6 +429,17 @@ const reportWeekOptions = ref<string[]>([]) // 填报周期选项
 const zoneOptions = ref<any[]>([]) // 填报专区选项
 const exportLoading = ref(false) // 导出按钮加载状态
 const exportLoading2 = ref(false) // 导出本轮机构上报情况按钮加载状态
+
+// 页面标题（根据专区ID显示专区名称）
+const pageTitle = computed(() => {
+  const zone = zoneOptions.value.find(z => z.id === queryParams.zoneId)
+  return zone?.zoneName ? `${zone.zoneName} - 填报记录` : '填报记录'
+})
+
+/** 返回周期管理页 */
+const handleBack = () => {
+  router.push('/shortage/report-period')
+}
 
 // 详情弹窗相关
 const detailDialogVisible = ref(false)
@@ -476,16 +480,18 @@ const queryParams = reactive<{
   regionCode: string | undefined
   zoneId: number | undefined
   reportWeek: string | undefined
-  deptName: string | undefined
+  keyword: string | undefined
   reportStatus: number | undefined
+  submitType: number | undefined
 }>({
   pageNo: 1,
   pageSize: 10,
   regionCode: undefined, // 地区代码
   zoneId: undefined, // 填报专区ID
   reportWeek: undefined, // 填报周期
-  deptName: undefined, // 机构名称
-  reportStatus: undefined // 填报状态
+  keyword: undefined, // 关键字（机构名称/代码/联络员/电话）
+  reportStatus: undefined, // 填报状态
+  submitType: undefined // 提交方式：0-未提交 1-正常提交 2-补报
 })
 const queryFormRef = ref() // 搜索的表单
 
@@ -504,6 +510,26 @@ const progressData = ref<{
 
 const getInstitutionCategoryLabel = (value: string | number | boolean | undefined) => {
   return getDictObj(DICT_TYPE.INSTITUTION_CATEGORY, value)?.label ?? '机构分类'
+}
+
+/** 获取填报状态标签类型 */
+const getReportStatusTagType = (status: number | undefined) => {
+  switch (status) {
+    case 0: return 'warning' // 待填报
+    case 1: return 'info'    // 草稿
+    case 2: return 'success' // 已提交
+    default: return 'info'
+  }
+}
+
+/** 获取填报状态标签文字 */
+const getReportStatusLabel = (status: number | undefined) => {
+  switch (status) {
+    case 0: return '待填报'
+    case 1: return '草稿'
+    case 2: return '已提交'
+    default: return '-'
+  }
 }
 
 /** 开始拖拽调整大小 */
@@ -624,16 +650,9 @@ const handleQuery = () => {
   getList()
 }
 
-/** 导出按钮可用状态 */
+/** 导出按钮可用状态：提交情况为已提交时可用 */
 const canExport = computed(() => {
-  if (!queryParams.zoneId || !queryParams.reportWeek) {
-    return false
-  }
-  return Number(queryParams.reportStatus) === SUBMITTED_STATUS
-})
-
-const canExport2 = computed(() => {
-  return (queryParams.zoneId != null && queryParams.reportWeek != null)
+  return queryParams.submitType === 1 // 已提交
 })
 
 
@@ -761,7 +780,7 @@ const formatNumber = (value: number | undefined): string => {
 
 /** 计算库存可用天数 */
 const calculateAvailableDays = (row: any): string => {
-  if (row.notAvailable) return '-'
+  if (row.supplyStatus === 5) return '-'
   const weekUsage = row.weekUsageAmount || 0
   const currentStock = row.currentStockAmount || 0
 
@@ -779,7 +798,7 @@ const calculateAvailableDays = (row: any): string => {
 
 /** 获取库存天数样式类 */
 const getAvailableDaysClass = (row: any): string => {
-  if (row.notAvailable) return ''
+  if (row.supplyStatus === 5) return ''
   const weekUsage = row.weekUsageAmount || 0
   const currentStock = row.currentStockAmount || 0
 
@@ -803,9 +822,8 @@ const getStockDaysIcon = (row: any): string => {
 
 /** 获取详情表格行样式 */
 const getDetailRowClassName = ({ row }: { row: any }): string => {
-  if (row.supplyStatus === 4) return 'severe-shortage-row'
   if (row.supplyStatus === 3) return 'shortage-row'
-  if (row.supplyStatus === 2) return 'warning-row'
+  if (row.supplyStatus === 5) return 'not-used-row'
   return ''
 }
 
@@ -908,20 +926,20 @@ const loadReportWeekOptions = async () => {
   }
 }
 
-/** 加载填报专区选项 */
+/** 加载填报专区选项（所有专区，包括已关闭的，用于显示历史数据的专区名称） */
 const loadZoneOptions = async () => {
   try {
-    const data = await ReportZoneApi.getOptions()
+    const data = await ReportZoneApi.getAllOptions()
     zoneOptions.value = data
   } catch (error) {
     console.error('加载填报专区选项失败:', error)
   }
 }
 
-/** 导出机构填报数据 */
+/** 导出机构药品填报数据 */
 const handleExport = async () => {
   if (!canExport.value) {
-    message.warning('请先选择专区、填报周期并将状态筛选为已提交')
+    message.warning('请将提交情况筛选为已提交后再导出')
     return
   }
   try {
@@ -931,10 +949,11 @@ const handleExport = async () => {
       regionCode: queryParams.regionCode,
       zoneId: queryParams.zoneId,
       reportWeek: queryParams.reportWeek,
-      reportStatus: SUBMITTED_STATUS
+      keyword: queryParams.keyword,
+      submitType: 1 // 已提交
     }
     const data = await ReportRecordApi.exportReportRecord(params)
-    download.excel(data, '机构填报记录.xlsx')
+    download.excel(data, '机构药品填报记录.xlsx')
   } finally {
     exportLoading.value = false
   }
@@ -942,19 +961,127 @@ const handleExport = async () => {
 
 /** 初始化 **/
 onMounted(async () => {
-  // 先加载周期选项（会自动选中最新周期）
-  await loadReportWeekOptions()
-  loadZoneOptions()
-  // 带着默认周期查询列表
+  // 先加载周期选项和专区选项
+  await Promise.all([loadReportWeekOptions(), loadZoneOptions()])
+  
+  // 检查URL参数，如果有则自动填充筛选条件（从周期管理页跳转过来）
+  const { zoneId, reportWeek } = route.query
+  if (zoneId) {
+    queryParams.zoneId = Number(zoneId)
+  }
+  if (reportWeek) {
+    queryParams.reportWeek = reportWeek as string
+  }
+  
+  // 查询列表
   getList()
 })
 </script>
 
 <style scoped lang="scss">
+/* 头部卡片样式 */
+.header-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  gap: 24px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    color: #1a202c;
+    background: #e5e7eb;
+    transform: translateX(-2px);
+  }
+
+  .back-icon {
+    font-size: 16px;
+  }
+}
+
+.header-divider {
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(to bottom, transparent, #d1d5db, transparent);
+  flex-shrink: 0;
+}
+
+.header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.meta-divider {
+  width: 1px;
+  height: 20px;
+  background: #e5e7eb;
+}
+
 /* 容器高度自适应 */
 .record-container {
-  height: calc(100vh - 140px); /* 减去头部导航和边距 */
-  min-height: 600px; /* 最小高度保证内容可见 */
+  height: calc(100vh - 220px); /* 减去头部导航、头部卡片和边距 */
+  min-height: 500px; /* 最小高度保证内容可见 */
   overflow: hidden;
 }
 
@@ -982,24 +1109,6 @@ onMounted(async () => {
 .main-content {
   min-width: 0; // flex子元素必须设置，否则默认min-width: auto会导致内容溢出
   overflow-x: auto; // 横向滚动
-}
-
-// 地区标签美化
-.region-tag {
-  padding: 10px 18px;
-  font-size: 14px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
-  transition: all 0.3s ease;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.25);
-    transform: translateY(-1px);
-  }
-
-  :deep(.el-icon) {
-    font-size: 16px;
-  }
 }
 
 // 机构名称单元格样式
@@ -1083,17 +1192,13 @@ onMounted(async () => {
     vertical-align: middle;
   }
 
-  // 行样式
-  :deep(.warning-row) {
-    background-color: #fdf6ec;
-  }
-
+  // 行样式 - 供应情况：1-充足 3-短缺 5-未使用
   :deep(.shortage-row) {
     background-color: #fef0f0;
   }
 
-  :deep(.severe-shortage-row) {
-    background-color: #fee;
+  :deep(.not-used-row) {
+    background-color: #f5f7fa;
   }
 }
 
@@ -1144,6 +1249,51 @@ onMounted(async () => {
 
   .days-icon {
     font-size: 16px;
+  }
+}
+
+// 填报进度信息样式
+.progress-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  .progress-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 12px;
+    background: #f5f7fa;
+    border-radius: 6px;
+    min-width: 60px;
+
+    .progress-label {
+      font-size: 12px;
+      color: #909399;
+      margin-bottom: 2px;
+    }
+
+    .progress-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #303133;
+
+      &.total {
+        color: #409eff;
+      }
+
+      &.reported {
+        color: #67c23a;
+      }
+
+      &.success {
+        color: #67c23a;
+      }
+
+      &.warning {
+        color: #e6a23c;
+      }
+    }
   }
 }
 

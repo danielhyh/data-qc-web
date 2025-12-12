@@ -28,12 +28,16 @@
           class="!w-240px"
         >
           <el-option
-            v-for="dict in getStrDictOptions(DICT_TYPE.BUSINESS_MODULE)"
+            v-for="dict in availableModuleOptions"
             :key="dict.value"
             :label="dict.label"
             :value="dict.value"
           />
         </el-select>
+        <div v-if="deptBusinessType && deptBusinessType !== 'BOTH'" class="text-gray-400 text-xs mt-1">
+          <Icon icon="ep:info-filled" class="mr-1" />
+          该机构只参与{{ deptBusinessType === 'SHORTAGE' ? '短缺药品' : '监测' }}系统，只能选择对应模块
+        </div>
       </el-form-item>
       <el-form-item label="无法上报原因" prop="unableReportReason">
         <el-select
@@ -68,6 +72,7 @@ import {
   MonitoringUnableReportVO
 } from '@/api/system/monitoringunablereport'
 import { getSimpleDeptList } from '@/api/system/dept'
+import { Icon } from '@/components/Icon'
 
 /** 无法上报机构 表单 */
 defineOptions({ name: 'MonitoringUnableReportForm' })
@@ -94,9 +99,21 @@ const formRules = reactive({
 const formRef = ref() // 表单 Ref
 const deptTree = ref<Tree[]>([]) // 机构树
 const fixedDeptId = ref<number>() // 固定的机构ID（从机构管理入口传入）
+const deptBusinessType = ref<string>() // 机构的参与系统类型
+
+/** 根据机构参与系统过滤可选模块 */
+const availableModuleOptions = computed(() => {
+  const allOptions = getStrDictOptions(DICT_TYPE.BUSINESS_MODULE)
+  // 如果没有指定业务类型或是BOTH，返回所有选项（排除BOTH本身）
+  if (!deptBusinessType.value || deptBusinessType.value === 'BOTH') {
+    return allOptions.filter(opt => opt.value !== 'BOTH')
+  }
+  // 否则只返回对应的模块
+  return allOptions.filter(opt => opt.value === deptBusinessType.value)
+})
 
 /** 打开弹窗 */
-const open = async (type: string, id?: number, deptId?: number, areaCode?: string) => {
+const open = async (type: string, id?: number, deptId?: number, areaCode?: string, businessType?: string) => {
   dialogVisible.value = true
   dialogTitle.value = t('action.' + type)
   formType.value = type
@@ -109,6 +126,9 @@ const open = async (type: string, id?: number, deptId?: number, areaCode?: strin
   } else {
     fixedDeptId.value = undefined
   }
+  
+  // 设置机构的参与系统类型，用于限制可选模块
+  deptBusinessType.value = businessType
   
   // 加载机构列表
   await loadDeptList(areaCode ? undefined : undefined)

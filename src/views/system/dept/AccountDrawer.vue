@@ -97,7 +97,7 @@
   </el-drawer>
 
   <!-- 创建/编辑用户弹窗 -->
-  <el-dialog
+  <Dialog
     v-model="userFormVisible"
     :title="userFormType === 'create' ? '创建机构账号' : '编辑机构账号'"
     width="500px"
@@ -127,6 +127,9 @@
       <el-form-item label="用户身份" prop="nickname">
         <el-input v-model="userForm.nickname" placeholder="请输入用户身份" />
       </el-form-item>
+      <el-form-item label="真实姓名" prop="realName">
+        <el-input v-model="userForm.realName" placeholder="请输入真实姓名（将同步为机构联络员）" />
+      </el-form-item>
       <el-form-item label="手机号码" prop="mobile">
         <el-input v-model="userForm.mobile" placeholder="请输入手机号码" maxlength="11" />
       </el-form-item>
@@ -149,7 +152,7 @@
         确定
       </el-button>
     </template>
-  </el-dialog>
+  </Dialog>
 </template>
 
 <script lang="ts" setup>
@@ -181,6 +184,7 @@ const userForm = reactive({
   username: '',
   password: '',
   nickname: '',
+  realName: '',
   mobile: '',
   email: '',
   sex: undefined as number | undefined,
@@ -246,6 +250,7 @@ const handleCreateUser = () => {
   // 默认使用机构联络员信息
   if (deptInfo.value.contactPerson) {
     userForm.nickname = deptInfo.value.contactPerson
+    userForm.realName = deptInfo.value.contactPerson
   }
   if (deptInfo.value.contactPhone) {
     userForm.mobile = deptInfo.value.contactPhone
@@ -261,6 +266,7 @@ const handleEditUser = () => {
   userForm.id = userInfo.value.id
   userForm.username = userInfo.value.username
   userForm.nickname = userInfo.value.nickname || ''
+  userForm.realName = userInfo.value.realName || ''
   userForm.mobile = userInfo.value.mobile || ''
   userForm.email = userInfo.value.email || ''
   userForm.sex = userInfo.value.sex
@@ -275,6 +281,7 @@ const resetUserForm = () => {
   userForm.username = ''
   userForm.password = ''
   userForm.nickname = ''
+  userForm.realName = ''
   userForm.mobile = ''
   userForm.email = ''
   userForm.sex = undefined
@@ -292,6 +299,7 @@ const handleUserFormSubmit = async () => {
         username: userForm.username,
         password: userForm.password,
         nickname: userForm.nickname,
+        realName: userForm.realName,
         mobile: userForm.mobile,
         email: userForm.email,
         sex: userForm.sex,
@@ -304,8 +312,10 @@ const handleUserFormSubmit = async () => {
     } else {
       await UserApi.updateUser({
         id: userForm.id!,
+        username: userForm.username, // 后端校验必填，虽然不可修改但需要传递
         nickname: userForm.nickname,
-        mobile: userForm.mobile,
+        realName: userForm.realName, // 真实姓名将同步更新机构联络员
+        mobile: userForm.mobile, // 手机号将同步更新机构联络电话
         email: userForm.email,
         sex: userForm.sex,
         remark: userForm.remark,

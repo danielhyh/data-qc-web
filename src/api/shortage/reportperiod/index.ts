@@ -4,7 +4,7 @@ import request from '@/config/axios'
 export interface ReportPeriodVO {
   id: number // 编码
   zoneId: number // 所属专区ID
-  periodCode: string // 周期标识(如:2025-W47)
+  periodCode: string // 周期标识(如:2025-47)
   year: number // 年份
   weekNum: number // 周数
   dataStartTime: Date // 数据开始时间(上周六00:00)

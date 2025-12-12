@@ -1,9 +1,14 @@
 <template>
   <div class="role-dashboard">
-    <!-- 页面标题 -->
-<!--
-    <PageHeader :title="dashboardConfig.title" :content="dashboardConfig.description" />
--->
+    <!-- 系统通知横幅 -->
+    <NoticeBar
+      title="🎉 新功能上线"
+      content="系统新增了「问题反馈」功能！点击页面右上角的反馈按钮，即可快速提交您的问题或建议，我们会尽快处理。"
+      type="new"
+      action-text="我知道了"
+      storage-key="feedback-feature-notice-v1"
+      @action="handleNoticeAction"
+    />
 
     <!-- 系统入口卡片 -->
     <div class="systems-section" v-if="!selectedSystem">
@@ -75,6 +80,7 @@ import FunctionCard from './FunctionCard.vue'
 import QuickActionCard from './QuickActionCard.vue'
 import PendingTasksCard from './PendingTasksCard.vue'
 import MessageCenterCard from './MessageCenterCard.vue'
+import NoticeBar from './NoticeBar.vue'
 import { DashboardApi } from '@/api/system/dashboard'
 
 const { wsCache } = useCache()
@@ -327,6 +333,11 @@ const handleViewAllTasks = () => {
 
 const handleViewAllMessages = () => {
   router.push('/message/center')
+}
+
+// 通知横幅操作
+const handleNoticeAction = () => {
+  // 用户点击"我知道了"，横幅会自动关闭
 }
 
 const handleQuickActionClick = (action: any) => {
