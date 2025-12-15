@@ -10,6 +10,25 @@
       @action="handleNoticeAction"
     />
 
+    <!-- 常用功能入口 -->
+    <div class="quick-actions-section" v-hasPermi="['drug:import:task:list']">
+      <h3 class="section-title">常用功能</h3>
+      <el-row :gutter="20">
+        <el-col
+          :xs="24"
+          :sm="12"
+          :md="8"
+          :lg="6"
+          :xl="6"
+          v-for="action in functionCardActions"
+          :key="action.id"
+        >
+          <FunctionCard :func="action" @click="handleQuickActionClick(action)" class="enhanced-function-card" />
+        </el-col>
+      </el-row>
+    </div>
+
+
     <!-- 系统入口卡片 -->
     <div class="systems-section" v-if="!selectedSystem">
       <h3 class="section-title">系统入口</h3>
@@ -77,7 +96,6 @@ import PageHeader from '@/components/PageHeader/index.vue'
 import StatCard from '@/components/StatCard/index.vue'
 import SystemCard from './SystemCard.vue'
 import FunctionCard from './FunctionCard.vue'
-import QuickActionCard from './QuickActionCard.vue'
 import PendingTasksCard from './PendingTasksCard.vue'
 import MessageCenterCard from './MessageCenterCard.vue'
 import NoticeBar from './NoticeBar.vue'
@@ -114,6 +132,61 @@ interface SystemData {
   type?: number
   children: MenuData[]
 }
+
+// 固定的常用功能列表
+const fixedQuickActions = ref([
+  {
+    id: 1,
+    name: '进度追踪',
+    description: '查看任务进度报告',
+    icon: 'svg-icon:jdzz',
+    color: '#409EFF',
+    path: '/monitoring/drug-task/report-progress'
+  },
+  {
+    id: 2,
+    name: '数据管理',
+    description: '管理药物任务数据',
+    icon: 'svg-icon:sjgl',
+    color: '#67C23A',
+    path: '/monitoring/drug-task/task'
+  },
+  {
+    id: 3,
+    name: 'YPID比对',
+    description: '进行YPID对比分析',
+    icon: 'svg-icon:sjdb',
+    color: '#E6A23C',
+    path: '/monitoring-org/ypidcompare-comparison'
+  },
+  {
+    id: 4,
+    name: '机构管理',
+    description: '管理系统机构信息',
+    icon: 'svg-icon:org_gl',
+    color: '#F56C6C',
+    path: '/system/dept'
+  }
+])
+
+// 转换为FunctionCard所需的格式
+const functionCardActions = computed(() => {
+  return fixedQuickActions.value.map(action => ({
+    id: action.id,
+    name: action.name,
+    path: action.path,
+    icon: action.icon,
+    description: action.description,
+    parentId: 0,
+    component: '',
+    componentName: '',
+    visible: true,
+    keepAlive: false,
+    alwaysShow: false,
+    type: 2, // 按钮类型
+    children: null
+  }))
+})
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -386,6 +459,34 @@ const handleQuickActionClick = (action: any) => {
   margin-top: 20px;
 }
 
+/* 放大常用功能的图标并加粗名称 */
+.enhanced-function-card :deep(.function-icon) {
+  width: 56px;
+  height: 56px;
+  font-size: 28px;
+}
+
+.enhanced-function-card :deep(.function-name) {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* 隐藏常用功能入口的箭头图标 */
+.enhanced-function-card :deep(.menu-badge) {
+  display: none;
+}
+
+/* 修改常用功能入口的图标背景色 */
+.enhanced-function-card :deep(.function-icon) {
+  background-color: #67C23A; /* 绿色背景 */
+  color: white;
+}
+
+.enhanced-function-card :deep(.function-card:hover .function-icon) {
+  background-color: #409EFF; /* 鼠标悬停时蓝色背景 */
+  color: white;
+}
+
 @media (max-width: 768px) {
   .role-dashboard {
     padding: 16px;
@@ -393,6 +494,16 @@ const handleQuickActionClick = (action: any) => {
 
   .section-title {
     font-size: 16px;
+  }
+  
+  .enhanced-function-card :deep(.function-icon) {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+  }
+  
+  .enhanced-function-card :deep(.function-name) {
+    font-size: 14px;
   }
 }
 </style>
