@@ -130,6 +130,10 @@
             <el-icon><Refresh /></el-icon>
             重置
           </el-button>
+          <el-button type="success" @click="handleDownloadStandardLibrary">
+            <el-icon><Download /></el-icon>
+            下载《标准库》
+          </el-button>
           <!-- <el-button type="success" @click="handleExport" :loading="exportLoading">
             <el-icon><Download /></el-icon>
             导出
@@ -371,6 +375,13 @@ const handleExport = async () => {
   } finally {
     exportLoading.value = false
   }
+}
+
+/**
+ * 下载标准库文件
+ */
+const handleDownloadStandardLibrary = () => {
+  window.open('https://sxwtzb.snhic.cn/sxwjwypjc/admin-api/infra/file/29/get/YPID_12_download_v20251212.zip', '_blank')
 }
 
 const handleViewDetail = (row: YpidDrugVO) => {
