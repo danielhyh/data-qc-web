@@ -11,11 +11,15 @@ export interface DataManageImportTaskVO {
   description?: string
   deptId?: number
   deptName?: string
+  orgCode?: string // 机构代码
   cityName?: string
   districtName?: string
+  hospitalLevelJ?: string // 等级
+  hospitalGrade?: string // 等次
   contactPerson?: string
   contactPhone?: string
   reportStatus?: number
+  reportProgress?: number // 上报进度
   regionCode?: string
   createTime?: Date[]
   creator?: string

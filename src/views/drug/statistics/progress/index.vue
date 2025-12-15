@@ -1,545 +1,390 @@
 <template>
   <div class="institution-progress-container" v-loading="loading">
     <ContentWrap>
-      <!-- 搜索工作栏 -->
-      <el-form class="-mb-15px" :model="queryParams" ref="queryFormRef" :inline="true" label-width="68px">
-        <el-form-item label="填报任务" prop="reportTaskId">
-          <el-select v-model="queryParams.reportId" placeholder="请选择填报任务" class="!w-200px" @change="handleChangeReport">
+      <el-form class="-mb-15px" :model="queryParams" :inline="true" label-width="68px">
+        <el-form-item label="填报任务">
+          <el-select v-model="queryParams.reportId" placeholder="请选择填报任务" class="!w-240px" @change="handleChangeReport">
             <el-option v-for="task in reportTaskList" :key="task.id" :label="task.taskName" :value="task.id" />
           </el-select>
-        </el-form-item>
-        <el-form-item  v-if="false">
-          <el-button type="primary" @click="exportReport">导出报告</el-button>
         </el-form-item>
       </el-form>
     </ContentWrap>
 
     <!-- 统计内容区域 -->
     <ContentWrap>
-      <div class="subtitle">
-        监测数据汇总
+      <div class="section-header">
+        <div class="section-icon blue"><Icon icon="ep:data-analysis" /></div>
+        <span class="section-title">监测数据汇总</span>
       </div>
-      <el-row :gutter="24">
+      <el-row :gutter="20">
         <el-col :span="16">
-          <ul class="statistical-content">
-            <li>
-              <p>应监测机构数</p>
-              <p>
-                <span>{{ taskStatisticsData.totalMonitoringInstitutions }}</span> 家
-              </p>
+          <ul class="stat-list">
+            <li class="stat-card">
+              <div class="stat-icon blue"><Icon icon="ep:office-building" /></div>
+              <div class="stat-info">
+                <p class="stat-label">应监测机构数</p>
+                <p class="stat-value"><span>{{ taskStatisticsData.totalMonitoringInstitutions }}</span><em>家</em></p>
+              </div>
             </li>
-            <li>
-              <p>已上报机构数</p>
-              <p>
-                <span>{{ taskStatisticsData.reportedInstitutions }}</span> 家
-              </p>
+            <li class="stat-card">
+              <div class="stat-icon green"><Icon icon="ep:circle-check" /></div>
+              <div class="stat-info">
+                <p class="stat-label">已上报机构数</p>
+                <p class="stat-value"><span>{{ taskStatisticsData.reportedInstitutions }}</span><em>家</em></p>
+              </div>
             </li>
-            <li>
-              <p>总体上报率</p>
-              <p>
-                <span>{{ formatProcessing(taskStatisticsData.overallReportRate) }}</span> %
-              </p>
+            <li class="stat-card">
+              <div class="stat-icon orange"><Icon icon="ep:trend-charts" /></div>
+              <div class="stat-info">
+                <p class="stat-label">总体上报率</p>
+                <p class="stat-value green"><span>{{ formatPercent(taskStatisticsData.overallReportRate) }}</span><em>%</em></p>
+              </div>
             </li>
-            <li>
-              <p>已给国家上传数据量(行数)</p>
-              <p>
-                <span>{{ taskStatisticsData.uploadedDataCount }}</span>
-              </p>
+            <li class="stat-card">
+              <div class="stat-icon purple"><Icon icon="ep:document" /></div>
+              <div class="stat-info">
+                <p class="stat-label">已上传数据量</p>
+                <p class="stat-value"><span>{{ taskStatisticsData.uploadedDataCount }}</span><em>行</em></p>
+              </div>
             </li>
-            <li>
-              <p>开始时间</p>
-              <p>
-                <span>{{ getCurrentDate(taskStatisticsData.startTime) }}</span>
-              </p>
+            <li class="stat-card wide">
+              <div class="stat-icon cyan"><Icon icon="ep:calendar" /></div>
+              <div class="stat-info">
+                <p class="stat-label">任务周期</p>
+                <p class="stat-value time">{{ formatDate(taskStatisticsData.startTime) }} ~ {{ formatDate(taskStatisticsData.endTime) }}</p>
+              </div>
             </li>
-            <li>
-              <p>结束时间</p>
-              <p>
-                <span>{{ getCurrentDate(taskStatisticsData.endTime) }}</span>
-              </p>
-            </li>
-            <li>
-              <p>上报任务状态</p>
-              <p class="tag">
-                <dict-tag :type="DICT_TYPE.REPORT_STATUS_TYPE" :value="taskStatisticsData.taskStatus" />
-              </p>
+            <li class="stat-card">
+              <div class="stat-icon pink"><Icon icon="ep:flag" /></div>
+              <div class="stat-info">
+                <p class="stat-label">任务状态</p>
+                <p class="stat-value"><dict-tag :type="DICT_TYPE.REPORT_STATUS_TYPE" :value="taskStatisticsData.taskStatus" /></p>
+              </div>
             </li>
           </ul>
         </el-col>
         <el-col :span="8">
-          <div class="progress-content">
-            <div class="progress-title">各级机构上报率</div>
-            <ul>
+          <div class="progress-box">
+            <div class="progress-header"><Icon icon="ep:pie-chart" /><span>各级机构上报率</span></div>
+            <ul class="progress-list">
               <li v-for="(item, index) in taskStatisticsData.levelReportStats" :key="index">
-                <span>{{ item.levelDesc || '' }}</span>
-                <span>
-                  <el-progress :percentage="(item.reportRate || 0) * 100" :stroke-width="15" color="#4a7bc8" />
-                </span>
+                <span class="level-name">{{ item.levelDesc || '' }}</span>
+                <el-progress :percentage="Number(((item.reportRate || 0) * 100).toFixed(1))" :stroke-width="12" :color="getProgressColor(item.reportRate)" />
               </li>
             </ul>
           </div>
         </el-col>
       </el-row>
-
     </ContentWrap>
-    <el-row :gutter="24">
+
+    <el-row :gutter="20">
       <el-col :span="14">
         <ContentWrap>
-          <div class="report-echarts">
-            <div class="subtitle center">
-              全省各市区上报情况
-            </div>
-            <div class="report-my-echarts" ref="barCharts"></div>
+          <div class="section-header">
+            <div class="section-icon green"><Icon icon="ep:histogram" /></div>
+            <span class="section-title">全省各市区上报情况</span>
           </div>
+          <div class="chart-container" ref="barCharts"></div>
         </ContentWrap>
       </el-col>
-      <el-col :span="10" class="echarts-col">
+      <el-col :span="10">
         <ContentWrap>
-          <div class="report-title">
-            <span>详细数据</span>
-            <span> (鼠标点击详细查看更多内容)</span>
+          <div class="section-header">
+            <div class="section-icon orange"><Icon icon="ep:data-board" /></div>
+            <span class="section-title">详细数据</span>
+            <span class="section-tip">点击图表或卡片查看详情</span>
           </div>
-          <div class="report-details">
-            <div class="subtitle center">
-              {{ reportChartDetails.cityName }} 详细数据
-            </div>
-            <ul class="report-details-info">
-              <li @click="handleViewDetails('monitoring')">
-                <p>应监测机构数</p>
-                <p>{{ reportChartDetails.totalMonitoringInstitutions }}</p>
-              </li>
-              <li @click="handleViewDetails('reported')">
-                <p>已上报机构数</p>
-                <p>{{ reportChartDetails.reportedInstitutions }}</p>
-              </li>
-              <li @click="handleViewDetails('unreported')">
-                <p>未上报机构数</p>
-                <p>{{ reportChartDetails.unreportedInstitutions }}</p>
-              </li>
-              <li>
-                <p>上报率</p>
-                <p>{{ formatProcessing(reportChartDetails.reportRate) }}%</p>
-              </li>
-              <li>
-                <p>三级机构上报率</p>
-                <p>{{ formatProcessing(reportChartDetails.level3ReportRate) }}%</p>
-              </li>
-              <li>
-                <p>二级机构上报率</p>
-                <p>{{ formatProcessing(reportChartDetails.level2ReportRate) }}%</p>
-              </li>
-              <li>
-                <p>基层机构上报率</p>
-                <p>{{ formatProcessing(reportChartDetails.baseLevelReportRate) }}%</p>
-              </li>
-            </ul>
-          </div>
+          <div class="city-header"><Icon icon="ep:location" /><span>{{ reportChartDetails.cityName || '请选择地区' }}</span></div>
+          <ul class="detail-list">
+            <li class="clickable" @click="handleViewDetails('monitoring')">
+              <div class="detail-icon blue"><Icon icon="ep:office-building" /></div>
+              <p class="detail-label">应监测机构数</p>
+              <p class="detail-value">{{ reportChartDetails.totalMonitoringInstitutions }}</p>
+            </li>
+            <li class="clickable" @click="handleViewDetails('reported')">
+              <div class="detail-icon green"><Icon icon="ep:select" /></div>
+              <p class="detail-label">已上报机构数</p>
+              <p class="detail-value green">{{ reportChartDetails.reportedInstitutions }}</p>
+            </li>
+            <li class="clickable" @click="handleViewDetails('unreported')">
+              <div class="detail-icon red"><Icon icon="ep:close" /></div>
+              <p class="detail-label">未上报机构数</p>
+              <p class="detail-value red">{{ reportChartDetails.unreportedInstitutions }}</p>
+            </li>
+            <li>
+              <div class="detail-icon orange"><Icon icon="ep:data-line" /></div>
+              <p class="detail-label">上报率</p>
+              <p class="detail-value blue">{{ formatPercent(reportChartDetails.reportRate) }}%</p>
+            </li>
+            <li>
+              <div class="detail-icon pink"><Icon icon="ep:medal" /></div>
+              <p class="detail-label">三级机构上报率</p>
+              <p class="detail-value">{{ formatPercent(reportChartDetails.level3ReportRate) }}%</p>
+            </li>
+            <li>
+              <div class="detail-icon purple"><Icon icon="ep:trophy" /></div>
+              <p class="detail-label">二级机构上报率</p>
+              <p class="detail-value">{{ formatPercent(reportChartDetails.level2ReportRate) }}%</p>
+            </li>
+            <li>
+              <div class="detail-icon cyan"><Icon icon="ep:house" /></div>
+              <p class="detail-label">基层机构上报率</p>
+              <p class="detail-value">{{ formatPercent(reportChartDetails.baseLevelReportRate) }}%</p>
+            </li>
+          </ul>
         </ContentWrap>
       </el-col>
     </el-row>
   </div>
-  <!-- 机构详情弹框 -->
   <InstitutionReportDialog ref="institutionDialogRef" />
 </template>
 
-
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { exportInstitutionReport, getFillInTaskStatisticsData, getCityChartsData, getCityReportData } from '@/api/drug/statistics'
+import { getFillInTaskStatisticsData, getCityChartsData, getCityReportData } from '@/api/drug/statistics'
 import { getReportTaskList, ReportTaskVO } from '@/api/drug/dataManage'
 import InstitutionReportDialog from '../components/InstitutionReportDialog.vue'
 import { DICT_TYPE } from '@/utils/dict'
 import dayjs from 'dayjs'
 
 const loading = ref(false)
-const queryParams = ref({
-  reportId: ''
-})
+const queryParams = ref({ reportId: '' })
+const reportTaskList = ref<ReportTaskVO[]>([])
+const chartsData = ref<any[]>([])
+const barCharts = ref<HTMLElement | null>(null)
+const institutionDialogRef = ref<InstanceType<typeof InstitutionReportDialog> | null>(null)
+const myCharts = ref<echarts.ECharts | null>(null)
+
 const taskStatisticsData = ref({
-  totalMonitoringInstitutions: 0,
-  reportedInstitutions: 0,
-  overallReportRate: 0,
-  uploadedDataCount: 0,
-  startTime: '',
-  endTime: '',
-  taskStatus: 0,
-  levelReportStats: {}
+  totalMonitoringInstitutions: 0, reportedInstitutions: 0, overallReportRate: 0,
+  uploadedDataCount: 0, startTime: '', endTime: '', taskStatus: 0, levelReportStats: [] as any[]
 })
+
+// 将后端返回的levelReportStats对象转换为数组格式
+const convertLevelReportStats = (stats: any) => {
+  if (!stats) return []
+  const result = []
+  if (stats.level3) result.push(stats.level3)
+  if (stats.level2) result.push(stats.level2)
+  if (stats.baseLevel) result.push(stats.baseLevel)
+  return result
+}
 
 const reportChartDetails = ref({
-  cityName: '',
-  totalMonitoringInstitutions: 0,
-  reportedInstitutions: 0,
-  unreportedInstitutions: 0,
-  reportRate: 0,
-  level3ReportRate: 0,
-  level2ReportRate: 0,
-  baseLevelReportRate: 0
+  cityName: '', totalMonitoringInstitutions: 0, reportedInstitutions: 0, unreportedInstitutions: 0,
+  reportRate: 0, level3ReportRate: 0, level2ReportRate: 0, baseLevelReportRate: 0
 })
 
-const chartsData = ref([])
+const formatDate = (ts: string | number) => ts ? dayjs(ts).format('YYYY-MM-DD') : '-'
+const formatPercent = (n: number) => (!n || n === 0) ? '0.00' : (n * 100).toFixed(2)
+const getProgressColor = (rate: number) => {
+  const p = (rate || 0) * 100
+  return p >= 80 ? '#67c23a' : p >= 50 ? '#e6a23c' : '#f56c6c'
+}
 
-const barCharts = ref<HTMLElement | null>(null)
-const institutionDialogRef = ref<HTMLElement | null>(null)
-const myCharts = ref()
-
-let option = {
+const getChartOption = (data: any[]) => ({
   tooltip: {
-    trigger: 'axis',
-    axisPointer: {
-      type: 'shadow'
-    },
-    formatter: (params) => {
-      let res = ''
-      params.forEach(item => {
-        res += item.marker + item.seriesName + ':' + item.data + '<br />'
-      })
-      return res
+    trigger: 'axis', axisPointer: { type: 'shadow' },
+    formatter: (params: any) => {
+      const d = data.find(x => x.cityName === params[0].axisValue)
+      let r = `<b>${params[0].axisValue}</b><br/>`
+      params.forEach((i: any) => { r += `${i.marker} ${i.seriesName}: ${i.data}<br/>` })
+      if (d) r += `总数: ${d.totalCount}<br/>上报率: <b style="color:#67c23a">${formatPercent(d.reportRate)}%</b>`
+      return r
     }
   },
-  legend: {},
-  xAxis: [
-    {
-      type: 'category',
-      data: []
-    }
-  ],
-  yAxis: [
-    {
-      type: 'value'
-    }
-  ],
+  legend: { top: 10 },
+  grid: { left: '3%', right: '4%', bottom: '3%', top: 50, containLabel: true },
+  xAxis: [{ type: 'category', data: data.map(d => d.cityName), axisLabel: { rotate: 30, fontSize: 11 } }],
+  yAxis: [{ type: 'value', splitLine: { lineStyle: { type: 'dashed' } } }],
   series: [
-    {
-      name: '已上报',
-      type: 'bar',
-      stack: 'Ad',
-      barWidth: 20,
-      emphasis: {
-        focus: 'series'
-      },
-      data: []
-    },
-    {
-      name: '未上报',
-      type: 'bar',
-      stack: 'Ad',
-      barWidth: 20,
-      emphasis: {
-        focus: 'series'
-      },
-      itemStyle: {
-        borderRadius: [5, 5, 0, 0]
-      },
-      data: []
-    },
+    { name: '已上报', type: 'bar', stack: 'total', barWidth: 24, itemStyle: { color: '#67c23a' }, data: data.map(d => d.reportedCount) },
+    { name: '未上报', type: 'bar', stack: 'total', barWidth: 24, itemStyle: { color: '#f56c6c', borderRadius: [4, 4, 0, 0] }, data: data.map(d => d.unreportedCount) }
   ]
-};
+})
 
-const reportTaskList = ref<ReportTaskVO[]>([]) // 填报任务列表
-
-/** 获取填报任务列表 */
-const getReportTaskListData = async () => {
+const initPageData = async () => {
   loading.value = true
   try {
-    const data = await getReportTaskList()
-    reportTaskList.value = data
-    queryParams.value.reportId = data[0].id
-    loading.value = false
-  } catch (error) {
-    loading.value = false
-    console.error('获取填报任务列表失败:', error)
-  }
-}
+    const taskList = await getReportTaskList()
+    reportTaskList.value = taskList
+    if (!taskList?.length) return
+    queryParams.value.reportId = taskList[0].id
 
-/** 获取监测数据汇总 */
-const getFillInTaskStatisticsInfo = async () => {
-  loading.value = true
-  try {
-    const data = await getFillInTaskStatisticsData(Number(queryParams.value.reportId))
-    taskStatisticsData.value = data
-    loading.value = false
-  } catch (error) {
-    loading.value = false
-    console.error('获取监测数据汇总失败:', error)
-  }
-}
-
-const handleChangeReport = async (reportId) => {
-  queryParams.value.reportId = reportId
-  await getFillInTaskStatisticsInfo()
-  await getCityChartsInfo()
-  initCharts()
-  getCityDetauilsInfo()
-}
-
-/** 获取全省各市区上报情况图表数据 */
-const getCityChartsInfo = async () => {
-  loading.value = true
-  try {
-    const data = await getCityChartsData(Number(queryParams.value.reportId))
-    const chartData = data?.chartData || []
-    chartsData.value = chartData
-    option.xAxis[0].data = []
-    option.series[0].data = []
-    option.series[1].data = []
-    chartData.forEach(chartData => {
-      option.xAxis[0].data.push(chartData.cityName)
-      option.series[0].data.push(chartData.reportedCount)
-      option.series[1].data.push(chartData.unreportedCount)
-    })
-    option.tooltip.formatter = (params) => {
-      let res = ''
-      params.forEach(item => {
-        res += item.marker + item.seriesName + ': ' + item.data + '<br />'
-      })
-      const currentData = chartData.find(chartData => chartData.cityName === params[0].axisValue)
-      res += '总数: ' + currentData.totalCount + '<br />' + '上报率: ' + formatProcessing(currentData.reportRate) + '%'
-      return res
+    const [stats, chart] = await Promise.all([
+      getFillInTaskStatisticsData(Number(queryParams.value.reportId)),
+      getCityChartsData(Number(queryParams.value.reportId))
+    ])
+    // 转换levelReportStats为数组格式
+    taskStatisticsData.value = {
+      ...stats,
+      levelReportStats: convertLevelReportStats(stats?.levelReportStats)
     }
-    loading.value = false
-  } catch (error) {
-    loading.value = false
-    console.error('获取全省各市区上报情况图表数据失败:', error)
-  }
+    chartsData.value = chart?.chartData || []
+
+    await nextTick()
+    initCharts()
+
+    if (chartsData.value.length > 0) {
+      reportChartDetails.value = await getCityReportData(Number(queryParams.value.reportId), chartsData.value[0].regionId)
+    }
+  } catch (e) { console.error('初始化失败:', e) }
+  finally { loading.value = false }
 }
 
-/** 详细数据 */
-const getCityDetauilsInfo = async (id: number | undefined = undefined) => {
+const handleChangeReport = async (reportId: string | number) => {
+  queryParams.value.reportId = String(reportId)
   loading.value = true
   try {
-    let regionId
-    if (id) {
-      regionId = id
-    } else {
-      regionId = chartsData.value[0].regionId
+    const [stats, chart] = await Promise.all([
+      getFillInTaskStatisticsData(Number(reportId)),
+      getCityChartsData(Number(reportId))
+    ])
+    // 转换levelReportStats为数组格式
+    taskStatisticsData.value = {
+      ...stats,
+      levelReportStats: convertLevelReportStats(stats?.levelReportStats)
     }
-    const data = await getCityReportData(Number(queryParams.value.reportId), regionId)
-    reportChartDetails.value = data
-    loading.value = false
-  } catch (error) {
-    loading.value = false
-    console.error('获取详细数据失败:', error)
-  }
+    chartsData.value = chart?.chartData || []
+    myCharts.value?.setOption(getChartOption(chartsData.value))
+    if (chartsData.value.length > 0) {
+      reportChartDetails.value = await getCityReportData(Number(reportId), chartsData.value[0].regionId)
+    }
+  } catch (e) { console.error('切换失败:', e) }
+  finally { loading.value = false }
 }
 
-// 导出报告
-const exportReport = async () => {
-  try {
-    await exportInstitutionReport({ year: '', format: 'excel' })
-  } catch (error) {
-    console.error('导出失败:', error)
-  }
-}
-
-/** 初始化chart图 */
 const initCharts = () => {
-  const initEchart = echarts.init(barCharts.value)
-  initEchart.setOption(option)
-  initEchart.on('click', params => {
-    const currentData = chartsData.value.find(chartData => chartData.cityName === params.name)
-    currentData && getCityDetauilsInfo(Number(currentData.regionId))
+  if (!barCharts.value) return
+  myCharts.value?.dispose()
+  myCharts.value = echarts.init(barCharts.value)
+  myCharts.value.setOption(getChartOption(chartsData.value))
+  myCharts.value.on('click', (params: any) => {
+    const d = chartsData.value.find(x => x.cityName === params.name)
+    if (d) getCityReportData(Number(queryParams.value.reportId), d.regionId).then(r => reportChartDetails.value = r)
   })
-
-  myCharts.value = initEchart
 }
 
-const handleViewDetails = (type) => {
-  institutionDialogRef.value?.open(Number(queryParams.value.reportId), type)
-}
+const handleViewDetails = (type: string) => institutionDialogRef.value?.open(Number(queryParams.value.reportId), type)
+const handleResize = () => myCharts.value?.resize()
 
-/** 根据当前时间戳获取年月日 */
-const getCurrentDate = (timestamp) => {
-  return dayjs(timestamp).format('YYYY-MM-DD')
-}
-
-/** 处理%格式 */
-const formatProcessing = (number) => {
-  if (number === 0) return number
-  return (number * 100).toFixed(2)
-}
-
-// 窗口大小变化时重绘图表
-const handleResize = () => {
-  myCharts.value?.resize()
-}
-
-// 生命周期
-onMounted(async () => {
-  await getReportTaskListData()
-  await getFillInTaskStatisticsInfo()
-  await getCityChartsInfo()
-  initCharts()
-  getCityDetauilsInfo()
-  // 添加窗口大小监听
-  window.addEventListener('resize', handleResize)
-})
-
-// 组件卸载时移除监听
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
+onMounted(() => { initPageData(); window.addEventListener('resize', handleResize) })
+onUnmounted(() => { window.removeEventListener('resize', handleResize); myCharts.value?.dispose() })
 </script>
 
-<style scoped>
-.subtitle {
-  font-size: 16px;
-  font-weight: 600;
-  color: #305789;
-  margin-bottom: 15px;
-  border-bottom: 2px solid #f0f3f7;
-  padding-bottom: 8px;
+<style scoped lang="scss">
+/* 通用颜色 */
+.blue { color: #305789; }
+.green { color: #67c23a; }
+.orange { color: #e6a23c; }
+.red { color: #f56c6c; }
+.purple { color: #9c27b0; }
+.pink { color: #e91e63; }
+.cyan { color: #2196f3; }
+
+/* 区块头部 */
+.section-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #f0f3f7;
+}
+.section-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+  &.blue { background: linear-gradient(135deg, #305789, #4a7bc8); color: white; }
+  &.green { background: linear-gradient(135deg, #67c23a, #85ce61); color: white; }
+  &.orange { background: linear-gradient(135deg, #e6a23c, #f5b461); color: white; }
+}
+.section-title { font-size: 16px; font-weight: 600; color: #303133; }
+.section-tip { margin-left: auto; font-size: 12px; color: #909399; }
+
+/* 统计卡片 */
+.stat-list {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 0; padding: 0;
+}
+.stat-card {
+  display: flex; align-items: center; gap: 12px; padding: 16px;
+  background: #fff; border-radius: 12px; border: 1px solid #e9ecef;
+  list-style: none; transition: all 0.3s;
+  &:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(48,87,137,0.12); }
+  &.wide { grid-column: span 2; }
+}
+.stat-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+  &.blue { background: #e8f4fd; color: #305789; }
+  &.green { background: #e8f8e8; color: #67c23a; }
+  &.orange { background: #fff3e0; color: #e6a23c; }
+  &.purple { background: #f3e5f5; color: #9c27b0; }
+  &.pink { background: #fce4ec; color: #e91e63; }
+  &.cyan { background: #e3f2fd; color: #2196f3; }
+}
+.stat-info { flex: 1; }
+.stat-label { font-size: 12px; color: #909399; margin: 0 0 4px; }
+.stat-value {
+  margin: 0; display: flex; align-items: baseline; gap: 2px;
+  span { font-size: 24px; font-weight: 700; color: #305789; }
+  em { font-style: normal; font-size: 12px; color: #909399; }
+  &.green span { color: #67c23a; }
+  &.time { font-size: 13px; color: #606266; }
 }
 
-.subtitle.center {
-  text-align: center;
+/* 进度条 */
+.progress-box {
+  background: #f8fafb; border-radius: 12px; padding: 20px; height: 100%; border: 1px solid #e9ecef;
+}
+.progress-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: #305789;
+  margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px dashed #dcdfe6;
+}
+.progress-list { margin: 0; padding: 0; }
+.progress-list li {
+  display: flex; align-items: center; margin-bottom: 14px; list-style: none;
+  &:last-child { margin-bottom: 0; }
+}
+.level-name { width: 80px; font-size: 13px; color: #606266; font-weight: 500; }
+.progress-box :deep(.el-progress) { flex: 1; }
+.progress-box :deep(.el-progress__text) { font-size: 12px !important; font-weight: 600; min-width: 45px; }
+
+/* 图表 */
+.chart-container { width: 100%; height: 320px; }
+
+/* 详情 */
+.city-header {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 15px; font-weight: 600; color: #305789;
+  margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f3f7;
+}
+.detail-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 0; padding: 0; }
+.detail-list li {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12px 8px; background: #f8fafb; border-radius: 10px;
+  border: 1px solid #e9ecef; list-style: none; transition: all 0.3s;
+  &.clickable { cursor: pointer; }
+  &.clickable:hover { background: #e9f2ff; border-color: #305789; transform: translateY(-2px); }
+}
+.detail-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 14px; margin-bottom: 6px;
+  &.blue { background: #e8f4fd; color: #305789; }
+  &.green { background: #e8f8e8; color: #67c23a; }
+  &.red { background: #fef0f0; color: #f56c6c; }
+  &.orange { background: #fff3e0; color: #e6a23c; }
+  &.pink { background: #fce4ec; color: #e91e63; }
+  &.purple { background: #f3e5f5; color: #9c27b0; }
+  &.cyan { background: #e3f2fd; color: #2196f3; }
+}
+.detail-label { font-size: 11px; color: #909399; margin: 0 0 4px; text-align: center; }
+.detail-value {
+  font-size: 18px; font-weight: 700; color: #303133; margin: 0;
+  &.blue { color: #305789; }
+  &.green { color: #67c23a; }
+  &.red { color: #f56c6c; }
 }
 
-.statistical-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-  margin-bottom: 0;
-}
-
-li {
-  list-style: none;
-}
-
-.statistical-content li {
-  text-align: center;
-  padding: 12px 8px;
-  background: linear-gradient(135deg, #f8fafb 0%, #f0f3f7 100%);
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-  transition: all 0.3s ease;
-}
-
-.statistical-content li:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(48, 87, 137, 0.1);
-}
-
-.statistical-content li p:first-child {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.statistical-content li p:last-child span {
-  font-size: 18px;
-  font-weight: bold;
-  color: #305789;
-}
-
-.progress-content {
-  padding: 15px;
-  background: linear-gradient(135deg, #f8fafb 0%, #f0f3f7 100%);
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
-.progress-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #305789;
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.progress-content li {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.progress-content li span:first-child {
-  width: 80px;
-  font-size: 12px;
-  color: #333;
-  font-weight: 500;
-}
-
-.progress-content li span:last-child {
-  width: calc(100% - 80px);
-  font-size: 12px;
-  color: #333;
-  font-weight: 500;
-}
-
-.progress-content :deep(.el-progress__text) {
-  font-size: 12px !important;
-  font-weight: 600;
-  color: #305789 !important;
-}
-
-.echarts-col :deep(.el-card__body) {
-  padding: 0 !important;
-}
-
-.echarts-col .report-title {
-  background: linear-gradient(135deg, #305789, #4a7bc8);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 12px 12px 0 0;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.echarts-col .report-title span:first-child {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.echarts-col .report-title span:last-child {
-  font-size: 12px;
-  color: #f3f3f3;
-}
-
-.echarts-col .report-details {
-  padding: 20px;
-}
-
-.report-my-echarts {
-  width: 100%;
-  height: 300px;
-}
-
-.report-details-info {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.report-details-info li {
-  text-align: center;
-  padding: 8px 6px;
-  background: linear-gradient(135deg, #f8fafb 0%, #f0f3f7 100%);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #e9ecef;
-}
-
-.report-details-info li:hover {
-  background: linear-gradient(135deg, #e9f2ff 0%, #dae8f5 100%);
-  border-color: #305789;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(48, 87, 137, 0.15);
-}
-
-.report-details-info li p:first-child {
-  font-size: 10px;
-  color: #666;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-.report-details-info li p:last-child {
-  font-size: 14px;
-  font-weight: bold;
-  color: #305789;
+@media (max-width: 1400px) {
+  .stat-list { grid-template-columns: repeat(2, 1fr); }
+  .stat-card.wide { grid-column: span 1; }
 }
 </style>

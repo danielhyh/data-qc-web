@@ -104,9 +104,9 @@ const deptBusinessType = ref<string>() // 机构的参与系统类型
 /** 根据机构参与系统过滤可选模块 */
 const availableModuleOptions = computed(() => {
   const allOptions = getStrDictOptions(DICT_TYPE.BUSINESS_MODULE)
-  // 如果没有指定业务类型或是BOTH，返回所有选项（排除BOTH本身）
+  // 如果没有指定业务类型或是BOTH，返回所有选项（包含BOTH-全部）
   if (!deptBusinessType.value || deptBusinessType.value === 'BOTH') {
-    return allOptions.filter(opt => opt.value !== 'BOTH')
+    return allOptions
   }
   // 否则只返回对应的模块
   return allOptions.filter(opt => opt.value === deptBusinessType.value)

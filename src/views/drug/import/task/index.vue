@@ -1,12 +1,18 @@
 <!--数据管理页面-->
 <template>
-  <div class="flex h-full">
-    <!-- 左侧地区树选择器 -->
-    <RegionTree 
+  <div class="flex h-full task-container">
+    <!-- 左侧地区树选择器（排除监测无法上报机构，只统计医疗机构，底部自带当前地区显示） -->
+    <RegionTree
       ref="regionTreeRef"
-      :style="{ width: selectorWidth + 'px', flexShrink: 0 }"
+      :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
       :auto-select-first="false"
-      @node-click="handleRegionSelect" 
+      :show-org-count="true"
+      :show-collapse-button="true"
+      :only-medical="true"
+      :selected-region-data="selectedRegion"
+      exclude-module-code="MONITOR"
+      @node-click="handleRegionSelect"
+      @clear="handleClearRegion"
     />
 
     <!-- 拖拽分隔条 -->
@@ -17,14 +23,6 @@
 
     <!-- 右侧内容区域 -->
     <div class="flex-1 ml-5 main-content">
-      <!-- 当前选择的地区信息 -->
-      <div v-if="selectedRegion" class="my-15px">
-        <el-tag type="primary" size="large" class="region-tag" :closable="true" @close="handleClearRegion">
-          <Icon icon="ep:location" class="mr-5px" />
-          当前地区：{{ getRegionDisplayName(selectedRegion) }}
-        </el-tag>
-      </div>
-
       <ContentWrap>
         <!-- 搜索工作栏 -->
         <el-form
@@ -32,13 +30,13 @@
             :model="queryParams"
             ref="queryFormRef"
             :inline="true"
-            label-width="80px"
+            label-width="68px"
+            @submit.prevent
         >
           <el-form-item label="填报任务" prop="reportTaskId">
             <el-select
                 v-model="queryParams.reportTaskId"
                 placeholder="请选择填报任务"
-                clearable
                 class="!w-200px"
             >
               <el-option
@@ -49,20 +47,13 @@
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="机构名称" prop="deptName">
+          <el-form-item label="关键字" prop="keyword">
             <el-input
-                v-model="queryParams.deptName"
-                placeholder="请输入机构名称"
+                v-model="queryParams.keyword"
+                placeholder="机构名称/代码/联络员/电话"
                 clearable
-                class="!w-200px"
-            />
-          </el-form-item>
-          <el-form-item label="联系人" prop="contactPerson">
-            <el-input
-                v-model="queryParams.contactPerson"
-                placeholder="请输入联系人"
-                clearable
-                class="!w-160px"
+                class="!w-240px"
+                @keyup.enter="handleQuery"
             />
           </el-form-item>
           <el-form-item label="上报状态" prop="reportStatus">
@@ -70,7 +61,7 @@
                 v-model="queryParams.reportStatus"
                 placeholder="请选择上报状态"
                 clearable
-                class="!w-180px"
+                class="!w-150px"
             >
               <el-option
                   v-for="dict in getIntDictOptions(DICT_TYPE.REPORT_STATUS)"
@@ -83,14 +74,6 @@
           <el-form-item>
             <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
             <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-            <el-button
-                type="primary"
-                plain
-                @click="openForm('create')"
-                v-hasPermi="['drug:import-task:create']"
-            >
-              <Icon icon="ep:plus" class="mr-5px" /> 新增
-            </el-button>
             <el-button
                 type="success"
                 plain
@@ -117,7 +100,7 @@
               type="danger"
               plain
               @click="handleBatchReject"
-              :disabled="multipleSelection.length === 0"
+              :disabled="!canBatchApproveOrReject"
           >
             <Icon icon="ep:close" class="mr-5px" /> 批量驳回
           </el-button>
@@ -125,12 +108,13 @@
               type="success"
               plain
               @click="handleBatchApprove"
-              :disabled="multipleSelection.length === 0"
+              :disabled="!canBatchApproveOrReject"
           >
             <Icon icon="ep:circle-check" class="mr-5px" /> 批量通过
           </el-button>
           <el-text type="info" class="ml-10px">
-            已选择 {{ multipleSelection.length }} 项
+            <span v-if="isLoadingAll">正在加载全部数据...</span>
+            <span v-else>已选择 {{ multipleSelection.length }} 项</span>
           </el-text>
         </div>
       </ContentWrap>
@@ -138,99 +122,123 @@
       <!-- 列表 -->
       <ContentWrap>
         <el-table
+          ref="tableRef"
           v-loading="loading"
           :data="list"
           :show-overflow-tooltip="true"
           @selection-change="handleSelectionChange"
+          @select-all="handleSelectAll"
         >
           <el-table-column type="selection" width="55" />
-          <el-table-column label="任务编号" align="center" prop="taskNo" width="180" />
-          <el-table-column label="任务名称" align="center" prop="taskName" width="150">
+          <el-table-column label="机构名称" prop="deptName" min-width="180">
             <template #default="scope">
-              <span class="font-bold">{{ scope.row.taskName }}</span>
+              <span class="font-bold">{{ scope.row.deptName }}</span>
             </template>
           </el-table-column>
+          <el-table-column prop="orgCode" label="机构代码" width="130" show-overflow-tooltip />
           <el-table-column label="所属市" align="center" prop="cityName" width="100" />
-          <el-table-column label="所属区县" align="center" prop="districtName" width="100" />
-          <el-table-column label="机构名称" align="center" prop="deptName" width="150" />
-          <el-table-column label="联系人" align="center" prop="contactPerson" width="100" />
-          <el-table-column label="联系人电话" align="center" prop="contactPhone" width="120" />
-          <el-table-column label="文件数量" align="center" prop="totalFiles" width="80" />
-          <el-table-column label="总记录数" align="center" prop="totalRecords" width="100" />
+          <el-table-column prop="districtName" label="行政区划" width="100" show-overflow-tooltip />
+          <el-table-column prop="hospitalLevelJ" label="等级" width="70" align="center">
+            <template #default="scope">
+              <dict-tag
+                v-if="scope.row.hospitalLevelJ"
+                :type="DICT_TYPE.INSTITUTION_LEVEL"
+                :value="scope.row.hospitalLevelJ"
+              />
+              <span v-else class="text-gray-400">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="hospitalGrade" label="等次" width="70" align="center">
+            <template #default="scope">
+              <dict-tag
+                v-if="scope.row.hospitalGrade"
+                :type="DICT_TYPE.HOSPITAL_GRADE"
+                :value="scope.row.hospitalGrade"
+              />
+              <span v-else class="text-gray-400">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="联系人" align="center" prop="contactPerson" width="90" />
+          <el-table-column label="联系电话" align="center" prop="contactPhone" width="120" />
+          <el-table-column label="文件/记录" align="center" width="100">
+            <template #default="scope">
+              <span>{{ scope.row.totalFiles || 0 }}/{{ scope.row.totalRecords || 0 }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="上报进度" align="center" width="160">
+            <template #default="scope">
+              <div class="flex items-center gap-2">
+                <el-progress
+                  :percentage="scope.row.reportProgress || 0"
+                  :color="getProgressColor(scope.row.reportProgress)"
+                  :stroke-width="8"
+                  style="flex: 1"
+                />
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column label="上报状态" align="center" prop="reportStatus" width="100">
             <template #default="scope">
               <dict-tag :type="DICT_TYPE.REPORT_STATUS" :value="scope.row.reportStatus" />
             </template>
           </el-table-column>
-          <el-table-column label="备注说明" align="center" prop="description" min-width="120" />
-          <el-table-column label="操作" align="center" min-width="520px" fixed="right">
+          <el-table-column label="操作" align="center" width="200" fixed="right">
             <template #default="scope">
               <el-button
                   type="primary"
                   @click="handleViewData(scope.row)"
                   size="small"
               >
-                <Icon icon="ep:view" class="mr-5px" />
+                <Icon icon="ep:view" />
                 查看数据
               </el-button>
-              <el-button
-                  type="info"
-                  @click="handleViewLog(scope.row)"
-                  size="small"
+              <el-dropdown
+                  trigger="click"
+                  @command="(cmd) => handleCommand(cmd, scope.row)"
+                  @visible-change="(visible) => handleDropdownVisibleChange(scope.row.id, visible)"
               >
-                <Icon icon="ep:document" class="mr-5px" />
-                上报日志
-              </el-button>
-              <!-- 后置质控按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
-              <el-button
-                  v-if="canShowPostQcButton(scope.row.reportStatus)"
-                  type="warning"
-                  @click="handlePostQc(scope.row)"
-                  size="small"
-              >
-                <Icon icon="ep:check" class="mr-5px" />
-                后置质控
-              </el-button>
-              <!-- 驳回按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
-              <el-button
-                  v-if="canShowRejectButton(scope.row.reportStatus)"
-                  type="danger"
-                  @click="handleReject(scope.row)"
-                  size="small"
-              >
-                <Icon icon="ep:close" class="mr-5px" />
-                驳回
-              </el-button>
-              <!-- 通过按钮：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
-              <el-button
-                  v-if="canShowApproveButton(scope.row.reportStatus)"
-                  type="success"
-                  @click="handleApprove(scope.row)"
-                  size="small"
-              >
-                <Icon icon="ep:circle-check" class="mr-5px" />
-                通过
-              </el-button>
-              <el-button
-                  type="primary"
-                  plain
-                  @click="openForm('update', scope.row.id)"
-                  v-hasPermi="['drug:import-task:update']"
-                  size="small"
-              >
-                <Icon icon="ep:edit" class="mr-5px" />
-                编辑
-              </el-button>
-              <el-button
-                  type="danger"
-                  plain
-                  @click="handleDelete(scope.row.id)"
-                  v-hasPermi="['drug:import-task:delete']"
-                  size="small"
-              >
-                <Icon icon="ep:delete" class="mr-5px" />
-                删除
-              </el-button>
+                <el-button type="info" size="small" class="more-btn">
+                  <Icon :icon="dropdownStates[scope.row.id] ? 'ep:arrow-up' : 'ep:arrow-down'" />
+                  更多
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <!-- 日志 -->
+                    <el-dropdown-item command="log">
+                      <Icon icon="ep:tickets" class="mr-5px" />日志
+                    </el-dropdown-item>
+                    <!-- 后置质控：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
+                    <el-dropdown-item
+                        v-if="canShowPostQcButton(scope.row.reportStatus)"
+                        command="postQc"
+                        divided
+                    >
+                      <Icon icon="ep:check" class="mr-5px" />后置质控
+                    </el-dropdown-item>
+                    <!-- 驳回：只在状态为6(后置质控通过)时显示 -->
+                    <el-dropdown-item
+                        v-if="canShowRejectButton(scope.row.reportStatus)"
+                        command="reject"
+                    >
+                      <Icon icon="ep:close" class="mr-5px" />驳回
+                    </el-dropdown-item>
+                    <!-- 通过：只在状态为6(后置质控通过)时显示 -->
+                    <el-dropdown-item
+                        v-if="canShowApproveButton(scope.row.reportStatus)"
+                        command="approve"
+                    >
+                      <Icon icon="ep:circle-check" class="mr-5px" />通过
+                    </el-dropdown-item>
+                    <!-- 删除 -->
+                    <el-dropdown-item
+                        command="delete"
+                        v-if="checkPermi(['drug:import-task:delete'])"
+                    >
+                      <Icon icon="ep:delete" class="mr-5px" />删除
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </template>
           </el-table-column>
         </el-table>
@@ -254,6 +262,7 @@
 
 <script setup lang="ts">
 import { getIntDictOptions, DICT_TYPE, getDictLabel } from '@/utils/dict'
+import { checkPermi } from '@/utils/permission'
 import download from '@/utils/download'
 import { getDataManageImportTaskPage, exportDataManageImportTask, DataManageImportTaskVO, getReportTaskList, ReportTaskVO, executePostQc, rejectTask, approveTask, batchExecutePostQc, batchRejectTask, batchApproveTask } from '@/api/drug/dataManage'
 import { ImportTaskApi } from '@/api/drug/batch'
@@ -261,6 +270,7 @@ import ImportTaskForm from './ImportTaskForm.vue'
 import RegionTree from '@/views/system/user/RegionTree.vue'
 import ReportLogDialog from './ReportLogDialog.vue'
 import { ElMessageBox } from 'element-plus'
+import { getProgressColor } from '@/utils/progressColor'
 
 /** 药品数据导入任务 列表 */
 defineOptions({ name: 'ImportTask' })
@@ -275,25 +285,39 @@ const total = ref(0) // 列表的总页数
 const selectedRegion = ref<any>(null) // 选中的地区节点
 const reportTaskList = ref<ReportTaskVO[]>([]) // 填报任务列表
 const multipleSelection = ref<DataManageImportTaskVO[]>([]) // 多选数据
+const allSelectedIds = ref<number[]>([]) // 全选时存储所有ID（跨页）
+const isSelectAll = ref(false) // 是否处于全选状态
+const isLoadingAll = ref(false) // 是否正在加载全部数据
+
+// 下拉菜单展开状态
+const dropdownStates = reactive<Record<number, boolean>>({})
+const handleDropdownVisibleChange = (id: number, visible: boolean) => {
+  dropdownStates[id] = visible
+}
 
 // 面板拖拽相关
 const regionTreeRef = ref<InstanceType<typeof RegionTree>>()
+const tableRef = ref() // 表格ref
 const selectorWidth = ref(250) // 默认宽度设为最小宽度
 const isResizing = ref(false)
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
   reportTaskId: undefined, // 填报任务ID
-  deptName: undefined,
-  contactPerson: undefined,
+  keyword: undefined, // 关键字（机构名称/代码/联络员/电话）
   reportStatus: undefined,
-  regionCode: undefined, // 地区代码
+  regionCode: undefined // 地区代码
 })
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中
 
 /** 开始拖拽调整大小 */
 const startResize = (e: MouseEvent) => {
+  // 如果地区树处于折叠状态，禁用拖拽
+  if (regionTreeRef.value?.isCollapsed) {
+    return
+  }
+
   isResizing.value = true
   const startX = e.clientX
   const startWidth = selectorWidth.value
@@ -320,11 +344,27 @@ const startResize = (e: MouseEvent) => {
   e.preventDefault()
 }
 
+/** 监听地区树折叠状态，自动调整宽度 */
+watch(
+  () => regionTreeRef.value?.isCollapsed,
+  (collapsed) => {
+    if (collapsed) {
+      selectorWidth.value = 50 // 折叠状态宽度 - 只显示展开按钮
+    } else if (selectorWidth.value === 50) {
+      selectorWidth.value = 250 // 恢复默认宽度
+    }
+  }
+)
+
 /** 获取填报任务列表 */
 const getReportTaskListData = async () => {
   try {
     const data = await getReportTaskList()
     reportTaskList.value = data
+    // 默认选中最新的任务（第一条）
+    if (data && data.length > 0 && !queryParams.reportTaskId) {
+      queryParams.reportTaskId = data[0].id
+    }
   } catch (error) {
     console.error('获取填报任务列表失败:', error)
   }
@@ -376,7 +416,14 @@ const handleQuery = () => {
 
 /** 重置按钮操作 */
 const resetQuery = () => {
+  // 保存当前的填报任务ID（不能被重置）
+  const currentTaskId = queryParams.reportTaskId
   queryFormRef.value.resetFields()
+  // 恢复填报任务ID
+  queryParams.reportTaskId = currentTaskId
+  // 清除全选状态
+  isSelectAll.value = false
+  allSelectedIds.value = []
   handleQuery()
 }
 
@@ -417,8 +464,52 @@ const handleExport = async () => {
 
 /** 多选处理 */
 const handleSelectionChange = (selection: DataManageImportTaskVO[]) => {
-  multipleSelection.value = selection
+  // 如果不是全选状态，正常处理
+  if (!isSelectAll.value) {
+    multipleSelection.value = selection
+  }
 }
+
+/** 全选处理 - 选择所有数据（跨页） */
+const handleSelectAll = async (selection: DataManageImportTaskVO[]) => {
+  if (selection.length > 0) {
+    // 点击全选，获取所有符合条件的数据ID
+    isSelectAll.value = true
+    isLoadingAll.value = true
+    // 先清空，避免显示当前页数量
+    multipleSelection.value = []
+    try {
+      // 查询所有数据（不分页）
+      const data = await getDataManageImportTaskPage({
+        ...queryParams,
+        pageNo: 1,
+        pageSize: -1
+      })
+      allSelectedIds.value = data.list.map((item: DataManageImportTaskVO) => item.id!)
+      multipleSelection.value = data.list
+    } catch (error) {
+      console.error('获取全部数据失败:', error)
+      // 失败时回退到当前页选择
+      multipleSelection.value = selection
+      isSelectAll.value = false
+    } finally {
+      isLoadingAll.value = false
+    }
+  } else {
+    // 取消全选
+    isSelectAll.value = false
+    isLoadingAll.value = false
+    allSelectedIds.value = []
+    multipleSelection.value = []
+  }
+}
+
+/** 批量通过/驳回是否可用（只有后置质控通过的才能批量通过或驳回） */
+const canBatchApproveOrReject = computed(() => {
+  if (multipleSelection.value.length === 0) return false
+  // 检查所有选中的任务是否都是后置质控通过状态（状态为6-后置质控通过）
+  return multipleSelection.value.every(item => item.reportStatus === 6)
+})
 
 /** 查看数据 */
 const handleViewData = (row: DataManageImportTaskVO) => {
@@ -482,7 +573,7 @@ const handleBatchPostQc = async () => {
     const ids = multipleSelection.value.map(item => item.id!)
     await batchExecutePostQc(ids)
     message.success('批量后置质控执行成功')
-    multipleSelection.value = []
+    clearSelection()
     await getList()
   } catch {}
 }
@@ -499,7 +590,7 @@ const handleBatchReject = async () => {
     const ids = multipleSelection.value.map(item => item.id!)
     await batchRejectTask(ids, reason || undefined)
     message.success('批量驳回成功')
-    multipleSelection.value = []
+    clearSelection()
     await getList()
   } catch (error) {
     if (error !== 'cancel') {
@@ -515,9 +606,17 @@ const handleBatchApprove = async () => {
     const ids = multipleSelection.value.map(item => item.id!)
     await batchApproveTask(ids)
     message.success('批量通过成功')
-    multipleSelection.value = []
+    clearSelection()
     await getList()
   } catch {}
+}
+
+/** 清除选择状态 */
+const clearSelection = () => {
+  multipleSelection.value = []
+  allSelectedIds.value = []
+  isSelectAll.value = false
+  tableRef.value?.clearSelection()
 }
 
 /** 按钮显示逻辑 - 后置质控 */
@@ -528,14 +627,38 @@ const canShowPostQcButton = (reportStatus: number) => {
 
 /** 按钮显示逻辑 - 驳回 */
 const canShowRejectButton = (reportStatus: number) => {
-  // 只在状态为1(已上报,审核中)、5(已重报,审核中)时显示
-  return reportStatus === 1 || reportStatus === 5
+  // 只在状态为6(后置质控通过)时显示
+  return reportStatus === 6
 }
 
 /** 按钮显示逻辑 - 通过 */
 const canShowApproveButton = (reportStatus: number) => {
-  // 只在状态为1(已上报,审核中)、5(已重报,审核中)时显示
-  return reportStatus === 1 || reportStatus === 5
+  // 只在状态为6(后置质控通过)时显示
+  return reportStatus === 6
+}
+
+/** 操作下拉菜单命令处理 */
+const handleCommand = async (command: string, row: DataManageImportTaskVO) => {
+  switch (command) {
+    case 'log':
+      handleViewLog(row)
+      break
+    case 'postQc':
+      handlePostQc(row)
+      break
+    case 'reject':
+      handleReject(row)
+      break
+    case 'approve':
+      handleApprove(row)
+      break
+    case 'edit':
+      openForm('update', row.id)
+      break
+    case 'delete':
+      handleDelete(row.id!)
+      break
+  }
 }
 
 /** 初始化 **/
@@ -545,15 +668,23 @@ onMounted(async () => {
 })
 </script>
 <style scoped lang="scss">
+/* 容器高度自适应 */
+.task-container {
+  height: calc(100vh - 120px); /* 减去头部导航和边距 */
+  min-height: 500px; /* 最小高度保证内容可见 */
+  overflow: hidden;
+}
+
 .resize-handle {
   width: 5px;
   background: var(--el-border-color-light);
   cursor: ew-resize;
   flex-shrink: 0;
-  transition: background-color 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     background: var(--el-color-primary);
+    width: 6px;
   }
 }
 
@@ -563,21 +694,8 @@ onMounted(async () => {
   overflow-x: auto; // 横向滚动
 }
 
-// 地区标签美化
-.region-tag {
-  padding: 10px 18px;
-  font-size: 14px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
-  transition: all 0.3s ease;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.25);
-    transform: translateY(-1px);
-  }
-
-  :deep(.el-icon) {
-    font-size: 16px;
-  }
+/* 更多按钮样式 */
+.more-btn {
+  margin-left: 8px;
 }
 </style>

@@ -332,6 +332,7 @@ const handleImport = async () => {
         versionName: formData.value.versionName,
         versionDescription: formData.value.versionDescription,
         importType: formData.value.importType,
+        libraryType: 1, // YPID标准库
         status: 1
       }
       formDataToSend.append(
