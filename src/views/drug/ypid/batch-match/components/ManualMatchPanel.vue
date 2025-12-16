@@ -10,23 +10,23 @@
           <span class="header-title">待匹配药品信息</span>
         </div>
       </template>
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="院内编码">
+      <el-descriptions :column="2" border size="small">
+        <el-descriptions-item label="院内编码" label-align="left">
           {{ pendingData.hospitalDrugCode }}
         </el-descriptions-item>
-        <el-descriptions-item label="产品名称">
+        <el-descriptions-item label="产品名称" label-align="left">
           {{ pendingData.productName }}
         </el-descriptions-item>
-        <el-descriptions-item label="通用名">
+        <el-descriptions-item label="通用名" label-align="left">
           {{ pendingData.genericName }}
         </el-descriptions-item>
-        <el-descriptions-item label="规格">
+        <el-descriptions-item label="规格" label-align="left">
           {{ pendingData.spec }}
         </el-descriptions-item>
-        <el-descriptions-item label="剂型">
+        <el-descriptions-item label="剂型" label-align="left">
           {{ pendingData.dosageForm }}
         </el-descriptions-item>
-        <el-descriptions-item label="生产企业">
+        <el-descriptions-item label="生产企业" label-align="left">
           {{ pendingData.manufacturer }}
         </el-descriptions-item>
       </el-descriptions>
@@ -53,24 +53,24 @@
           <el-form-item label="药品名称">
             <el-input
               v-model="searchForm.drugName"
-              placeholder="请输入药品名称"
+              placeholder="药品名称"
               clearable
-              style="width: 200px"
+              style="width: 150px"
             />
           </el-form-item>
           <el-form-item label="生产企业">
             <el-input
               v-model="searchForm.manufacturer"
-              placeholder="请输入生产企业"
+              placeholder="生产企业"
               clearable
-              style="width: 200px"
+              style="width: 150px"
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="performSearch" :loading="searchLoading">
+            <el-button type="primary" @click="performSearch" :loading="searchLoading" size="small">
               搜索
             </el-button>
-            <el-button @click="resetSearch">重置</el-button>
+            <el-button @click="resetSearch" size="small">重置</el-button>
           </el-form-item>
         </el-form>
       </div>
@@ -81,31 +81,32 @@
         v-loading="candidatesLoading"
         highlight-current-row
         @current-change="handleCandidateSelect"
-        max-height="400"
+        max-height="300"
+        size="small"
       >
-        <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="ypid" label="YPID" width="140" />
-        <el-table-column prop="drugName" label="药品名称" min-width="180" show-overflow-tooltip />
+        <el-table-column type="index" label="序号" width="50" />
+        <el-table-column prop="ypid" label="YPID" width="120" />
+        <el-table-column prop="drugName" label="药品名称" min-width="150" show-overflow-tooltip />
         <el-table-column
           prop="manufacturer"
           label="生产企业"
-          min-width="150"
+          min-width="120"
           show-overflow-tooltip
         />
-        <el-table-column prop="spec" label="规格" width="100" />
-        <el-table-column label="匹配度" width="100">
+        <el-table-column prop="spec" label="规格" width="80" />
+        <el-table-column label="匹配度" width="80">
           <template #default="{ row }">
             <el-progress
               v-if="row.matchScore"
               :percentage="row.matchScore"
               :color="getScoreColor(row.matchScore)"
-              :stroke-width="6"
+              :stroke-width="5"
               :show-text="false"
             />
             <span class="score-text">{{ row.matchScore }}%</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="80">
+        <el-table-column label="操作" width="70">
           <template #default="{ row }">
             <el-button size="small" type="primary" @click="selectCandidate(row)"> 选择 </el-button>
           </template>
@@ -115,8 +116,8 @@
 
     <!-- 操作按钮 -->
     <div class="action-buttons">
-      <el-button size="large" @click="$emit('cancel')"> 取消 </el-button>
-      <el-button type="primary" size="large" @click="confirmMatch" :disabled="!selectedCandidate">
+      <el-button @click="$emit('cancel')"> 取消 </el-button>
+      <el-button type="primary" @click="confirmMatch" :disabled="!selectedCandidate">
         确认匹配
       </el-button>
     </div>
@@ -313,7 +314,7 @@ const getScoreColor = (score: number) => {
 .manual-match-panel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .drug-info-card,
@@ -325,34 +326,53 @@ const getScoreColor = (score: number) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 10px 15px;
 }
 
 .card-header .header-icon,
 .card-header .header-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .header-icon {
-  font-size: 16px;
+  font-size: 14px;
   color: #409eff;
 }
 
 .header-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .search-form {
-  margin-bottom: 16px;
-  padding: 16px;
+  margin-bottom: 12px;
+  padding: 10px 15px;
   background-color: #f8fafc;
-  border-radius: 6px;
+  border-radius: 4px;
+}
+
+.search-form :deep(.el-form-item) {
+  margin-bottom: 8px;
+}
+
+.search-form :deep(.el-form-item__label) {
+  padding-right: 6px;
+  font-size: 12px;
+}
+
+.search-form :deep(.el-button) {
+  margin-right: 8px;
+}
+
+:deep(.el-table th), 
+:deep(.el-table td) {
+  padding: 4px 0;
 }
 
 .score-text {
-  margin-left: 8px;
+  margin-left: 4px;
   font-size: 12px;
   color: #606266;
 }
@@ -360,8 +380,8 @@ const getScoreColor = (score: number) => {
 .action-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 20px 0 10px;
+  gap: 8px;
+  padding: 12px 0 6px;
   border-top: 1px solid #e4e7ed;
 }
 </style>
