@@ -186,6 +186,22 @@
           show-overflow-tooltip
         />
 
+
+
+
+        <el-table-column
+          prop="specification"
+          label="制剂规格"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="packagingMaterial"
+          label="包装材质"
+          min-width="200"
+          show-overflow-tooltip
+        />
+
         <el-table-column prop="approvalNumber" label="批准文号" width="150" show-overflow-tooltip />
 
         <el-table-column prop="conversionFactor" label="转换系数" width="100" align="center" />
