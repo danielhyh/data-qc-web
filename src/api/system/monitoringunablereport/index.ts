@@ -27,6 +27,11 @@ export const MonitoringUnableReportApi = {
     return await request.get({ url: `/system/monitoring-unable-report/get?id=` + id })
   },
 
+  // 根据机构ID查询无法上报记录
+  getByDeptId: async (deptId: number) => {
+    return await request.get({ url: `/system/monitoring-unable-report/get-by-dept?deptId=` + deptId })
+  },
+
   // 新增无法上报机构
   createMonitoringUnableReport: async (data: MonitoringUnableReportVO) => {
     return await request.post({ url: `/system/monitoring-unable-report/create`, data })

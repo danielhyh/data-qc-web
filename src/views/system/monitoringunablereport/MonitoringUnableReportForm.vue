@@ -1,5 +1,5 @@
 <template>
-  <Dialog :title="dialogTitle" v-model="dialogVisible">
+  <Dialog :title="dialogTitle" v-model="dialogVisible" @close="handleClose">
     <el-form
       ref="formRef"
       :model="formData"
@@ -17,7 +17,7 @@
           node-key="id"
           placeholder="请选择机构"
           class="!w-full"
-          :disabled="!!fixedDeptId"
+          :disabled="isFixedDept"
         />
       </el-form-item>
       <el-form-item label="不上报模块" prop="moduleCode">
@@ -98,7 +98,7 @@ const formRules = reactive({
 })
 const formRef = ref() // 表单 Ref
 const deptTree = ref<Tree[]>([]) // 机构树
-const fixedDeptId = ref<number>() // 固定的机构ID（从机构管理入口传入）
+const isFixedDept = ref(false) // 是否固定机构（从机构管理入口传入时置灰）
 const deptBusinessType = ref<string>() // 机构的参与系统类型
 
 /** 根据机构参与系统过滤可选模块 */
@@ -114,34 +114,70 @@ const availableModuleOptions = computed(() => {
 
 /** 打开弹窗 */
 const open = async (type: string, id?: number, deptId?: number, areaCode?: string, businessType?: string) => {
-  dialogVisible.value = true
-  dialogTitle.value = t('action.' + type)
-  formType.value = type
+  // 先完全重置状态
   resetForm()
+  isFixedDept.value = false
+  deptBusinessType.value = undefined
   
-  // 如果传入了固定的机构ID，设置并置灰
-  if (deptId) {
-    fixedDeptId.value = deptId
-    formData.value.deptId = deptId
-  } else {
-    fixedDeptId.value = undefined
-  }
-  
-  // 设置机构的参与系统类型，用于限制可选模块
-  deptBusinessType.value = businessType
+  dialogVisible.value = true
+  formType.value = type
   
   // 加载机构列表
   await loadDeptList(areaCode ? undefined : undefined)
   
-  // 修改时，设置数据
+  // 修改时，根据id加载数据
   if (id) {
     formLoading.value = true
     try {
       formData.value = await MonitoringUnableReportApi.getMonitoringUnableReport(id)
+      dialogTitle.value = t('action.update')
+      formType.value = 'update'
     } finally {
       formLoading.value = false
     }
+    return
   }
+  
+  // 如果传入了固定的机构ID（从机构管理入口）
+  if (deptId) {
+    isFixedDept.value = true
+    formData.value.deptId = deptId
+    deptBusinessType.value = businessType
+    
+    // 查询该机构是否已有无法上报记录
+    formLoading.value = true
+    try {
+      const existingRecord = await MonitoringUnableReportApi.getByDeptId(deptId)
+      if (existingRecord && existingRecord.id) {
+        // 已有记录，切换为编辑模式并回显数据
+        formData.value = existingRecord
+        dialogTitle.value = t('action.update')
+        formType.value = 'update'
+      } else {
+        // 无记录，新建模式
+        dialogTitle.value = t('action.create')
+        formType.value = 'create'
+      }
+    } catch (error) {
+      // 查询失败（可能是接口不存在或无记录），按新建处理
+      console.warn('查询机构无法上报记录失败:', error)
+      dialogTitle.value = t('action.create')
+      formType.value = 'create'
+    } finally {
+      formLoading.value = false
+    }
+  } else {
+    // 从无法上报Tab新增，不固定机构
+    dialogTitle.value = t('action.' + type)
+    deptBusinessType.value = businessType
+  }
+}
+
+/** 弹窗关闭时重置状态 */
+const handleClose = () => {
+  resetForm()
+  isFixedDept.value = false
+  deptBusinessType.value = undefined
 }
 defineExpose({ open }) // 提供 open 方法，用于打开弹窗
 
