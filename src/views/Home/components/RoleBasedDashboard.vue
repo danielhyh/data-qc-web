@@ -272,15 +272,24 @@ const fixedQuickActions = ref([
 
   {
     id: 4,
+    name: 'YPID比对工具',
+    description: 'YPID比对工具',
+    icon: 'svg-icon:sjdb',
+    color: '#E6A23C',
+    needPermission:'drug:ypidcompare:menu1',
+    path: '/monitoring/ypidcompare-comparison'
+  },
+  {
+    id: 5,
     name: 'YPID比对',
     description: '进行YPID对比分析',
     icon: 'svg-icon:sjdb',
     color: '#E6A23C',
-    needPermission:'drug:import-template:query',
+    needPermission:'drug:ypidcompare:menu2',
     path: '/monitoring-org/ypidcompare-comparison'
   },
   {
-    id:5,
+    id:6,
     name: '机构管理',
     description: '管理系统机构信息',
     icon: 'svg-icon:org_gl',
