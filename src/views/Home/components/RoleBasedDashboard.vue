@@ -10,9 +10,35 @@
       @action="handleNoticeAction"
     />
 
-    <!-- 常用功能入口 -->
-    <div class="quick-actions-section" v-hasPermi="['drug:import:task:list']">
-      <h3 class="section-title">常用功能</h3>
+    <!-- 主要功能入口 -->
+    <div class="main-actions-section">
+      <h3 class="section-title">主要功能</h3>
+      <el-row :gutter="20">
+        <el-col
+          :xs="24"
+          :sm="12"
+          :md="8"
+          :lg="6"
+          :xl="6"
+          v-for="action in filteredMainActions"
+          :key="action.id"
+        >
+          <FunctionCard :func="action" @click="handleMainActionClick(action)" class="enhanced-function-card" />
+        </el-col>
+      </el-row>
+    </div>
+
+    <!-- 药品监测功能入口 (默认隐藏，点击药品监测后显示) -->
+    <div class="quick-actions-section" v-show="showDrugMonitoring">
+      <div class="section-header">
+        <el-button link type="primary" @click="showDrugMonitoring = false" class="back-button">
+          <el-icon>
+            <ArrowLeft />
+          </el-icon>
+          返回
+        </el-button>
+        <h3 class="section-title">药品监测功能</h3>
+      </div>
       <el-row :gutter="20">
         <el-col
           :xs="24"
@@ -29,7 +55,7 @@
     </div>
 
 
-    <!-- 系统入口卡片 -->
+    <!-- 系统入口卡片  v-if="!selectedSystem"  -->
     <div class="systems-section" v-if="!selectedSystem">
       <h3 class="section-title">系统入口</h3>
       <el-row :gutter="20">
@@ -104,6 +130,77 @@ import { DashboardApi } from '@/api/system/dashboard'
 const { wsCache } = useCache()
 
 defineOptions({ name: 'RoleBasedDashboard' })
+
+// 控制是否显示药品监测功能
+const showDrugMonitoring = ref(false)
+
+// 主要功能列表
+const mainActions = ref([
+  {
+    id: 1001,
+    name: '药品监测',
+    description: '查看药品监测相关功能',
+    icon: 'svg-icon:ypjc',
+    color: '#409EFF',
+    path: '/drug-monitoring',
+    isHref: false,
+    needPermission:'',
+  },
+  {
+    id: 1002,
+    name: '季节性药品监测管理',
+    description: '查看季节性药品监测相关功能',
+    icon: 'svg-icon:sjjc',
+    color: '#F56C6C',
+    path: '/shortage/report-period',
+    isHref: true,
+    needPermission:'shortage:report-zone:query',
+
+  },
+  {
+    id: 1003,
+    name: '季节性药品监测填报',
+    description: '查看季节性药品监测相关功能',
+    icon: 'svg-icon:sjjc',
+    color: '#F56C6C',
+    path: '/shortage-report',
+    isHref: true,
+    needPermission:'shortage:report-task:query',
+  }
+])
+
+// 过滤后的主功能列表（基于权限）
+const filteredMainActions = computed(() => {
+  return mainActions.value.filter(action => {
+    // 如果没有设置权限要求，则显示
+    if (!action.needPermission) {
+      return true
+    }
+    // 如果设置了权限要求，则检查用户是否有该权限
+    return hasPermission(action.needPermission)
+  })
+})
+
+const router = useRouter()
+const userStore = useUserStore()
+
+// 输出用户权限信息到控制台
+console.log('用户权限信息:', {
+  permissions: userStore.permissions,
+  roles: userStore.roles,
+  user: userStore.user
+})
+
+// 检查用户是否有指定权限
+const hasPermission = (permission: string): boolean => {
+  const permissions = userStore.permissions
+  // 如果权限列表为空，假设用户有所有权限
+  if (!permissions || permissions.size === 0) {
+    return true
+  }
+  // 检查用户权限列表中是否包含所需权限
+  return permissions.has(permission)
+}
 
 // 菜单数据类型定义
 interface MenuData {
@@ -187,9 +284,6 @@ const functionCardActions = computed(() => {
     children: null
   }))
 })
-
-const router = useRouter()
-const userStore = useUserStore()
 
 // 响应式数据
 const statisticsData = ref({
@@ -416,6 +510,17 @@ const handleNoticeAction = () => {
 const handleQuickActionClick = (action: any) => {
   router.push(action.path)
 }
+
+// 处理主要功能点击事件
+const handleMainActionClick = (action: any) => {
+  if (action.isHref) {
+    // 如果 isHref 为 true，直接跳转到指定路径
+    router.push(action.path)
+  } else if (action.name === '药品监测') {
+    // 显示药品监测的子功能
+    showDrugMonitoring.value = true
+  }
+}
 </script>
 
 <style scoped>
@@ -428,6 +533,7 @@ const handleQuickActionClick = (action: any) => {
   margin-bottom: 24px;
 }
 
+.main-actions-section,
 .systems-section,
 .directory-section,
 .function-section,
