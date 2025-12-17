@@ -1,7 +1,7 @@
 <template>
   <el-card class="function-card" shadow="hover" @click="handleCardClick">
     <div class="function-content">
-      <div class="function-icon">
+      <div class="function-icon" :style="{ backgroundColor: func.color || '#409EFF' }">
         <Icon :icon="func.icon" :size="24" />
       </div>
       <div class="function-name">{{ func.name }}</div>
@@ -80,15 +80,13 @@ const handleCardClick = () => {
   justify-content: center;
   width: 48px;
   height: 48px;
-  background-color: #f0f2f5;
   border-radius: 50%;
-  color: #409EFF;
+  color: white;
   transition: all 0.3s ease;
   flex-shrink: 0;
 }
 
 .function-card:hover .function-icon {
-  background-color: #409EFF;
   color: white;
   transform: scale(1.1);
 }

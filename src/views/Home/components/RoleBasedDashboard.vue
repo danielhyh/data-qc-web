@@ -11,7 +11,7 @@
     />
 
     <!-- 主要功能入口 -->
-    <div class="main-actions-section">
+    <div class="main-actions-section" v-show="!showDrugMonitoring">
       <h3 class="section-title">主要功能</h3>
       <el-row :gutter="20">
         <el-col
@@ -23,21 +23,26 @@
           v-for="action in filteredMainActions"
           :key="action.id"
         >
-          <FunctionCard :func="action" @click="handleMainActionClick(action)" class="enhanced-function-card" />
+          <FunctionCard 
+            :func="action" 
+            @click="handleMainActionClick(action)" 
+            class="enhanced-function-card"
+            :class="'color-' + action.id"
+          />
         </el-col>
       </el-row>
     </div>
 
-    <!-- 药品监测功能入口 (默认隐藏，点击药品监测后显示) -->
+    <!-- 药品监测功能入口 (默认隐藏，点击药品监测后显示)  -->
     <div class="quick-actions-section" v-show="showDrugMonitoring">
       <div class="section-header">
         <el-button link type="primary" @click="showDrugMonitoring = false" class="back-button">
           <el-icon>
             <ArrowLeft />
           </el-icon>
-          返回
+          返回首页
         </el-button>
-        <h3 class="section-title">药品监测功能</h3>
+        <h3 class="section-title"></h3>
       </div>
       <el-row :gutter="20">
         <el-col
@@ -49,14 +54,19 @@
           v-for="action in functionCardActions"
           :key="action.id"
         >
-          <FunctionCard :func="action" @click="handleQuickActionClick(action)" class="enhanced-function-card" />
+          <FunctionCard 
+            :func="action" 
+            @click="handleQuickActionClick(action)" 
+            class="enhanced-function-card"
+            :class="'color-' + action.id"
+          />
         </el-col>
       </el-row>
     </div>
 
 
-    <!-- 系统入口卡片  v-if="!selectedSystem"  -->
-    <div class="systems-section" v-if="!selectedSystem">
+    <!-- 系统入口卡片 selectedSystem -->
+    <div class="systems-section" v-if="false">
       <h3 class="section-title">系统入口</h3>
       <el-row :gutter="20">
         <el-col
@@ -140,8 +150,8 @@ const mainActions = ref([
     id: 1001,
     name: '药品监测',
     description: '查看药品监测相关功能',
-    icon: 'svg-icon:ypjc',
-    color: '#409EFF',
+    icon: 'svg-icon:jdzz',
+    color: '#42b8fe',
     path: '/drug-monitoring',
     isHref: false,
     needPermission:'',
@@ -150,19 +160,19 @@ const mainActions = ref([
     id: 1002,
     name: '季节性药品监测管理',
     description: '查看季节性药品监测相关功能',
-    icon: 'svg-icon:sjjc',
-    color: '#F56C6C',
+    icon: 'svg-icon:sjdb',
+    color: '#67C23A',
     path: '/shortage/report-period',
     isHref: true,
-    needPermission:'shortage:report-zone:query',
+    needPermission:'shortage:report-period:query',
 
   },
   {
     id: 1003,
     name: '季节性药品监测填报',
     description: '查看季节性药品监测相关功能',
-    icon: 'svg-icon:sjjc',
-    color: '#F56C6C',
+    icon: 'svg-icon:sjgl',
+    color: '#E6A23C',
     path: '/shortage-report',
     isHref: true,
     needPermission:'shortage:report-task:query',
@@ -238,6 +248,7 @@ const fixedQuickActions = ref([
     description: '查看任务进度报告',
     icon: 'svg-icon:jdzz',
     color: '#409EFF',
+    needPermission:'drug:import:task:list',
     path: '/monitoring/drug-task/report-progress'
   },
   {
@@ -246,21 +257,34 @@ const fixedQuickActions = ref([
     description: '管理药物任务数据',
     icon: 'svg-icon:sjgl',
     color: '#67C23A',
+    needPermission:'drug:import:task:list',
     path: '/monitoring/drug-task/task'
   },
   {
     id: 3,
+    name: '数据上报',
+    description: '数据上报',
+    icon: 'svg-icon:sjgl',
+    color: '#67C23A',
+    needPermission:'drug:report-task:active',
+    path: '/monitoring-org/report-submission'
+  },
+
+  {
+    id: 4,
     name: 'YPID比对',
     description: '进行YPID对比分析',
     icon: 'svg-icon:sjdb',
     color: '#E6A23C',
+    needPermission:'drug:import-template:query',
     path: '/monitoring-org/ypidcompare-comparison'
   },
   {
-    id: 4,
+    id:5,
     name: '机构管理',
     description: '管理系统机构信息',
     icon: 'svg-icon:org_gl',
+    needPermission:'drug:import:task:list',
     color: '#F56C6C',
     path: '/system/dept'
   }
@@ -268,7 +292,17 @@ const fixedQuickActions = ref([
 
 // 转换为FunctionCard所需的格式
 const functionCardActions = computed(() => {
-  return fixedQuickActions.value.map(action => ({
+  // 先过滤掉没有权限的操作
+  const filteredActions = fixedQuickActions.value.filter(action => {
+    // 如果没有设置权限要求，则显示
+    if (!action.needPermission) {
+      return true
+    }
+    // 如果设置了权限要求，则检查用户是否有该权限
+    return hasPermission(action.needPermission)
+  })
+  
+  return filteredActions.map(action => ({
     id: action.id,
     name: action.name,
     path: action.path,
