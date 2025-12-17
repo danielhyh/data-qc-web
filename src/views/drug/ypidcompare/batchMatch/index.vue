@@ -234,7 +234,7 @@
     <el-dialog
       v-model="manualMatchVisible"
       title="手动匹配"
-      width="900px"
+      width="1000px"
       :close-on-click-modal="false"
     >
       <ManualMatchPanel

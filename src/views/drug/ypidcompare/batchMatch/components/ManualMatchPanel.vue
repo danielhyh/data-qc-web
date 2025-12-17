@@ -87,7 +87,7 @@
         @current-change="handleCandidateSelect"
         :current-row-key="selectedCandidateId || null"
         row-key="ypid"
-        :max-height="showSearchForm ? 'calc(100vh - 580px)' : '400px'"
+        :max-height="showSearchForm ? 'calc(100vh - 380px)' : '600px'"
         style="width: 100%"
       >
         <el-table-column type="index" label="序号" width="60" />
@@ -105,6 +105,12 @@
           show-overflow-tooltip
         />
         <el-table-column prop="specification" label="规格" width="100" />
+        <el-table-column
+          prop="packagingMaterial"
+          label="包装材质"
+          min-width="200"
+          show-overflow-tooltip
+        />
         <el-table-column label="匹配度" width="100">
           <template #default="{ row }">
             <el-progress
