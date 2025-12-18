@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { formatDate } from '@/utils/formatTime'
-import * as NotifyMessageApi from '@/api/system/notify/message'
+import * as NoticeApi from '@/api/system/notice'
 import { useUserStoreWithOut } from '@/store/modules/user'
 
 defineOptions({ name: 'Message' })
@@ -13,22 +13,22 @@ const list = ref<any[]>([]) // 消息列表
 
 // 获得消息列表
 const getList = async () => {
-  list.value = await NotifyMessageApi.getUnreadNotifyMessageList()
+  list.value = await NoticeApi.getMyUnreadList(10)
   // 强制设置 unreadCount 为 0，避免小红点因为轮询太慢，不消除
   unreadCount.value = 0
 }
 
 // 获得未读消息数
 const getUnreadCount = async () => {
-  NotifyMessageApi.getUnreadNotifyMessageCount().then((data) => {
+  NoticeApi.getMyUnreadCount().then((data) => {
     unreadCount.value = data
   })
 }
 
-// 跳转我的站内信
+// 跳转我的公告
 const goMyList = () => {
   push({
-    name: 'MyNotifyMessage'
+    name: 'MyNotice'
   })
 }
 
@@ -58,21 +58,24 @@ onMounted(() => {
         </ElBadge>
       </template>
       <ElTabs v-model="activeName">
-        <ElTabPane label="我的站内信" name="notice">
+        <ElTabPane label="我的公告" name="notice">
           <el-scrollbar class="message-list">
             <template v-for="item in list" :key="item.id">
-              <div class="message-item">
+              <div class="message-item" @click="goMyList">
                 <img alt="" class="message-icon" src="@/assets/imgs/logo.png" />
                 <div class="message-content">
                   <span class="message-title">
-                    {{ item.templateNickname }}：{{ item.templateContent }}
+                    {{ item.title }}
                   </span>
                   <span class="message-date">
-                    {{ formatDate(item.createTime) }}
+                    {{ formatDate(item.publishTime) }}
                   </span>
                 </div>
               </div>
             </template>
+            <div v-if="list.length === 0" class="message-empty">
+              <span>暂无未读公告</span>
+            </div>
           </el-scrollbar>
         </ElTabPane>
       </ElTabs>

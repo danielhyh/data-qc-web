@@ -1,5 +1,8 @@
 import request from '@/config/axios'
 
+// 重新导出统计分析API
+export { StatisticsApi } from './statistics'
+
 // ========== 专区管理 ==========
 export interface ReportTimeConfigVO {
   dayOfWeek: number  // 周几 (1=周一, 7=周日)

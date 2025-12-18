@@ -138,8 +138,8 @@ const dialogTitle = computed(() => {
 const exampleRows = computed(() => {
   // 检查是否有示例数据，空数组也算没有
   if (!previewData.value?.exampleRows || previewData.value.exampleRows.length === 0) {
-    // 生成默认示例数据
-    return Array.from({ length: 3 }, (_, rowIndex) =>
+    // 生成默认示例数据（1行）
+    return Array.from({ length: 1 }, (_, rowIndex) =>
       fieldList.value.map(
         (field, colIndex) => field.exampleValue || `示例${rowIndex + 1}-${colIndex + 1}`
       )
@@ -282,7 +282,7 @@ const downloadTemplate = async () => {
     const data = await ImportTemplateApi.downloadImportTemplateBlob(
       currentTemplateId.value,
       true,  // includeExampleData - 默认包含示例数据
-      3,     // exampleRows - 默认3行
+      1,     // exampleRows - 默认1行
       'xlsx', // fileFormat - 默认xlsx格式
       true,  // includeValidation - 默认包含验证规则
       true,  // freezeHeader - 默认冻结表头

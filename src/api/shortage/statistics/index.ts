@@ -356,6 +356,13 @@ export const StatisticsApi = {
     request.download({
       url: '/shortage/statistics/export-region-summary',
       params
+    }),
+
+  // 导出流感药品周报（Word格式）
+  exportFluDrugReport: (params: { zoneId: number; reportWeek: string }) =>
+    request.download({
+      url: '/shortage/statistics/export-flu-drug-report',
+      params
     })
 }
 

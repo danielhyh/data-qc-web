@@ -132,6 +132,18 @@ const remainingRouter: AppRouteRecordRaw[] = [
           icon: 'ep:message',
           title: '我的站内信'
         }
+      },
+      {
+        path: 'my-notice',
+        component: () => import('@/views/system/notice/my/index.vue'),
+        name: 'MyNotice',
+        meta: {
+          canTo: true,
+          hidden: true,
+          noTagsView: false,
+          icon: 'ep:bell',
+          title: '我的公告'
+        }
       }
     ]
   },

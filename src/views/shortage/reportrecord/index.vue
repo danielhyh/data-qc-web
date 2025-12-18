@@ -145,6 +145,16 @@
               <Icon icon="ep:download" class="mr-5px" />
               导出上报情况
             </el-button>
+            <el-button
+              type="primary"
+              plain
+              :loading="exportWeeklyReportLoading"
+              :disabled="!queryParams.zoneId || !queryParams.reportWeek"
+              @click="handleExportWeeklyReport"
+            >
+              <Icon icon="ep:document" class="mr-5px" />
+              导出周报
+            </el-button>
 
           </el-form-item>
         </el-form>
@@ -404,7 +414,7 @@
 import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { DICT_TYPE, getDictLabel, getDictObj } from '@/utils/dict'
-import { ReportRecordApi, ReportZoneApi } from '@/api/shortage'
+import { ReportRecordApi, ReportZoneApi, StatisticsApi } from '@/api/shortage'
 import download from '@/utils/download'
 import RegionTree from '@/views/system/user/RegionTree.vue'
 import { useMessage } from '@/hooks/web/useMessage'
@@ -429,6 +439,7 @@ const reportWeekOptions = ref<string[]>([]) // 填报周期选项
 const zoneOptions = ref<any[]>([]) // 填报专区选项
 const exportLoading = ref(false) // 导出按钮加载状态
 const exportLoading2 = ref(false) // 导出本轮机构上报情况按钮加载状态
+const exportWeeklyReportLoading = ref(false) // 导出周报按钮加载状态
 
 // 页面标题（根据专区ID显示专区名称）
 const pageTitle = computed(() => {
@@ -933,6 +944,28 @@ const loadZoneOptions = async () => {
     zoneOptions.value = data
   } catch (error) {
     console.error('加载填报专区选项失败:', error)
+  }
+}
+
+/** 导出流感药品周报（Word格式） */
+const handleExportWeeklyReport = async () => {
+  if (!queryParams.zoneId || !queryParams.reportWeek) {
+    message.warning('请先选择填报专区和填报周期')
+    return
+  }
+  try {
+    await message.exportConfirm()
+    exportWeeklyReportLoading.value = true
+    const data = await StatisticsApi.exportFluDrugReport({
+      zoneId: queryParams.zoneId,
+      reportWeek: queryParams.reportWeek
+    })
+    download.docx(data, `药品保障工作情况汇报_${queryParams.reportWeek}.docx`)
+    message.success('导出成功')
+  } catch (error) {
+    console.error('导出周报失败:', error)
+  } finally {
+    exportWeeklyReportLoading.value = false
   }
 }
 

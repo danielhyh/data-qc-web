@@ -496,9 +496,8 @@
 
 /* 徽章组件 */
 .el-badge__content {
-  background: var(--tech-gradient-primary);
-  border: 2px solid var(--tech-light-card);
-  box-shadow: var(--tech-shadow-sm);
+  background: linear-gradient(135deg, #f56c6c, #ef4444);
+  border: none;
 }
 
 /* 标签组件 */

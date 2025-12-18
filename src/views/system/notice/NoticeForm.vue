@@ -5,13 +5,13 @@
       v-loading="formLoading"
       :model="formData"
       :rules="formRules"
-      label-width="80px"
+      label-width="100px"
     >
       <el-form-item label="公告标题" prop="title">
         <el-input v-model="formData.title" placeholder="请输入公告标题" />
       </el-form-item>
       <el-form-item label="公告内容" prop="content">
-        <Editor v-model="formData.content" height="150px" />
+        <Editor v-model="formData.content" height="300px" />
       </el-form-item>
       <el-form-item label="公告类型" prop="type">
         <el-select v-model="formData.type" clearable placeholder="请选择公告类型">
@@ -21,6 +21,21 @@
             :label="dict.label"
             :value="parseInt(dict.value as any)"
           />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="目标机构" prop="targetAdminLevels">
+        <el-checkbox-group v-model="formData.targetAdminLevels">
+          <el-checkbox :label="1">省级</el-checkbox>
+          <el-checkbox :label="2">市级</el-checkbox>
+          <el-checkbox :label="3">区县级</el-checkbox>
+          <el-checkbox :label="0">医疗机构</el-checkbox>
+        </el-checkbox-group>
+      </el-form-item>
+      <el-form-item v-if="showBusinessType" label="目标系统" prop="targetBusinessType">
+        <el-select v-model="formData.targetBusinessType" placeholder="请选择目标系统">
+          <el-option label="全部" value="ALL" />
+          <el-option label="短缺" value="SHORTAGE" />
+          <el-option label="监测" value="MONITOR" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态" prop="status">
@@ -63,7 +78,14 @@ const formData = ref({
   type: undefined,
   content: '',
   status: CommonStatusEnum.ENABLE,
-  remark: ''
+  remark: '',
+  targetAdminLevels: [] as number[],
+  targetBusinessType: 'ALL'
+})
+
+// 是否显示目标业务类型选择（当选择了医疗机构时显示）
+const showBusinessType = computed(() => {
+  return formData.value.targetAdminLevels?.includes(0)
 })
 const formRules = reactive({
   title: [{ required: true, message: '公告标题不能为空', trigger: 'blur' }],
@@ -83,7 +105,13 @@ const open = async (type: string, id?: number) => {
   if (id) {
     formLoading.value = true
     try {
-      formData.value = await NoticeApi.getNotice(id)
+      const data = await NoticeApi.getNotice(id)
+      // 确保 targetAdminLevels 是数组
+      formData.value = {
+        ...data,
+        targetAdminLevels: data.targetAdminLevels || [],
+        targetBusinessType: data.targetBusinessType || 'ALL'
+      }
     } finally {
       formLoading.value = false
     }
@@ -125,7 +153,9 @@ const resetForm = () => {
     type: undefined,
     content: '',
     status: CommonStatusEnum.ENABLE,
-    remark: ''
+    remark: '',
+    targetAdminLevels: [],
+    targetBusinessType: 'ALL'
   }
   formRef.value?.resetFields()
 }

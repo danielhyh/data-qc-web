@@ -13,7 +13,7 @@
           <div class="log-item">
             <div class="log-header">
               <dict-tag
-                :type="DICT_TYPE.REPORT_STATUS"
+                :type="DICT_TYPE.REPORT_PROGRESS"
                 :value="log.operationType"
               />
               <dict-tag

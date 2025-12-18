@@ -209,26 +209,31 @@
       <div class="error-table-wrapper">
         <el-table
           :data="paginatedErrors"
-          stripe
           border
-          height="450"
-          :show-overflow-tooltip="true"
+          max-height="450"
+          table-layout="auto"
+          class="qc-error-table"
         >
-          <el-table-column label="序号" width="80" align="center">
+          <el-table-column label="序号" width="70" align="center">
             <template #default="{ $index }">
               {{ (errorDialog.currentPage - 1) * errorDialog.pageSize + $index + 1 }}
             </template>
           </el-table-column>
-          <el-table-column prop="row" label="行号" width="100" align="center">
+          <el-table-column prop="row" label="行号" width="90" align="center">
             <template #default="{ row }">
               <el-tag type="danger" size="small">第 {{ row.row }} 行</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="message" label="错误详情" min-width="400">
+          <el-table-column prop="message" label="错误详情">
             <template #default="{ row }">
               <div class="error-message-cell">
                 <el-icon class="cell-icon"><Warning /></el-icon>
-                <span>{{ row.message }}</span>
+                <div class="error-message-content">
+                  <span class="error-main-message">{{ getMainMessage(row.message) }}</span>
+                  <span v-if="getCalculationDetails(row.message)" class="error-calculation-details">
+                    {{ getCalculationDetails(row.message) }}
+                  </span>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -291,175 +296,136 @@
     </div>
   </Dialog>
 
-  <!-- 错误详情弹窗（参考FieldEditDialog样式） -->
+  <!-- 上传校验错误详情弹窗（分页表格形式） -->
   <Dialog
     v-model="errorDetailDialog.visible"
-    :title="`${errorDetailDialog.fileName} - 验证详情`"
-    width="900px"
-    class="error-detail-dialog"
+    :title="`${errorDetailDialog.fileName} - 校验错误详情`"
+    width="950px"
+    top="5vh"
+    class="validation-error-dialog"
   >
-    <div class="error-detail-content">
-      <!-- 统计概览 -->
-      <div class="stats-overview">
-        <div class="stats-card">
-          <div class="stat-item">
-            <span class="stat-label">总行数</span>
-            <span class="stat-value">{{ errorDetailDialog.totalRows }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">错误行</span>
-            <span class="stat-value error">{{ errorDetailDialog.errorRows }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">通过行</span>
-            <span class="stat-value success">{{ errorDetailDialog.totalRows - errorDetailDialog.errorRows }}</span>
+    <div class="validation-error-details">
+      <!-- 头部统计信息 -->
+      <div class="validation-error-header">
+        <div class="header-info">
+          <el-icon class="header-icon error">
+            <CircleCloseFilled />
+          </el-icon>
+          <div class="header-content">
+            <h3 class="header-title">{{ errorDetailDialog.fileName }}</h3>
+            <p class="header-subtitle">
+              共 <span class="total-rows">{{ errorDetailDialog.totalRows }}</span> 行数据，
+              发现 <span class="error-count-text">{{ errorDetailDialog.errorCount }}</span> 处错误
+              （影响 <span class="error-rows-text">{{ errorDetailDialog.errorRows }}</span> 行）
+            </p>
           </div>
         </div>
+        <div class="header-stats">
+          <div class="pass-rate-badge" :class="errorDetailDialog.passRate >= 80 ? 'good' : errorDetailDialog.passRate >= 50 ? 'warning' : 'bad'">
+            <span class="rate-value">{{ errorDetailDialog.passRate }}%</span>
+            <span class="rate-label">通过率</span>
+          </div>
+        </div>
+      </div>
 
-        <div class="pass-rate">
-          <span class="rate-label">通过率:</span>
-          <el-progress
-            :percentage="errorDetailDialog.passRate"
-            :color="getProgressColor(errorDetailDialog.passRate)"
-            :stroke-width="12"
+      <!-- 错误类型筛选标签 -->
+      <div class="error-type-filter">
+        <el-radio-group v-model="errorDetailDialog.activeTab" size="default">
+          <el-radio-button value="all">
+            全部 ({{ errorDetailDialog.errorCount }})
+          </el-radio-button>
+          <el-radio-button value="required" v-if="errorDetailDialog.requiredErrors.length > 0">
+            <el-icon class="tab-icon"><CircleCloseFilled /></el-icon>
+            必填为空 ({{ errorDetailDialog.requiredErrors.length }})
+          </el-radio-button>
+          <el-radio-button value="type" v-if="errorDetailDialog.typeErrors.length > 0">
+            <el-icon class="tab-icon"><WarningFilled /></el-icon>
+            类型错误 ({{ errorDetailDialog.typeErrors.length }})
+          </el-radio-button>
+        </el-radio-group>
+        <el-button type="primary" @click="exportValidationErrors" :icon="Download" size="default">
+          导出全部错误
+        </el-button>
+      </div>
+
+      <!-- 错误列表表格 - 分页展示 -->
+      <div class="validation-error-table-wrapper">
+        <el-table
+          :data="paginatedValidationErrors"
+          border
+          max-height="400"
+          table-layout="auto"
+          class="validation-error-table"
+          :row-class-name="getValidationErrorRowClass"
+        >
+          <el-table-column label="序号" width="70" align="center">
+            <template #default="{ $index }">
+              {{ (errorDetailDialog.currentPage - 1) * errorDetailDialog.pageSize + $index + 1 }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="rowIndex" label="行号" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag type="danger" size="small">第 {{ row.rowIndex }} 行</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="errorType" label="错误类型" width="120" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.errorType === 'required' ? 'danger' : 'warning'" size="small" effect="plain">
+                {{ row.errorType === 'required' ? '必填为空' : '类型错误' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="fieldName" label="字段名" width="150">
+            <template #default="{ row }">
+              <span class="field-name">{{ row.fieldName }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="currentValue" label="当前值" width="150">
+            <template #default="{ row }">
+              <span v-if="row.errorType === 'required'" class="empty-value">(空)</span>
+              <span v-else class="invalid-value">{{ row.currentValue || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="errorMessage" label="错误说明" min-width="280">
+            <template #default="{ row }">
+              <div class="error-message-cell">
+                <el-icon class="cell-icon"><Warning /></el-icon>
+                <span class="error-message-text">{{ row.errorMessage }}</span>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <!-- 分页器 -->
+        <div class="validation-error-pagination">
+          <el-pagination
+            v-model:current-page="errorDetailDialog.currentPage"
+            v-model:page-size="errorDetailDialog.pageSize"
+            :page-sizes="[20, 50, 100, 200]"
+            :total="filteredValidationErrorsCount"
+            layout="total, sizes, prev, pager, next, jumper"
+            background
+            @current-change="handleValidationErrorPageChange"
+            @size-change="handleValidationErrorSizeChange"
           />
         </div>
       </div>
 
-      <!-- 错误详情 -->
-      <div class="error-details-section">
-        <div class="detail-header">
-          <el-icon class="header-icon"><WarningFilled /></el-icon>
-          <span class="header-title">错误详情</span>
-          <el-tag size="small" type="danger">{{ errorDetailDialog.errorRows }}行 / {{ errorDetailDialog.errorCount }}处错误</el-tag>
-        </div>
-
-        <!-- 必填字段为空 -->
-        <div
-          v-if="errorDetailDialog.requiredErrors && errorDetailDialog.requiredErrors.length > 0"
-          class="error-group"
-        >
-          <div class="group-header" @click="toggleErrorGroup('required')">
-            <div class="header-left">
-              <el-icon :class="['toggle-icon', { 'expanded': errorDetailDialog.expandedGroups.includes('required') }]">
-                <ArrowRight v-if="!errorDetailDialog.expandedGroups.includes('required')" />
-                <ArrowDown v-else />
-              </el-icon>
-              <el-icon class="error-type-icon required"><CircleCloseFilled /></el-icon>
-              <span class="group-title">必填字段为空</span>
-              <el-tag size="small" type="danger" effect="plain">{{ errorDetailDialog.requiredErrors.length }}条</el-tag>
-            </div>
-          </div>
-
-          <el-collapse-transition>
-            <div v-show="errorDetailDialog.expandedGroups.includes('required')" class="group-content">
-              <el-table :data="displayedRequiredErrors" border stripe size="small" max-height="400">
-                <el-table-column prop="rowIndex" label="行号" width="100" align="center">
-                  <template #default="{ row }">
-                    第{{ row.rowIndex }}行
-                  </template>
-                </el-table-column>
-                <el-table-column prop="fieldName" label="字段名" width="180" />
-                <el-table-column label="当前值" width="120" align="center">
-                  <template #default>
-                    <span class="empty-value">(空)</span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="errorMessage" label="修改建议" min-width="250">
-                  <template #default="{ row }">
-                    <span class="error-suggestion">
-                      <el-icon class="suggestion-icon"><InfoFilled /></el-icon>
-                      {{ row.errorMessage || `请填写${row.fieldName}` }}
-                    </span>
-                  </template>
-                </el-table-column>
-              </el-table>
-
-              <!-- 展开/收起按钮 -->
-              <div v-if="errorDetailDialog.requiredErrors.length > 5" class="expand-toggle">
-                <el-button
-                  type="primary"
-                  link
-                  @click="toggleExpandType('required')"
-                >
-                  {{ errorDetailDialog.expandedTypes.includes('required') ? '收起' : `还有${errorDetailDialog.requiredErrors.length - 5}条` }}
-                  <el-icon>
-                    <ArrowUp v-if="errorDetailDialog.expandedTypes.includes('required')" />
-                    <ArrowDown v-else />
-                  </el-icon>
-                </el-button>
-              </div>
-            </div>
-          </el-collapse-transition>
-        </div>
-
-        <!-- 字段类型错误 -->
-        <div
-          v-if="errorDetailDialog.typeErrors && errorDetailDialog.typeErrors.length > 0"
-          class="error-group"
-        >
-          <div class="group-header" @click="toggleErrorGroup('type')">
-            <div class="header-left">
-              <el-icon :class="['toggle-icon', { 'expanded': errorDetailDialog.expandedGroups.includes('type') }]">
-                <ArrowRight v-if="!errorDetailDialog.expandedGroups.includes('type')" />
-                <ArrowDown v-else />
-              </el-icon>
-              <el-icon class="error-type-icon type"><WarningFilled /></el-icon>
-              <span class="group-title">字段类型错误</span>
-              <el-tag size="small" type="warning" effect="plain">{{ errorDetailDialog.typeErrors.length }}条</el-tag>
-            </div>
-          </div>
-
-          <el-collapse-transition>
-            <div v-show="errorDetailDialog.expandedGroups.includes('type')" class="group-content">
-              <el-table :data="displayedTypeErrors" border stripe size="small" max-height="400">
-                <el-table-column prop="rowIndex" label="行号" width="100" align="center">
-                  <template #default="{ row }">
-                    第{{ row.rowIndex }}行
-                  </template>
-                </el-table-column>
-                <el-table-column prop="fieldName" label="字段名" width="180" />
-                <el-table-column prop="currentValue" label="当前值" width="180">
-                  <template #default="{ row }">
-                    <span class="invalid-value">{{ row.currentValue }}</span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="errorMessage" label="错误原因" min-width="300">
-                  <template #default="{ row }">
-                    <span class="error-reason">
-                      <el-icon class="reason-icon"><Warning /></el-icon>
-                      {{ row.errorMessage }}
-                    </span>
-                  </template>
-                </el-table-column>
-              </el-table>
-
-              <!-- 展开/收起按钮 -->
-              <div v-if="errorDetailDialog.typeErrors.length > 5" class="expand-toggle">
-                <el-button
-                  type="primary"
-                  link
-                  @click="toggleExpandType('type')"
-                >
-                  {{ errorDetailDialog.expandedTypes.includes('type') ? '收起' : `还有${errorDetailDialog.typeErrors.length - 5}条` }}
-                  <el-icon>
-                    <ArrowUp v-if="errorDetailDialog.expandedTypes.includes('type')" />
-                    <ArrowDown v-else />
-                  </el-icon>
-                </el-button>
-              </div>
-            </div>
-          </el-collapse-transition>
-        </div>
+      <!-- 提示信息 -->
+      <div class="validation-error-tips">
+        <el-alert type="info" :closable="false" show-icon>
+          <template #default>
+            <div>💡 请根据错误提示修改Excel文件后重新上传。数据较多时建议导出错误清单进行批量修改。</div>
+          </template>
+        </el-alert>
       </div>
     </div>
 
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="errorDetailDialog.visible = false">关闭</el-button>
-        <el-button type="warning" @click="downloadErrorExcel(errorDetailDialog.fileType)">
-          <el-icon><Download /></el-icon>
-          下载错误Excel
+        <el-button type="warning" @click="exportValidationErrors" :icon="Download">
+          导出错误清单 ({{ errorDetailDialog.errorCount }}条)
         </el-button>
         <el-button type="primary" @click="retryUploadFile(errorDetailDialog.fileType)">
           <el-icon><RefreshRight /></el-icon>
@@ -486,7 +452,9 @@ import {
   Document,
   Promotion,
   ArrowLeft,
-  WarningFilled
+  WarningFilled,
+  CircleCloseFilled,
+  RefreshRight
 } from '@element-plus/icons-vue'
 import { ContentWrap } from '@/components/ContentWrap'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
@@ -604,7 +572,7 @@ const uploadResult = ref<any>(null)
 // 总进度信息（从后端获取）
 const overallProgressData = ref<any>(null)
 
-// 错误详情弹窗数据
+// 错误详情弹窗数据（分页表格形式）
 const errorDetailDialog = ref({
   visible: false,
   fileName: '',
@@ -615,8 +583,12 @@ const errorDetailDialog = ref({
   passRate: 0,
   requiredErrors: [] as any[],
   typeErrors: [] as any[],
-  expandedGroups: ['required', 'type'], // 默认展开的错误组
-  expandedTypes: [] as string[] // 控制是否展开全部
+  allErrors: [] as any[],  // 合并后的所有错误（用于分页）
+  activeTab: 'all' as 'all' | 'required' | 'type',  // 当前筛选标签
+  currentPage: 1,    // 当前页码
+  pageSize: 50,      // 每页条数
+  expandedGroups: ['required', 'type'], // 默认展开的错误组（兼容旧逻辑）
+  expandedTypes: [] as string[] // 控制是否展开全部（兼容旧逻辑）
 })
 
 // 质控进度相关数据
@@ -711,6 +683,29 @@ const paginatedErrors = computed(() => {
   return errorDialog.value.errors.slice(start, end)
 })
 
+// 根据筛选条件过滤后的校验错误列表
+const filteredValidationErrors = computed(() => {
+  const tab = errorDetailDialog.value.activeTab
+  if (tab === 'required') {
+    return errorDetailDialog.value.requiredErrors
+  } else if (tab === 'type') {
+    return errorDetailDialog.value.typeErrors
+  }
+  return errorDetailDialog.value.allErrors
+})
+
+// 过滤后的错误总数
+const filteredValidationErrorsCount = computed(() => {
+  return filteredValidationErrors.value.length
+})
+
+// 分页后的校验错误数据
+const paginatedValidationErrors = computed(() => {
+  const start = (errorDetailDialog.value.currentPage - 1) * errorDetailDialog.value.pageSize
+  const end = start + errorDetailDialog.value.pageSize
+  return filteredValidationErrors.value.slice(start, end)
+})
+
 // ==================== 方法定义 ====================
 function changeSteps(step: number) {
   if (step <= currentTask.value.maxCurrentStep) {
@@ -761,18 +756,38 @@ const viewErrorDetail = async (row: any) => {
     // 错误字段总数（用于显示详情）
     const errorFieldCount = result.errorCount || 0
     
+    // 处理必填错误，添加errorType标识
+    const requiredErrors = (result.requiredErrors || []).map((err: any) => ({
+      ...err,
+      errorType: 'required',
+      currentValue: null
+    }))
+    
+    // 处理类型错误，添加errorType标识
+    const typeErrors = (result.typeErrors || []).map((err: any) => ({
+      ...err,
+      errorType: 'type'
+    }))
+    
+    // 合并所有错误并按行号排序
+    const allErrors = [...requiredErrors, ...typeErrors].sort((a, b) => a.rowIndex - b.rowIndex)
+    
     errorDetailDialog.value = {
       visible: true,
       fileName: row.standardFileName || row.originalFileName,
       fileType: row.fileType,
       totalRows: result.totalRows || 0,
-      errorRows: errorRows,                // 错误行数
-      errorCount: errorFieldCount,         // 错误字段数（用于显示"共X条错误"）
+      errorRows: errorRows,
+      errorCount: errorFieldCount,
       passRate: result.totalRows > 0
         ? Math.round(((result.totalRows - errorRows) / result.totalRows) * 100)
         : 0,
-      requiredErrors: result.requiredErrors || [],
-      typeErrors: result.typeErrors || [],
+      requiredErrors: requiredErrors,
+      typeErrors: typeErrors,
+      allErrors: allErrors,
+      activeTab: 'all',
+      currentPage: 1,
+      pageSize: 50,
       expandedGroups: ['required', 'type'],
       expandedTypes: []
     }
@@ -813,6 +828,77 @@ const downloadErrorExcel = async (fileType: string) => {
   } catch (error) {
     console.error('下载失败:', error)
     message.error('下载失败')
+  }
+}
+
+/** 校验错误分页 - 页码变化 */
+const handleValidationErrorPageChange = (page: number) => {
+  errorDetailDialog.value.currentPage = page
+}
+
+/** 校验错误分页 - 每页条数变化 */
+const handleValidationErrorSizeChange = (size: number) => {
+  errorDetailDialog.value.pageSize = size
+  errorDetailDialog.value.currentPage = 1
+}
+
+/** 获取校验错误行样式 */
+const getValidationErrorRowClass = ({ row }: { row: any }) => {
+  return row.errorType === 'required' ? 'required-error-row' : 'type-error-row'
+}
+
+/** 导出校验错误列表 */
+const exportValidationErrors = () => {
+  const errors = errorDetailDialog.value.allErrors
+  if (!Array.isArray(errors) || errors.length === 0) {
+    message.warning('暂无错误数据可导出')
+    return
+  }
+
+  try {
+    const fileName = errorDetailDialog.value.fileName || '校验错误'
+    const timestamp = new Date().toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).replace(/\//g, '-').replace(/:/g, '-')
+
+    // CSV表头
+    let csvContent = '\uFEFF' // UTF-8 BOM
+    csvContent += '序号,行号,错误类型,字段名,当前值,错误说明\n'
+
+    // CSV数据行
+    errors.forEach((error, index) => {
+      const row = error.rowIndex || '-'
+      const errorType = error.errorType === 'required' ? '必填为空' : '类型错误'
+      const fieldName = (error.fieldName || '').replace(/"/g, '""')
+      const currentValue = error.errorType === 'required' ? '(空)' : (error.currentValue || '-').toString().replace(/"/g, '""')
+      const errorMessage = (error.errorMessage || '').replace(/"/g, '""')
+      csvContent += `${index + 1},"第${row}行","${errorType}","${fieldName}","${currentValue}","${errorMessage}"\n`
+    })
+
+    // 创建Blob并下载
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+
+    link.setAttribute('href', url)
+    link.setAttribute('download', `${fileName}_校验错误清单_${timestamp}.csv`)
+    link.style.visibility = 'hidden'
+
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    URL.revokeObjectURL(url)
+
+    message.success('错误清单导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    message.error('导出失败，请重试')
   }
 }
 
@@ -1523,6 +1609,49 @@ const exportQCErrors = () => {
   }
 }
 
+/**
+ * 从错误消息中提取主消息（不含计算详情）
+ * 计算详情通常以换行符分隔，或以"详情："开头
+ */
+const getMainMessage = (message: string): string => {
+  if (!message) return ''
+  
+  // 如果消息包含换行符，取第一行作为主消息
+  const lines = message.split('\n')
+  if (lines.length > 1) {
+    return lines[0].trim()
+  }
+  
+  // 如果消息包含"详情："，取详情前的部分
+  const detailIndex = message.indexOf('详情：')
+  if (detailIndex > 0) {
+    return message.substring(0, detailIndex).trim()
+  }
+  
+  return message
+}
+
+/**
+ * 从错误消息中提取计算详情
+ */
+const getCalculationDetails = (message: string): string => {
+  if (!message) return ''
+  
+  // 如果消息包含换行符，取第二行及之后作为计算详情
+  const lines = message.split('\n')
+  if (lines.length > 1) {
+    return lines.slice(1).join('\n').trim()
+  }
+  
+  // 如果消息包含"详情："，取详情后的部分
+  const detailIndex = message.indexOf('详情：')
+  if (detailIndex > 0) {
+    return message.substring(detailIndex).trim()
+  }
+  
+  return ''
+}
+
 const backToUpload = async () => {
   currentStep.value = 1
   currentTask.value.currentStep = 1
@@ -2082,7 +2211,7 @@ const handleSummaryClose = async () => {
   overflow: hidden;
   position: sticky;
   top: 20px;
-  z-index: 100;
+  z-index: 10; /* 降低 z-index，避免与 Dialog 遮罩层冲突 */
   transition: all 0.3s ease;
   /* backdrop-filter 会创建新的层叠上下文，移除以避免覆盖抽屉 */
 }
@@ -3065,7 +3194,6 @@ const handleSummaryClose = async () => {
 
 .error-table-wrapper :deep(.el-table) {
   border-radius: 8px 8px 0 0;
-  overflow: hidden;
 }
 
 .error-table-wrapper :deep(.el-table th) {
@@ -3076,6 +3204,17 @@ const handleSummaryClose = async () => {
 
 .error-table-wrapper :deep(.el-table .el-table__row:hover) {
   background: #fef2f2 !important;
+}
+
+/* 质控错误表格 - 确保内容完整显示 */
+.qc-error-table :deep(.el-table__cell) {
+  padding: 12px 8px;
+}
+
+/* 错误详情列内容不截断，完整显示 */
+.qc-error-table .error-message-cell {
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* 错误列表分页器样式 */
@@ -4057,6 +4196,45 @@ const handleSummaryClose = async () => {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
+/* 错误消息单元格样式 */
+.error-message-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.error-message-cell .cell-icon {
+  color: #f56c6c;
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.error-message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-main-message {
+  color: #303133;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.error-calculation-details {
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 10px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  border-left: 3px solid #e6a23c;
+  margin-top: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 .review-actions .el-button--success:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
@@ -4102,5 +4280,216 @@ const handleSummaryClose = async () => {
 
 .national-submit-section .el-alert {
   max-width: 800px;
+}
+
+/* ==================== 上传校验错误详情弹框样式 ==================== */
+.validation-error-details {
+  padding: 4px 0;
+}
+
+.validation-error-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 2px solid #fca5a5;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.validation-error-header .header-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.validation-error-header .header-icon.error {
+  font-size: 48px;
+  color: #ef4444;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.validation-error-header .header-content {
+  flex: 1;
+}
+
+.validation-error-header .header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #991b1b;
+  margin: 0 0 8px 0;
+}
+
+.validation-error-header .header-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.validation-error-header .total-rows {
+  font-weight: 600;
+  color: #374151;
+}
+
+.validation-error-header .error-count-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.validation-error-header .error-rows-text {
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.validation-error-header .header-stats {
+  display: flex;
+  align-items: center;
+}
+
+.pass-rate-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 20px;
+  border-radius: 12px;
+  min-width: 80px;
+}
+
+.pass-rate-badge.good {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+}
+
+.pass-rate-badge.warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+}
+
+.pass-rate-badge.bad {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 2px solid #ef4444;
+}
+
+.pass-rate-badge .rate-value {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.pass-rate-badge.good .rate-value { color: #047857; }
+.pass-rate-badge.warning .rate-value { color: #d97706; }
+.pass-rate-badge.bad .rate-value { color: #dc2626; }
+
+.pass-rate-badge .rate-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* 错误类型筛选标签 */
+.error-type-filter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.error-type-filter :deep(.el-radio-button__inner) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.error-type-filter .tab-icon {
+  font-size: 14px;
+}
+
+/* 校验错误表格 */
+.validation-error-table-wrapper {
+  margin-bottom: 16px;
+}
+
+.validation-error-table-wrapper :deep(.el-table) {
+  border-radius: 8px 8px 0 0;
+}
+
+.validation-error-table-wrapper :deep(.el-table th) {
+  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+  color: #1a202c;
+  font-weight: 700;
+}
+
+.validation-error-table .field-name {
+  font-weight: 600;
+  color: #374151;
+}
+
+.validation-error-table .empty-value {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.validation-error-table .invalid-value {
+  color: #dc2626;
+  font-weight: 500;
+  background: #fef2f2;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.validation-error-table .error-message-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.validation-error-table .error-message-cell .cell-icon {
+  color: #f59e0b;
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.validation-error-table .error-message-text {
+  color: #374151;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 行样式 */
+.validation-error-table :deep(.required-error-row) {
+  background: #fef2f2 !important;
+}
+
+.validation-error-table :deep(.type-error-row) {
+  background: #fffbeb !important;
+}
+
+/* 分页器 */
+.validation-error-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+  border: 1px solid #e4e7ed;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+.validation-error-pagination :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 提示信息 */
+.validation-error-tips {
+  margin-top: 16px;
 }
 </style>
