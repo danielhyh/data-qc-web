@@ -75,11 +75,6 @@
                   <el-button type="success" plain @click="handleExport" :loading="exportLoading">
                     <Icon icon="ep:download" class="mr-5px" /> 导出
                   </el-button>
-
-                  <el-button type="success" plain @click="openForm('create')" v-hasPermi="['system:dept:createbtn']">
-                    <Icon icon="ep:plus" class="mr-5px" /> 添加
-                  </el-button>
-
                 </el-form-item>
               </el-form>
 
@@ -252,8 +247,8 @@
                           {{ scope.row.userStatus === 0 ? '正常' : '停用' }}
                         </el-tag>
                         <span class="account-username" :title="scope.row.username">{{
-                          scope.row.username
-                        }}</span>
+                            scope.row.username
+                          }}</span>
                       </div>
                       <div v-if="scope.row.loginDate" class="login-time">
                         最后 {{ formatDate(scope.row.loginDate) }}
@@ -300,10 +295,6 @@
                           <!-- 编辑机构 -->
                           <el-dropdown-item command="edit" v-if="checkPermi(['system:dept:update'])">
                             <Icon icon="ep:edit" class="mr-5px" />编辑机构
-                          </el-dropdown-item>
-                          <!-- 新的编辑按钮，使用新表单 -->
-                          <el-dropdown-item command="editNew" v-if="checkPermi(['system:dept:updatebtn'])">
-                            <Icon icon="ep:edit" class="mr-5px" />编辑机构(新)
                           </el-dropdown-item>
                           <!-- 维护无法上报机构 - 仅医疗机构显示 -->
                           <el-dropdown-item
@@ -429,9 +420,6 @@
 
     <!-- 表单弹窗：添加/修改 -->
     <DeptForm ref="formRef" @success="getList" />
-
-    <!-- 新的表单弹窗：用于新的编辑功能 -->
-    <DeptForm ref="newEditFormRef" @success="getList" />
 
     <!-- 同步弹窗：从标准库同步 -->
     <InstitutionSyncModal ref="syncModalRef" @success="getList" />
@@ -755,16 +743,6 @@ const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
 }
 
-/** 添加新的编辑表单打开函数 */
-/*const openNewEditForm = (id: number) => {
-  newEditFormRef.value.open('update', id)
-}*/
-
-/** 新的添加/修改操作 */
-const openNewForm = (type: string, id?: number) => {
-  newEditFormRef.value.open(type, id)
-}
-
 /** 同步弹窗引用 */
 const syncModalRef = ref()
 
@@ -864,9 +842,6 @@ const handleCommand = async (command: string, row: any) => {
     case 'edit':
       openForm('update', row.id)
       break
-    case 'editNew':
-      openNewForm('update', row.id)
-      break
     case 'unableReport':
       openUnableReportConfig(row)
       break
@@ -890,8 +865,6 @@ const openDetail = (row: any) => {
 
 // ========== 维护无法上报机构相关 ==========
 const unableReportFormRef = ref()
-const newEditFormRef = ref()
-
 const openUnableReportConfig = (row: any) => {
   // 传递机构的businessType，用于限制可选模块
   unableReportFormRef.value?.open('create', undefined, row.id, selectedRegionCode.value, row.businessType)
