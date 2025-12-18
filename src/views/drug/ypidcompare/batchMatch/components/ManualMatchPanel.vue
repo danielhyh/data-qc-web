@@ -104,6 +104,7 @@
           min-width="150"
           show-overflow-tooltip
         />
+        <el-table-column prop="conversionFactor" label="转换系数" width="100" />
         <el-table-column prop="specification" label="规格" width="100" />
         <el-table-column
           prop="packagingMaterial"
