@@ -559,7 +559,7 @@ const handleMainActionClick = (action: any) => {
   if (action.isHref) {
     // 如果 isHref 为 true，直接跳转到指定路径
     router.push(action.path)
-  } else if (action.name === '药品监测') {
+  } else if (action.name === '药品使用监测') {
     // 显示药品监测的子功能
     showDrugMonitoring.value = true
   }
