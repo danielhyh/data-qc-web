@@ -148,8 +148,8 @@ const showDrugMonitoring = ref(false)
 const mainActions = ref([
   {
     id: 1001,
-    name: '药品监测',
-    description: '查看药品监测相关功能',
+    name: '药品使用监测',
+    description: '查看药品使用监测相关功能',
     icon: 'svg-icon:jdzz',
     color: '#42b8fe',
     path: '/drug-monitoring',
