@@ -38,16 +38,6 @@
           <el-option label="监测" value="MONITOR" />
         </el-select>
       </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-select v-model="formData.status" clearable placeholder="请选择状态">
-          <el-option
-            v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-            :key="parseInt(dict.value as any)"
-            :label="dict.label"
-            :value="parseInt(dict.value as any)"
-          />
-        </el-select>
-      </el-form-item>
       <el-form-item label="备注" prop="remark">
         <el-input v-model="formData.remark" placeholder="请输备注" type="textarea" />
       </el-form-item>
@@ -60,7 +50,6 @@
 </template>
 <script lang="ts" setup>
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
-import { CommonStatusEnum } from '@/utils/constants'
 import * as NoticeApi from '@/api/system/notice'
 
 defineOptions({ name: 'SystemNoticeForm' })
@@ -77,7 +66,6 @@ const formData = ref({
   title: '',
   type: undefined,
   content: '',
-  status: CommonStatusEnum.ENABLE,
   remark: '',
   targetAdminLevels: [] as number[],
   targetBusinessType: 'ALL'
@@ -90,7 +78,6 @@ const showBusinessType = computed(() => {
 const formRules = reactive({
   title: [{ required: true, message: '公告标题不能为空', trigger: 'blur' }],
   type: [{ required: true, message: '公告类型不能为空', trigger: 'change' }],
-  status: [{ required: true, message: '状态不能为空', trigger: 'change' }],
   content: [{ required: true, message: '公告内容不能为空', trigger: 'blur' }]
 })
 const formRef = ref() // 表单 Ref
@@ -152,7 +139,6 @@ const resetForm = () => {
     title: '',
     type: undefined,
     content: '',
-    status: CommonStatusEnum.ENABLE,
     remark: '',
     targetAdminLevels: [],
     targetBusinessType: 'ALL'
