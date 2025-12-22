@@ -29,6 +29,9 @@
         <el-descriptions-item label="生产企业">
           {{ pendingData.manufacturer }}
         </el-descriptions-item>
+        <el-descriptions-item label="转换系数">
+          {{ pendingData.conversionFactor }}
+        </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
