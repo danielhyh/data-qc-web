@@ -32,6 +32,9 @@
         <el-descriptions-item label="转换系数">
           {{ pendingData.conversionFactor }}
         </el-descriptions-item>
+        <el-descriptions-item label="批准文号">
+          {{ pendingData.approvalNo }}
+        </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -108,6 +111,7 @@
           show-overflow-tooltip
         />
         <el-table-column prop="conversionFactor" label="转换系数" width="100" />
+        <el-table-column prop="approvalNumber" label="批准文号" width="100" />
         <el-table-column prop="specification" label="规格" width="100" />
         <el-table-column
           prop="packagingMaterial"
