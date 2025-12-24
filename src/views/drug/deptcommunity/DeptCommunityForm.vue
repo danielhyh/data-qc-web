@@ -145,15 +145,13 @@ const submitForm = async () => {
   formLoading.value = true
   try {
     if (formType.value === 'create') {
-      // 新增模式：为每个选中的成员单位创建一个关系
-      for (const memberId of selectedMemberIds.value) {
-        const data: DeptCommunityVO = {
-          masterId: formData.value.masterId,
-          memberId: memberId,
-          sortNum: formData.value.sortNum
-        }
-        await DeptCommunityApi.createDeptCommunity(data)
+      // 使用批量保存接口
+      const saveData = {
+        masterId: formData.value.masterId,
+        memberIdList: selectedMemberIds.value,
+        sortNum: formData.value.sortNum
       }
+      await DeptCommunityApi.createDeptCommunityMultiple(saveData)
       message.success(`成功创建 ${selectedMemberIds.value.length} 个紧密医疗共同体关系`)
     } else {
       // 修改模式：更新当前关系
@@ -171,15 +169,13 @@ const submitForm = async () => {
         // 如果用户选择了多个成员单位，需要删除当前关系并为每个新选择的成员单位创建新关系
         // 删除当前关系
         await DeptCommunityApi.deleteDeptCommunity(formData.value.id)
-        // 为每个选中的成员单位创建新关系
-        for (const memberId of selectedMemberIds.value) {
-          const data: DeptCommunityVO = {
-            masterId: formData.value.masterId,
-            memberId: memberId,
-            sortNum: formData.value.sortNum
-          }
-          await DeptCommunityApi.createDeptCommunity(data)
+        // 使用批量保存接口
+        const saveData = {
+          masterId: formData.value.masterId,
+          memberIdList: selectedMemberIds.value,
+          sortNum: formData.value.sortNum
         }
+        await DeptCommunityApi.createDeptCommunityMultiple(saveData)
         message.success(`成功更新为 ${selectedMemberIds.value.length} 个紧密医疗共同体关系`)
       }
     }

@@ -9,6 +9,14 @@ export interface DeptCommunityVO {
   sortNum: number // 排序
 }
 
+// 紧密医疗共同体保存请求 VO
+export interface DeptCommunitySaveReqVO {
+  id?: number
+  masterId: number // 牵头单位
+  memberIdList: number[] // 成员单位列表
+  sortNum: number // 排序
+}
+
 // 部门 VO（用于返回可选的成员单位列表）
 export interface DeptRespVO {
   id: number // 部门ID
@@ -31,6 +39,11 @@ export const DeptCommunityApi = {
   // 新增紧密医疗共同体
   createDeptCommunity: async (data: DeptCommunityVO) => {
     return await request.post({ url: `/drug/dept-community/create`, data })
+  },
+
+  // 批量新增紧密医疗共同体
+  createDeptCommunityMultiple: async (data: DeptCommunitySaveReqVO) => {
+    return await request.post({ url: `/drug/dept-community/createMultiple`, data })
   },
 
   // 修改紧密医疗共同体
