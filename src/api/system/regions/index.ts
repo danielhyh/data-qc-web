@@ -61,10 +61,10 @@ export const RegionsApi = {
   },
 
   // 获取区域树(带机构数量)
-  getRegionsTreeWithOrgCount: async (excludeModuleCode?: string) => {
+  getRegionsTreeWithOrgCount: async (excludeModuleCode?: string, onlyMedical?: boolean) => {
     return await request.get<AreaOrgTreeNode[]>({ 
       url: `/system/area-org/area-tree`,
-      params: { excludeModuleCode }
+      params: { excludeModuleCode, onlyMedical }
     })
   },
 }

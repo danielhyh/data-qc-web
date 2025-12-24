@@ -271,7 +271,7 @@ const loadAreaTree = async () => {
   if (areaTreeLoading.value) return
   areaTreeLoading.value = true
   try {
-    const data = await RegionsApi.getRegionsTreeWithOrgCount('MONITOR')
+    const data = await RegionsApi.getRegionsTreeWithOrgCount('MONITOR', true)
     areaTree.value = Array.isArray(data) ? data : []
     defaultExpandedAreaCodes.value = areaTree.value.slice(0, 3).map((item) => item.code)
     if (!activeAreaCode.value && areaTree.value.length > 0) {
