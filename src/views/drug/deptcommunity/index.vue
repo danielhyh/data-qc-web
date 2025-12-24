@@ -1,86 +1,45 @@
 <template>
   <div class="dept-community-page">
-    <div class="flex dept-community-container">
-      <!-- 左侧地区树选择器 -->
-      <RegionTree
-        ref="regionTreeRef"
-        :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
-        :auto-select-first="true"
-        :show-org-count="true"
-        :show-collapse-button="true"
-        @node-click="handleRegionNodeClick"
-        @clear="handleClearRegion"
-      />
+    <div class="dept-community-container">
+      <div class="flex">
+        <!-- 左侧地区树选择器 -->
+        <RegionTree
+          ref="regionTreeRef"
+          :style="{ width: selectorWidth + 'px', flexShrink: 0, height: '100%' }"
+          :auto-select-first="true"
+          :show-org-count="true"
+          :show-collapse-button="true"
+          @node-click="handleRegionNodeClick"
+          @clear="handleClearRegion"
+        />
 
-      <!-- 拖拽分隔条 -->
-      <div class="resize-handle" @mousedown="startResize"></div>
+        <!-- 拖拽分隔条 -->
+        <div class="resize-handle" @mousedown="startResize"></div>
 
-      <!-- 中间机构列表区域 -->
-      <div class="flex-1 mx-5 center-content">
-        <ContentWrap>
-          <h3>机构列表</h3>
-          <el-table v-loading="deptLoading" :data="deptList" :stripe="true" :show-overflow-tooltip="true" @row-click="handleDeptRowClick">
-            <el-table-column label="机构名称" align="center" prop="name" width="200">
-              <template #default="scope">
-                <div class="dept-name-cell">
-                  <Icon icon="ep:office-building" class="mr-5px" />
-                  <span>{{ scope.row.name }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="机构代码" align="center" prop="orgCode" width="150" />
-            <el-table-column label="行政区划" align="center" prop="regionPathName" width="150" />
-            <el-table-column label="机构类别" align="center" prop="deptClassName" width="120" />
-            <el-table-column label="联络员" align="center" prop="contactPerson" width="100" />
-            <el-table-column label="联络电话" align="center" prop="contactPhone" width="130" />
-          </el-table>
-        </ContentWrap>
-      </div>
+        <!-- 中间机构列表区域 -->
+        <div class="center-content" :style="{ width: centerWidth + 'px', flexShrink: 0 }">
+          <ContentWrap>
+            <h3>机构列表</h3>
+            <el-table v-loading="deptLoading" :data="deptList" :stripe="true" :show-overflow-tooltip="true" @row-click="handleDeptRowClick">
+              <el-table-column label="机构名称" align="center" prop="name" width="300">
+                <template #default="scope">
+                  <div class="dept-name-cell">
+                    <Icon icon="ep:office-building" class="mr-5px" />
+                    <span>{{ scope.row.name }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </ContentWrap>
+        </div>
 
-      <!-- 拖拽分隔条 -->
-      <div class="resize-handle" @mousedown="startResizeRight"></div>
+        <!-- 拖拽分隔条 -->
+        <div class="resize-handle" @mousedown="startResizeRight"></div>
 
-      <!-- 右侧成员机构列表区域 -->
-      <div class="flex-1 mr-5 right-content">
-        <!-- 搜索工作栏 -->
-        <el-form
-          class="-mb-15px"
-          :model="queryParams"
-          ref="queryFormRef"
-          :inline="true"
-          label-width="68px"
-        >
-          <!-- 只有当没有通过点击中间机构选择牵头单位时，才显示牵头单位输入框 -->
-          <el-form-item v-if="!selectedMasterId" label="牵头单位" prop="masterId">
-            <el-input
-              v-model="queryParams.masterId"
-              placeholder="请输入牵头单位"
-              clearable
-              @keyup.enter="handleQuery"
-              class="!w-240px"
-            />
-          </el-form-item>
-          <el-form-item v-if="!selectedMasterId" label="成员单位" prop="memberId">
-            <el-input
-              v-model="queryParams.memberId"
-              placeholder="请输入成员单位"
-              clearable
-              @keyup.enter="handleQuery"
-              class="!w-240px"
-            />
-          </el-form-item>
-          <el-form-item v-if="!selectedMasterId" label="排序" prop="sortNum">
-            <el-input
-              v-model="queryParams.sortNum"
-              placeholder="请输入排序"
-              clearable
-              @keyup.enter="handleQuery"
-              class="!w-240px"
-            />
-          </el-form-item>
-          <el-form-item>
-            <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-            <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+        <!-- 右侧成员机构列表区域 -->
+        <div class="right-content" :style="{ width: rightWidth + 'px', flexShrink: 0, marginLeft: '5px' }">
+          <!-- 操作按钮栏 -->
+          <div class="flex justify-end mb-15px">
             <el-button
               type="primary"
               plain
@@ -98,58 +57,58 @@
             >
               <Icon icon="ep:download" class="mr-5px" /> 导出
             </el-button>
-          </el-form-item>
-        </el-form>
-
-        <!-- 成员机构列表 -->
-        <ContentWrap>
-          <div class="flex justify-between items-center mb-10px">
-            <h3 v-if="selectedMasterDeptName">成员机构列表 - {{ selectedMasterDeptName }}</h3>
-            <h3 v-else>成员机构列表</h3>
-            <el-button
-              v-if="selectedMasterId"
-              type="info"
-              plain
-              size="small"
-              @click="clearSelectedMaster"
-            >
-              <Icon icon="ep:close" class="mr-5px" />取消选择
-            </el-button>
           </div>
-          <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-            <el-table-column label="主键" align="center" prop="id" />
-            <el-table-column label="牵头单位" align="center" prop="masterId" />
-            <el-table-column label="成员单位" align="center" prop="memberId" />
-            <el-table-column label="排序" align="center" prop="sortNum" />
-            <el-table-column label="操作" align="center" min-width="120px">
-              <template #default="scope">
-                <el-button
-                  link
-                  type="primary"
-                  @click="openForm('update', scope.row.id)"
-                  v-hasPermi="['drug:dept-community:update']"
-                >
-                  编辑
-                </el-button>
-                <el-button
-                  link
-                  type="danger"
-                  @click="handleDelete(scope.row.id)"
-                  v-hasPermi="['drug:dept-community:delete']"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <!-- 分页 -->
-          <Pagination
-            :total="total"
-            v-model:page="queryParams.pageNo"
-            v-model:limit="queryParams.pageSize"
-            @pagination="getList"
-          />
-        </ContentWrap>
+
+          <!-- 成员机构列表 -->
+          <ContentWrap>
+            <div class="flex justify-between items-center mb-10px">
+              <h3 v-if="selectedMasterDeptName">成员机构列表 - {{ selectedMasterDeptName }}</h3>
+              <h3 v-else>成员机构列表</h3>
+              <el-button
+                v-if="selectedMasterId"
+                type="info"
+                plain
+                size="small"
+                @click="clearSelectedMaster"
+              >
+                <Icon icon="ep:close" class="mr-5px" />取消选择
+              </el-button>
+            </div>
+            <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+              <el-table-column label="主键" align="center" prop="id" v-if="false" />
+              <el-table-column label="牵头单位" align="center" prop="masterId" />
+              <el-table-column label="成员单位" align="center" prop="memberName" />
+              <el-table-column label="排序" align="center" prop="sortNum" />
+              <el-table-column label="操作" align="center" min-width="120px">
+                <template #default="scope">
+                  <el-button
+                    link
+                    type="primary"
+                    @click="openForm('update', scope.row.id)"
+                    v-hasPermi="['drug:dept-community:update']"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button
+                    link
+                    type="danger"
+                    @click="handleDelete(scope.row.id)"
+                    v-hasPermi="['drug:dept-community:delete']"
+                  >
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <!-- 分页 -->
+            <Pagination
+              :total="total"
+              v-model:page="queryParams.pageNo"
+              v-model:limit="queryParams.pageSize"
+              @pagination="getList"
+            />
+          </ContentWrap>
+        </div>
       </div>
     </div>
 
@@ -196,7 +155,9 @@ const exportLoading = ref(false) // 导出的加载中
 
 // 面板拖拽相关
 const regionTreeRef = ref<InstanceType<typeof RegionTree>>()
-const selectorWidth = ref(250) // 默认宽度设为最小宽度
+const selectorWidth = ref(250) // 左侧区域默认宽度
+const centerWidth = ref(400) // 中间区域默认宽度
+const rightWidth = ref(600) // 右侧区域默认宽度
 const isResizing = ref(false)
 
 // 面板拖拽相关（右侧）
@@ -243,19 +204,13 @@ const startResizeRight = (e: MouseEvent) => {
   if (!container) return
 
   const containerRect = container.getBoundingClientRect()
-  const initialCenterWidth = (containerRect.width - selectorWidth.value - 20) / 2 // 20是两个分隔条的宽度
+  const initialRightWidth = rightWidth.value
 
   const onMouseMove = (moveEvent: MouseEvent) => {
     if (!isResizingRight.value) return
     const diff = moveEvent.clientX - startX
-    const newCenterWidth = Math.max(300, initialCenterWidth + diff) // 最小300px
-    const newRightWidth = Math.max(300, initialCenterWidth - diff) // 最小300px
-    
-    // 这里我们使用CSS变量来控制宽度，需要在CSS中实现
-    // 简单的方法是调整左侧区域的宽度来间接控制
-    const totalWidth = containerRect.width
-    const newLeftWidth = totalWidth - newCenterWidth - newRightWidth - 20 // 20是两个分隔条的宽度
-    selectorWidth.value = newLeftWidth
+    const newRightWidth = Math.max(400, initialRightWidth - diff) // 最小400px，向左拖动增加宽度，向右拖动减少宽度
+    rightWidth.value = newRightWidth
   }
 
   const onMouseUp = () => {
@@ -280,7 +235,7 @@ const getDeptList = async () => {
     // 根据选中的地区获取机构列表
     const params: DeptPageParam = {
       pageNo: 1,
-      pageSize: 100, // 获取所有机构
+      pageSize: 100, // 限制为100，符合框架限制
     }
     if (selectedRegionCode.value) {
       params.areaCode = selectedRegionCode.value
@@ -298,11 +253,33 @@ const getList = async () => {
   try {
     // 如果有选中的牵头单位，则查询该单位的成员机构
     if (selectedMasterId.value) {
-      queryParams.masterId = selectedMasterId.value
+      // 使用新的API方法获取包含成员名称的列表
+      const params = {
+        masterId: selectedMasterId.value,
+        pageNo: queryParams.pageNo,
+        pageSize: queryParams.pageSize,
+      }
+      const data = await DeptCommunityApi.getDeptCommunityListByMasterId(params)
+      // 根据API返回格式调整
+      if (data && Array.isArray(data)) {
+        // 如果直接返回数组
+        list.value = data
+        total.value = data.length
+      } else if (data && data.list) {
+        // 如果返回的是分页格式
+        list.value = data.list
+        total.value = data.total
+      } else {
+        // 默认处理
+        list.value = data || []
+        total.value = data ? data.length : 0
+      }
+    } else {
+      // 如果没有选中的牵头单位，使用原来的分页查询
+      const data = await DeptCommunityApi.getDeptCommunityPage(queryParams)
+      list.value = data.list
+      total.value = data.total
     }
-    const data = await DeptCommunityApi.getDeptCommunityPage(queryParams)
-    list.value = data.list
-    total.value = data.total
   } finally {
     loading.value = false
   }
@@ -388,7 +365,14 @@ const resetQuery = () => {
 /** 添加/修改操作 */
 const formRef = ref()
 const openForm = (type: string, id?: number) => {
-  formRef.value.open(type, id)
+  console.log(`Opening form with type: ${type}, id: ${id}`)
+  // 如果是新增且当前已选中牵头单位，将牵头单位ID传递给表单
+  if (type === 'create' && selectedMasterId.value) {
+    console.log('Passing selectedMasterId to form:', selectedMasterId.value)
+    formRef.value.open(type, id, selectedMasterId.value)
+  } else {
+    formRef.value.open(type, id)
+  }
 }
 
 /** 删除按钮操作 */
@@ -437,7 +421,7 @@ onMounted(() => {
 .dept-community-container {
   height: 100%;
   min-height: 600px;
-  overflow: hidden;
+  overflow: auto; /* 添加滚动条，防止内容溢出 */
 }
 
 .resize-handle {

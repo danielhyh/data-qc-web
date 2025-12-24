@@ -5,7 +5,15 @@ export interface DeptCommunityVO {
   id: number // 主键
   masterId: number // 牵头单位
   memberId: number // 成员单位
+  memberName?: string // 成员单位名称（可选）
   sortNum: number // 排序
+}
+
+// 部门 VO（用于返回可选的成员单位列表）
+export interface DeptRespVO {
+  id: number // 部门ID
+  name: string // 部门名称
+  parentId: number // 父部门ID
 }
 
 // 紧密医疗共同体 API
@@ -39,4 +47,17 @@ export const DeptCommunityApi = {
   exportDeptCommunity: async (params) => {
     return await request.download({ url: `/drug/dept-community/export-excel`, params })
   },
-}
+
+  // 获取可加入紧密医疗共同体的部门列表
+  getAvailableDepts: async (masterId: number) => {
+    console.log('Calling getAvailableDepts API with masterId:', masterId) // 调试日志
+    const result = await request.get({ url: `/drug/dept-community/get-available-depts`, params: { masterId } })
+    console.log('getAvailableDepts API response:', result) // 调试日志
+    return result
+  },
+
+  // 根据牵头单位ID查询紧密医疗共同体成员单位列表（包含成员单位名称）
+  getDeptCommunityListByMasterId: async (params: any) => {
+    return await request.get({ url: `/drug/dept-community/get-by-master-id`, params })
+  },
+}
