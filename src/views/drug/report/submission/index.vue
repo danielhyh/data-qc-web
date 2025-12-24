@@ -272,12 +272,11 @@ const getList = async () => {
 
 /** 查询年份列表 */
 const getYear = async () => {
-  loading.value = true
   try {
     const data = await ReportDataApi.getDeduplicationYearList()
     yearOptions.value = data || []
-  } finally {
-    loading.value = false
+  } catch (error) {
+    console.error('获取年份列表失败:', error)
   }
 }
 
