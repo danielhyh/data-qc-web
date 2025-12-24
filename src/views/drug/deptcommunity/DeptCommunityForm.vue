@@ -7,13 +7,14 @@
       label-width="100px"
       v-loading="formLoading"
     >
-      <el-form-item label="牵头单位" prop="masterId">
+      <el-form-item label="牵头单位" prop="masterId" v-if="formType === 'update'">
         <el-input 
           v-model="formData.masterId" 
           placeholder="请输入牵头单位" 
           @blur="onMasterIdChange"
         />
       </el-form-item>
+
       <el-form-item label="成员单位" prop="memberIds">
         <el-checkbox-group v-model="selectedMemberIds" class="member-checkbox-group">
           <el-checkbox
@@ -26,7 +27,7 @@
           </el-checkbox>
         </el-checkbox-group>
       </el-form-item>
-      <el-form-item label="排序" prop="sortNum">
+      <el-form-item label="排序" prop="sortNum" v-if="false">
         <el-input v-model="formData.sortNum" placeholder="请输入排序" />
       </el-form-item>
     </el-form>
@@ -219,6 +220,8 @@ const onMasterIdChange = async (value: any) => {
     availableMemberList.value = []
   }
 }
+
+
 
 </script>
 
