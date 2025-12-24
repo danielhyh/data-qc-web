@@ -38,57 +38,34 @@
 
         <!-- 右侧成员机构列表区域 -->
         <div class="right-content" :style="{ width: rightWidth + 'px', flexShrink: 0, marginLeft: '5px' }">
-          <!-- 操作按钮栏 -->
-          <div class="flex justify-end mb-15px">
-            <el-button
-              type="primary"
-              plain
-              @click="openForm('create')"
-              v-hasPermi="['drug:dept-community:create']"
-            >
-              <Icon icon="ep:plus" class="mr-5px" /> 新增
-            </el-button>
-            <el-button
-              type="success"
-              plain
-              @click="handleExport"
-              :loading="exportLoading"
-              v-hasPermi="['drug:dept-community:export']"
-            >
-              <Icon icon="ep:download" class="mr-5px" /> 导出
-            </el-button>
-          </div>
-
           <!-- 成员机构列表 -->
           <ContentWrap>
             <div class="flex justify-between items-center mb-10px">
               <h3 v-if="selectedMasterDeptName">成员机构列表 - {{ selectedMasterDeptName }}</h3>
               <h3 v-else>成员机构列表</h3>
               <el-button
-                v-if="selectedMasterId"
-                type="info"
+                type="primary"
                 plain
-                size="small"
-                @click="clearSelectedMaster"
+                @click="openForm('create')"
+                v-hasPermi="['drug:dept-community:create']"
               >
-                <Icon icon="ep:close" class="mr-5px" />取消选择
+                <Icon icon="ep:plus" class="mr-5px" /> 新增
+              </el-button>
+              <el-button
+                type="success"
+                plain
+                @click="handleExport"
+                :loading="exportLoading"
+                v-hasPermi="['drug:dept-community:export']"
+              >
+                <Icon icon="ep:download" class="mr-5px" /> 导出
               </el-button>
             </div>
             <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
               <el-table-column label="主键" align="center" prop="id" v-if="false" />
-              <el-table-column label="牵头单位" align="center" prop="masterId" />
-              <el-table-column label="成员单位" align="center" prop="memberName" />
-              <el-table-column label="排序" align="center" prop="sortNum" />
-              <el-table-column label="操作" align="center" min-width="120px">
+              <el-table-column label="成员单位" align="center" prop="memberName" min-width="220px"/>
+              <el-table-column label="操作" align="center" >
                 <template #default="scope">
-                  <el-button
-                    link
-                    type="primary"
-                    @click="openForm('update', scope.row.id)"
-                    v-hasPermi="['drug:dept-community:update']"
-                  >
-                    编辑
-                  </el-button>
                   <el-button
                     link
                     type="danger"
@@ -145,7 +122,7 @@ const list = ref<DeptCommunityVO[]>([]) // 成员机构列表的数据
 const total = ref(0) // 成员机构列表的总页数
 const queryParams = reactive({
   pageNo: 1,
-  pageSize: 10,
+  pageSize: 100,
   masterId: undefined,
   memberId: undefined,
   sortNum: undefined,
