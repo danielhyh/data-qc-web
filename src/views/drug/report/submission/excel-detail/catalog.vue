@@ -86,8 +86,8 @@
     <el-table-column label="转换系数" align="center" prop="conversionFactor" width="120" />
     <el-table-column label="是否基本药物" align="center" prop="isBasicDrug" width="120">
       <template #default="{ row }">
-        <el-tag :type="row.isBasicDrug === 1 ? 'success' : 'info'" size="small">
-          {{ row.isBasicDrug === 1 ? '是' : '否' }}
+        <el-tag :type="row.isBasicDrug === '是' ? 'success' : 'info'" size="small">
+          {{ row.isBasicDrug }}
         </el-tag>
       </template>
     </el-table-column>
