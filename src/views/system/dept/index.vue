@@ -266,7 +266,7 @@
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" align="center" width="180px" fixed="right">
+                <el-table-column label="操作" align="center" width="260px" fixed="right">
                   <template #default="scope">
                     <el-button
                       type="success"
@@ -276,6 +276,17 @@
                     >
                       <Icon icon="ep:view" />
                       详情
+                    </el-button>
+                    <el-button
+                      v-if="scope.row.username"
+                      type="warning"
+                      size="small"
+                      plain
+                      @click="handleResetPassword(scope.row)"
+                      v-hasPermi="['system:user:update-password']"
+                    >
+                      <Icon icon="ep:key" />
+                      重置密码
                     </el-button>
                     <el-dropdown
                       trigger="click"
@@ -307,10 +318,10 @@
                           <el-dropdown-item command="account" v-if="checkPermi(['system:user:query'])">
                             <Icon icon="ep:user" class="mr-5px" />管理账号
                           </el-dropdown-item>
-                          <!-- 停用/启用机构 -->
+                          <!-- 停用/启用机构 - 仅省级管理员可操作 -->
                           <el-dropdown-item
                             :command="scope.row.status === 0 ? 'disable' : 'enable'"
-                            v-if="checkPermi(['system:dept:update'])"
+                            v-if="checkPermi(['system:dept:update-status'])"
                             :divided="true"
                           >
                             <Icon
@@ -834,6 +845,27 @@ const handleExport = async () => {
   } finally {
     exportLoading.value = false
   }
+}
+
+/** 重置密码 */
+const handleResetPassword = async (row: any) => {
+  if (!row.username) return
+  try {
+    const result = await message.prompt(
+      `请输入"${row.username}"的新密码`,
+      '重置密码'
+    )
+    const password = result.value
+    if (!password) return
+    // 需要先获取用户ID
+    const userInfo = await UserApi.getUserByDeptId(row.id)
+    if (!userInfo) {
+      message.error('未找到该机构的账号信息')
+      return
+    }
+    await UserApi.resetUserPassword(userInfo.id, password)
+    message.success(`密码已重置为: ${password}`)
+  } catch {}
 }
 
 /** 操作下拉菜单命令处理 */

@@ -280,7 +280,11 @@ export const ReportRecordApi = {
 
   // 获取填报进度统计
   getReportProgress: (params: any) =>
-    request.get({ url: `/shortage/report-record/report-progress`, params })
+    request.get({ url: `/shortage/report-record/report-progress`, params }),
+
+  // 获取周期状态（根据专区ID和周期编码）
+  getPeriodStatus: (zoneId: number, periodCode: string) =>
+    request.get({ url: `/shortage/report-period/status`, params: { zoneId, periodCode } })
 }
 
 // ========== 供应状态枚举 ==========

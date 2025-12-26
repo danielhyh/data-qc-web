@@ -145,16 +145,23 @@
               <Icon icon="ep:download" class="mr-5px" />
               导出上报情况
             </el-button>
-            <el-button
-              type="primary"
-              plain
-              :loading="exportWeeklyReportLoading"
-              :disabled="!queryParams.zoneId || !queryParams.reportWeek"
-              @click="handleExportWeeklyReport"
+            <el-tooltip
+              placement="top"
+              :content="exportWeeklyTooltip"
+              :disabled="canExportWeekly"
             >
-              <Icon icon="ep:document" class="mr-5px" />
-              导出周报
-            </el-button>
+              <el-button
+                v-hasPermi="['shortage:statistics:export-weekly']"
+                type="primary"
+                plain
+                :loading="exportWeeklyReportLoading"
+                :disabled="!canExportWeekly"
+                @click="handleExportWeeklyReport"
+              >
+                <Icon icon="ep:document" class="mr-5px" />
+                导出周报
+              </el-button>
+            </el-tooltip>
 
           </el-form-item>
         </el-form>
@@ -440,6 +447,23 @@ const zoneOptions = ref<any[]>([]) // 填报专区选项
 const exportLoading = ref(false) // 导出按钮加载状态
 const exportLoading2 = ref(false) // 导出本轮机构上报情况按钮加载状态
 const exportWeeklyReportLoading = ref(false) // 导出周报按钮加载状态
+const currentPeriodStatus = ref<number | null>(null) // 当前周期状态: 0-未开始 1-填报中 2-已结束
+
+// 导出周报按钮可用状态：必须选择专区和周期，且周期已结束
+const canExportWeekly = computed(() => {
+  return queryParams.zoneId && queryParams.reportWeek && currentPeriodStatus.value === 2
+})
+
+// 导出周报按钮提示文字
+const exportWeeklyTooltip = computed(() => {
+  if (!queryParams.zoneId || !queryParams.reportWeek) {
+    return '请先选择填报专区和填报周期'
+  }
+  if (currentPeriodStatus.value !== 2) {
+    return '周期尚未结束，无法导出周报'
+  }
+  return ''
+})
 
 // 页面标题（根据专区ID显示专区名称）
 const pageTitle = computed(() => {
@@ -595,12 +619,28 @@ const getList = async () => {
     const data = await ReportRecordApi.getReportRecordList(queryParams)
     list.value = data.list
     total.value = data.total
-    // 同时获取进度统计
+    // 同时获取进度统计和周期状态
     if (queryParams.reportWeek) {
       loadReportProgress()
+      loadPeriodStatus()
     }
   } finally {
     loading.value = false
+  }
+}
+
+/** 加载周期状态 */
+const loadPeriodStatus = async () => {
+  if (!queryParams.zoneId || !queryParams.reportWeek) {
+    currentPeriodStatus.value = null
+    return
+  }
+  try {
+    const status = await ReportRecordApi.getPeriodStatus(queryParams.zoneId, queryParams.reportWeek)
+    currentPeriodStatus.value = status
+  } catch (error) {
+    console.error('加载周期状态失败:', error)
+    currentPeriodStatus.value = null
   }
 }
 
