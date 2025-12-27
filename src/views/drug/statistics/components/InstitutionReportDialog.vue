@@ -100,6 +100,7 @@
             <el-form-item>
               <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
               <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+              <el-button @click="handleExport" type="primary" plain><Icon icon="ep:download" class="mr-5px" /> 导出Excel</el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -162,9 +163,10 @@
 
 <script setup lang="ts">
 import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
-import { InstitutionReportApi, InstitutionReportItemVO } from '@/api/drug/statistics'
+import { InstitutionReportApi, InstitutionReportItemVO, InstitutionReportPageReqVO } from '@/api/drug/statistics'
 import RegionTree from '@/views/system/user/RegionTree.vue'
 import Pagination from '@/components/Pagination/index.vue'
+import { ElMessage } from 'element-plus'
 
 /** 机构上报详情弹框 */
 defineOptions({ name: 'InstitutionReportDialog' })
@@ -262,6 +264,38 @@ const resetQuery = () => {
   selectedRegion.value = null
   queryParams.regionCode = undefined
   handleQuery()
+}
+
+/** 导出Excel */
+const handleExport = async () => {
+  try {
+    // 创建临时参数对象，排除分页参数
+    const { pageNo, pageSize, ...exportParams } = queryParams as Omit<InstitutionReportPageReqVO, 'pageNo' | 'pageSize'> & {
+      pageNo: number
+      pageSize: number
+    }
+    
+    // 调用导出API，获取blob数据
+    const response = await InstitutionReportApi.exportInstitutionReportExcel(exportParams)
+    
+    // 创建 Blob 对象并下载
+    const blob = new Blob([response], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const downloadUrl = URL.createObjectURL(blob)
+    
+    // 创建临时链接并触发下载
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = `机构上报列表_${new Date().toLocaleDateString()}.xlsx`
+    a.click()
+    
+    // 释放资源
+    URL.revokeObjectURL(downloadUrl)
+    
+    ElMessage.success('导出Excel成功')
+  } catch (error) {
+    console.error('导出Excel失败:', error)
+    ElMessage.error('导出Excel失败')
+  }
 }
 
 /** 打开弹窗 */

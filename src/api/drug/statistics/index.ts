@@ -491,6 +491,14 @@ export const InstitutionReportApi = {
       url: '/drug/statistics/institution-report/institutions/page',
       params
     })
+  },
+
+  // 导出机构上报列表为Excel
+  exportInstitutionReportExcel: (params: Omit<InstitutionReportPageReqVO, 'pageNo' | 'pageSize'>) => {
+    return request.download<Blob>({
+      url: '/drug/statistics/institution-report/institutions/export',
+      params
+    })
   }
 }
 
