@@ -299,19 +299,25 @@ const handleExport = async () => {
 }
 
 /** 打开弹窗 */
-const open = (id: number, type: string) => {
+const open = (id: number, type: string, regionId?: number) => {
   reportId.value = id
   queryParams.reportId = id
   queryParams.institutionType = type
   dialogVisible.value = true
 
-  // 重置状态
+  // 重置页码
   selectedRegion.value = null
   queryParams.regionCode = undefined
   queryParams.pageNo = 1
+  
+  if (regionId !== undefined) {
+    selectedRegion.value = { code: String(regionId), name: '' }
+    queryParams.regionCode = String(regionId)
+    handleRegionSelect({ code: String(regionId), name: '' })
+  }
+  // 立即加载一次数据
+  //getList()
 
-  // 加载数据
-  getList()
 }
 
 /** 关闭弹窗 */

@@ -173,7 +173,7 @@ const convertLevelReportStats = (stats: any) => {
 
 const reportChartDetails = ref({
   cityName: '', totalMonitoringInstitutions: 0, reportedInstitutions: 0, unreportedInstitutions: 0,
-  reportRate: 0, level3ReportRate: 0, level2ReportRate: 0, baseLevelReportRate: 0
+  reportRate: 0, level3ReportRate: 0, level2ReportRate: 0, baseLevelReportRate: 0, regionId: undefined
 })
 
 const formatDate = (ts: string | number) => ts ? dayjs(ts).format('YYYY-MM-DD') : '-'
@@ -266,7 +266,11 @@ const initCharts = () => {
   })
 }
 
-const handleViewDetails = (type: string) => institutionDialogRef.value?.open(Number(queryParams.value.reportId), type)
+const handleViewDetails = (type: string) => {
+  // 使用当前选中的城市regionId，如果没有选中任何城市，则使用默认值
+  const regionId = reportChartDetails.value.regionId || undefined
+  institutionDialogRef.value?.open(Number(queryParams.value.reportId), type, regionId)
+}
 const handleResize = () => myCharts.value?.resize()
 
 onMounted(() => { initPageData(); window.addEventListener('resize', handleResize) })
