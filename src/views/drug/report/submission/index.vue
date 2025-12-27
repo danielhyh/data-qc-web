@@ -68,6 +68,8 @@
           <span class="font-bold">{{ scope.row.taskName }}</span>
         </template>
       </el-table-column>
+
+      <el-table-column label="所属单位" align="center" prop="deptName" width="220px" />
       <el-table-column label="年份" align="center" prop="reportYear" width="80px" />
       <el-table-column
         label="开始日期"
