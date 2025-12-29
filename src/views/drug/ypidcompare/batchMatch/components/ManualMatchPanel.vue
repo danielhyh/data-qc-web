@@ -63,7 +63,7 @@
               v-model="searchForm.productName"
               placeholder="请输入药品名称"
               clearable
-              style="width: 200px"
+              style="width: 230px"
             />
           </el-form-item>
           <el-form-item label="生产企业">
@@ -71,7 +71,16 @@
               v-model="searchForm.manufacturerName"
               placeholder="请输入生产企业"
               clearable
-              style="width: 200px"
+              style="width: 230px"
+            />
+          </el-form-item>
+
+          <el-form-item label="批准文号">
+            <el-input
+              v-model="searchForm.approvalNo"
+              placeholder="请输入生产企业"
+              clearable
+              style="width: 230px"
             />
           </el-form-item>
           <el-form-item>
@@ -79,14 +88,6 @@
               搜索
             </el-button>
             <el-button @click="resetSearch">重置</el-button>
-          </el-form-item>
-          <el-form-item label="批准文号">
-            <el-input
-              v-model="searchForm.approvalNo"
-              placeholder="请输入生产企业"
-              clearable
-              style="width: 200px"
-            />
           </el-form-item>
         </el-form>
       </div>
@@ -313,6 +314,7 @@ const searchInStandard = () => {
     pagination.total = 0
     searchForm.productName = props.pendingData.productName || ''
     searchForm.manufacturerName = props.pendingData.manufacturer || ''
+    searchForm.approvalNo = props.pendingData.approvalNo || ''
   } else {
     // 退出搜索模式：先强制重新渲染表格
     tableKey.value++
@@ -326,6 +328,7 @@ const searchInStandard = () => {
     // 清空搜索表单
     searchForm.productName = ''
     searchForm.manufacturerName = ''
+    searchForm.approvalNo = ''
     // 重置分页
     pagination.pageNo = 1
     pagination.total = 0
@@ -335,8 +338,8 @@ const searchInStandard = () => {
 // 执行搜索
 const performSearch = async () => {
   // 校验搜索条件
-  if (!searchForm.productName.trim() && !searchForm.manufacturerName.trim()) {
-    ElMessage.warning('药品名称和生产企业至少填写一个查询条件')
+  if (!searchForm.productName.trim() && !searchForm.manufacturerName.trim() && !searchForm.approvalNo.trim()) {
+    ElMessage.warning('至少填写一个查询条件')
     return
   }
 
@@ -377,6 +380,7 @@ const resetSearch = () => {
   // 清空搜索条件
   searchForm.productName = ''
   searchForm.manufacturerName = ''
+  searchForm.approvalNo = ''
   // 重置分页
   pagination.pageNo = 1
   pagination.total = 0
