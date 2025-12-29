@@ -80,6 +80,14 @@
             </el-button>
             <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
+          <el-form-item label="批准文号">
+            <el-input
+              v-model="searchForm.approvalNo"
+              placeholder="请输入生产企业"
+              clearable
+              style="width: 200px"
+            />
+          </el-form-item>
         </el-form>
       </div>
 
@@ -110,6 +118,8 @@
           min-width="150"
           show-overflow-tooltip
         />
+        <el-table-column prop="versionCode" label="版本号" width="100" />
+        <el-table-column :formatter="dateFormatter" prop="versionCreateTime" label="更新时间" width="100" />
         <el-table-column prop="conversionFactor" label="转换系数" width="100" />
         <el-table-column prop="approvalNumber" label="批准文号" width="100" />
         <el-table-column prop="specification" label="规格" width="100" />
@@ -171,6 +181,7 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Coin, Search } from '@element-plus/icons-vue'
 import { YpidApi } from '@/api/drug/ypid'
+import {dateFormatter} from "@/utils/formatTime";
 
 defineOptions({ name: 'ManualMatchPanel' })
 
@@ -202,7 +213,8 @@ const originalCandidates = ref<any[]>([]) // 保存原始推荐匹配项数据
 // 搜索表单
 const searchForm = reactive({
   productName: '',
-  manufacturerName: ''
+  manufacturerName: '',
+  approvalNo: ''
 })
 
 // 分页数据
@@ -336,7 +348,7 @@ const performSearch = async () => {
       manufacturer: searchForm.manufacturerName,
       pendingId: props.pendingData.id,
       spec: props.pendingData.spec,
-      approvalNo: props.pendingData.approvalNo,
+      approvalNo: searchForm.approvalNo,
       dosageForm: props.pendingData.dosageForm,
       conversionFactor: props.pendingData.conversionFactor || '',
       taskId: props.taskId,
