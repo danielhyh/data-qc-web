@@ -233,9 +233,13 @@
             </template>
           </el-upload>
         </el-form-item>
+         <el-tooltip content="高于阈值的数据将自动确认" placement="top">
         <el-form-item label="自动应用">
-          <el-switch v-model="templateCreateForm.autoApplyEnabled" />
+         
+            <el-switch v-model="templateCreateForm.autoApplyEnabled" />
+         
         </el-form-item>
+        </el-tooltip>
         <el-form-item v-if="templateCreateForm.autoApplyEnabled" label="自动应用阈值">
           <el-slider
             v-model="templateCreateForm.autoApplyThreshold"
