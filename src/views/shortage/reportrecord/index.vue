@@ -120,22 +120,15 @@
               <Icon icon="ep:refresh" class="mr-5px" />
               重置
             </el-button>
-            <el-tooltip
-              placement="top"
-              content="请将提交情况筛选为已提交后再导出"
-              :disabled="canExport"
+            <el-button
+              type="success"
+              plain
+              :loading="exportLoading"
+              @click="handleExport"
             >
-              <el-button
-                type="success"
-                plain
-                :disabled="!canExport"
-                :loading="exportLoading"
-                @click="handleExport"
-              >
-                <Icon icon="ep:download" class="mr-5px" />
-                导出药品信息
-              </el-button>
-            </el-tooltip>
+              <Icon icon="ep:download" class="mr-5px" />
+              导出药品信息
+            </el-button>
             <el-button
               type="success"
               plain
@@ -144,6 +137,16 @@
             >
               <Icon icon="ep:download" class="mr-5px" />
               导出上报情况
+            </el-button>
+            <el-button
+              v-hasPermi="['shortage:report-record:export-region-summary']"
+              type="success"
+              plain
+              :loading="exportLoading3"
+              @click="handleExport3"
+            >
+              <Icon icon="ep:download" class="mr-5px" />
+              导出区域汇总
             </el-button>
             <el-tooltip
               placement="top"
@@ -446,6 +449,7 @@ const reportWeekOptions = ref<string[]>([]) // 填报周期选项
 const zoneOptions = ref<any[]>([]) // 填报专区选项
 const exportLoading = ref(false) // 导出按钮加载状态
 const exportLoading2 = ref(false) // 导出本轮机构上报情况按钮加载状态
+const exportLoading3 = ref(false) // 导出区域汇总按钮加载状态
 const exportWeeklyReportLoading = ref(false) // 导出周报按钮加载状态
 const currentPeriodStatus = ref<number | null>(null) // 当前周期状态: 0-未开始 1-填报中 2-已结束
 
@@ -669,6 +673,19 @@ const handleExport2 = async () => {
   }
 }
 
+/** 导出区域汇总 */
+const handleExport3 = async () => {
+  try {
+    await message.exportConfirm()
+    exportLoading3.value = true
+    const data = await ReportRecordApi.exportRegionSummary(queryParams)
+    download.excel(data, '区域上报汇总.xlsx')
+    message.success('导出成功')
+  } finally {
+    exportLoading3.value = false
+  }
+}
+
 /** 地区选择处理 */
 const handleRegionSelect = (region: any) => {
   selectedRegion.value = region
@@ -700,11 +717,6 @@ const handleQuery = () => {
   queryParams.pageNo = 1
   getList()
 }
-
-/** 导出按钮可用状态：提交情况为已提交时可用 */
-const canExport = computed(() => {
-  return queryParams.submitType === 1 // 已提交
-})
 
 
 /** 重置按钮操作 */
@@ -1011,10 +1023,6 @@ const handleExportWeeklyReport = async () => {
 
 /** 导出机构药品填报数据 */
 const handleExport = async () => {
-  if (!canExport.value) {
-    message.warning('请将提交情况筛选为已提交后再导出')
-    return
-  }
   try {
     await message.exportConfirm()
     exportLoading.value = true
@@ -1023,7 +1031,7 @@ const handleExport = async () => {
       zoneId: queryParams.zoneId,
       reportWeek: queryParams.reportWeek,
       keyword: queryParams.keyword,
-      submitType: 1 // 已提交
+      submitType: queryParams.submitType
     }
     const data = await ReportRecordApi.exportReportRecord(params)
     download.excel(data, '机构药品填报记录.xlsx')

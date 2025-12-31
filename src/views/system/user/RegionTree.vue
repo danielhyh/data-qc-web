@@ -281,11 +281,60 @@ const handleClear = () => {
   emits('clear')
 }
 
+/** 根据 regionId 选中节点 */
+const selectByRegionId = (regionId: number | string): Promise<Tree | null> => {
+  return new Promise((resolve) => {
+    if (!regionId) {
+      resolve(null)
+      return
+    }
+    
+    // 递归查找节点
+    const findNode = (nodes: Tree[], targetId: string): Tree | null => {
+      for (const node of nodes) {
+        if (String(node.id) === targetId || node.code === targetId) {
+          return node
+        }
+        if (node.children?.length) {
+          const found = findNode(node.children, targetId)
+          if (found) return found
+        }
+      }
+      return null
+    }
+    
+    nextTick(() => {
+      const targetNode = findNode(regionList.value, String(regionId))
+      if (targetNode) {
+        activeCode.value = targetNode.code
+        treeRef.value?.setCurrentKey(targetNode.code)
+        // 展开父节点
+        if (targetNode.path) {
+          const pathCodes = targetNode.path.split('/').filter(Boolean)
+          pathCodes.forEach(code => {
+            const node = treeRef.value?.getNode(code)
+            if (node) {
+              node.expand()
+            }
+          })
+        }
+        // 通知父组件选中了节点
+        emits('node-click', targetNode)
+        resolve(targetNode)
+      } else {
+        resolve(null)
+      }
+    })
+  })
+}
+
 /** 暴露方法给父组件 */
 defineExpose({
   clearSelection,
   toggleCollapse,
-  isCollapsed
+  isCollapsed,
+  selectByRegionId,
+  loading
 })
 
 /** 监听regionName */

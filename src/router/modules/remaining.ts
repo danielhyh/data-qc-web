@@ -34,37 +34,6 @@ const { t } = useI18n()
  **/
 const remainingRouter: AppRouteRecordRaw[] = [
   {
-    path: '/feedback',
-    component: Layout,
-    name: 'Feedback',
-    meta: {
-      title: '反馈管理',
-      icon: 'ep:ticket',
-      alwaysShow: true
-    },
-    children: [
-      {
-        path: 'list',
-        name: 'FeedbackList',
-        component: () => import('@/views/drug/feedback/index.vue'),
-        meta: {
-          title: '反馈列表'
-        }
-      },
-      {
-        path: 'detail/:id',
-        name: 'FeedbackDetail',
-        component: () => import('@/views/drug/feedback/detail.vue'),
-        meta: {
-          title: '反馈详情',
-          hidden: true,
-          canTo: true,
-          activeMenu: '/feedback/list'
-        }
-      }
-    ]
-  },
-  {
     path: '/redirect',
     component: Layout,
     name: 'Redirect',
@@ -143,6 +112,30 @@ const remainingRouter: AppRouteRecordRaw[] = [
           noTagsView: false,
           icon: 'ep:bell',
           title: '我的公告'
+        }
+      },
+      {
+        path: 'feedback',
+        component: () => import('@/views/drug/feedback/my.vue'),
+        name: 'MyFeedback',
+        meta: {
+          canTo: true,
+          hidden: true,
+          noTagsView: false,
+          icon: 'ep:chat-dot-round',
+          title: '我的反馈'
+        }
+      },
+      {
+        path: 'feedback/:id',
+        component: () => import('@/views/drug/feedback/detail.vue'),
+        name: 'MyFeedbackDetail',
+        meta: {
+          canTo: true,
+          hidden: true,
+          noTagsView: false,
+          icon: 'ep:view',
+          title: '反馈详情'
         }
       }
     ]

@@ -189,7 +189,7 @@
                     <el-icon>
                       <Download />
                     </el-icon>
-                    下载标准模板压缩包
+                    下载标准模板压缩包(2025)
                   </el-button>
                 </div>
 

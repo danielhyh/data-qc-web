@@ -282,10 +282,76 @@ small, .text-muted {
 html,
 body,
 .el-table,
-.el-scrollbar,
-[class*="scroll"] {
+[class*="scroll"]:not(.el-scrollbar):not(.el-scrollbar *) {
   scrollbar-width: thin;
   scrollbar-color: #5B8DEF rgba(91, 141, 239, 0.05);
+}
+
+/* Element Plus el-scrollbar 组件 - 隐藏原生滚动条，使用组件自带的虚拟滚动条 */
+.el-scrollbar {
+  /* 隐藏原生滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  
+  &::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+    width: 0;
+    height: 0;
+  }
+}
+
+.el-scrollbar__wrap {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+.el-scrollbar__view {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Element Plus 滚动条组件样式美化 */
+.el-scrollbar__bar {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  
+  &.is-horizontal {
+    height: 6px;
+    bottom: 2px;
+  }
+  
+  &.is-vertical {
+    width: 6px;
+    right: 2px;
+  }
+}
+
+.el-scrollbar:hover .el-scrollbar__bar,
+.el-scrollbar:active .el-scrollbar__bar,
+.el-scrollbar__bar:hover {
+  opacity: 1;
+}
+
+.el-scrollbar__thumb {
+  background: linear-gradient(180deg, #5B8DEF, #7c3aed);
+  border-radius: 3px;
+  transition: background 0.15s ease;
+  
+  &:hover {
+    background: linear-gradient(180deg, #6b9def, #8b5cf6);
+  }
 }
 
 /* 统一圆角和间距 */
@@ -312,7 +378,7 @@ body,
 .el-input__wrapper,
 .el-textarea__inner,
 .el-select__wrapper {
-  border-radius: var(--border-radius-medium);
+  border-radius: var(--border-radius-medium) !important;
 }
 
 /* Select 下拉框圆角 */
@@ -497,12 +563,15 @@ body,
   font-size: 14px !important;
   font-weight: 450 !important;
   color: #2c3e50 !important;
+  /* 允许内容溢出，解决 dict-tag 等元素 hover 动画被裁剪的问题 */
+  overflow: visible !important;
   
   > .cell {
     font-size: 14px !important;
     font-weight: 450 !important;
     line-height: 1.6 !important;
     color: #2c3e50 !important;
+    overflow: visible !important;
   }
 }
 

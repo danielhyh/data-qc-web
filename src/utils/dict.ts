@@ -229,6 +229,7 @@ export enum DICT_TYPE {
 
   REPORT_STATUS = 'report_status', // 填报任务状态
   DRUG_REPORT_STATUS = 'drug_report_status', // 填报状态
+  SHORTAGE_PERIOD_STATUS = 'shortage_period_status', // 短缺药品周期状态
   UPLOAD_STATUS = 'upload_status', // 文件上传状态
   REPORT_OPERATION_STATUS = 'report_operation_status', // 上报操作状态
   QC_STATUS = 'qc_status', // 质控处理状态

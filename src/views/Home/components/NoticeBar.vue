@@ -12,7 +12,13 @@
         <!-- 内容区域 -->
         <div class="notice-bar__content">
           <span class="notice-bar__title">{{ title }}</span>
-          <span class="notice-bar__text">{{ content }}</span>
+          <div v-if="items && items.length" class="notice-bar__items">
+            <div v-for="(item, index) in items" :key="index" class="notice-bar__item">
+              <span class="notice-bar__item-icon">{{ item.icon || '✨' }}</span>
+              <span class="notice-bar__item-text">{{ item.text }}</span>
+            </div>
+          </div>
+          <span v-else class="notice-bar__text">{{ content }}</span>
         </div>
 
         <!-- 操作区域 -->
@@ -61,7 +67,8 @@ defineOptions({ name: 'NoticeBar' })
 
 interface Props {
   title?: string
-  content: string
+  content?: string
+  items?: Array<{ icon?: string; text: string }>
   type?: 'info' | 'success' | 'warning' | 'error' | 'new'
   icon?: string
   closable?: boolean
@@ -73,7 +80,9 @@ const props = withDefaults(defineProps<Props>(), {
   title: '系统通知',
   type: 'info',
   closable: true,
-  storageKey: ''
+  storageKey: '',
+  content: '',
+  items: () => []
 })
 
 const emit = defineEmits<{
@@ -132,6 +141,7 @@ defineExpose({ show })
 <style scoped lang="scss">
 .notice-bar {
   position: relative;
+  z-index: 1;
   margin-bottom: 20px;
   border-radius: 12px;
   overflow: hidden;
@@ -177,6 +187,32 @@ defineExpose({ show })
     color: inherit;
     opacity: 0.9;
     line-height: 1.5;
+  }
+
+  &__items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: inherit;
+    opacity: 0.95;
+    line-height: 1.5;
+  }
+
+  &__item-icon {
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+
+  &__item-text {
+    flex: 1;
   }
 
   &__actions {

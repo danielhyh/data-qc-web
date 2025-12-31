@@ -88,19 +88,20 @@
         </el-table-column>
         <el-table-column label="周期状态" align="center" width="100px">
           <template #default="scope">
-            <el-tag v-if="scope.row.periodStatus === 0" type="info">未开始</el-tag>
-            <el-tag v-else-if="scope.row.periodStatus === 1" type="primary">填报中</el-tag>
-            <el-tag v-else-if="scope.row.periodStatus === 2" type="danger">已结束</el-tag>
-            <el-tag v-else type="info">-</el-tag>
+            <dict-tag :type="DICT_TYPE.SHORTAGE_PERIOD_STATUS" :value="scope.row.periodStatus" />
           </template>
         </el-table-column>
-        <el-table-column label="任务剩余时间" align="center" width="150px">
+        <el-table-column label="时间提示" align="center" width="150px">
           <template #default="scope">
             <!-- 周期已结束显示已结束 -->
             <span v-if="scope.row.periodStatus === 2" class="text-gray-400">已结束</span>
+            <!-- 周期未开始显示距开始时间 -->
+            <span v-else-if="scope.row.periodStatus === 0" class="text-blue-500">
+              {{ calculateRemainingTime(scope.row.startTime, true) }}
+            </span>
             <!-- 已提交状态显示已完成 -->
             <span v-else-if="scope.row.reportStatus === 2" class="text-green-500">已完成</span>
-            <!-- 待填报和草稿状态显示距截止剩余时间 -->
+            <!-- 进行中且待填报/草稿状态显示距截止剩余时间 -->
             <span v-else :class="getRemainingTimeClass(scope.row.deadlineTime)">
               {{ calculateRemainingTime(scope.row.deadlineTime) }}
             </span>

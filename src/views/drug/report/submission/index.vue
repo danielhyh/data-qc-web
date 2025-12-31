@@ -9,223 +9,234 @@
         :inline="true"
         label-width="68px"
       >
-      <el-form-item label="任务名称" prop="taskName">
-        <el-input
-          v-model="queryParams.taskName"
-          placeholder="请输入任务名称"
-          clearable
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="年份" prop="reportYear">
-        <el-select
-          v-model="queryParams.reportYear"
-          placeholder="请选择年份"
-          clearable
-          class="!w-240px"
-        >
-          <el-option v-for="year in yearOptions" :key="year" :label="year" :value="year" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="上报状态" prop="reportStatus">
-        <el-select
-          v-model="queryParams.reportStatus"
-          placeholder="请选择上报状态"
-          clearable
-          class="!w-240px"
-        >
-          <el-option
-            v-for="dict in getIntDictOptions(DICT_TYPE.REPORT_STATUS)"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
+        <el-form-item label="任务名称" prop="taskName">
+          <el-input
+            v-model="queryParams.taskName"
+            placeholder="请输入任务名称"
+            clearable
+            class="!w-240px"
           />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button @click="handleQuery">
-          <Icon icon="ep:search" class="mr-5px" />
-          搜索
-        </el-button>
-        <el-button @click="resetQuery">
-          <Icon icon="ep:refresh" class="mr-5px" />
-          重置
-        </el-button>
-      </el-form-item>
-    </el-form>
+        </el-form-item>
+        <el-form-item label="年份" prop="reportYear">
+          <el-select
+            v-model="queryParams.reportYear"
+            placeholder="请选择年份"
+            clearable
+            class="!w-240px"
+          >
+            <el-option v-for="year in yearOptions" :key="year" :label="year" :value="year" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="上报状态" prop="reportStatus">
+          <el-select
+            v-model="queryParams.reportStatus"
+            placeholder="请选择上报状态"
+            clearable
+            class="!w-240px"
+          >
+            <el-option
+              v-for="dict in getIntDictOptions(DICT_TYPE.REPORT_STATUS)"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="handleQuery">
+            <Icon icon="ep:search" class="mr-5px" />
+            搜索
+          </el-button>
+          <el-button @click="resetQuery">
+            <Icon icon="ep:refresh" class="mr-5px" />
+            重置
+          </el-button>
+        </el-form-item>
+      </el-form>
     </ContentWrap>
 
     <!-- 列表 -->
-    <ContentWrap>
-    <el-table
-      v-loading="loading"
-      :data="list"
-      :show-overflow-tooltip="true"
+    <ContentWrap
+      title="上报任务列表"
+      headerIcon="ep:list"
+      message="选择任务点击「上报」进入填报页面，支持下载 Excel 模板批量导入数据"
     >
-      <el-table-column label="序号" width="80" type="index" align="center" />
-      <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px">
-        <template #default="scope">
-          <span class="font-bold">{{ scope.row.taskName }}</span>
-        </template>
-      </el-table-column>
+      <template #header>
+        <el-button type="primary" size="small" :loading="downloadingTemplate" :disabled="downloadingTemplate" @click="handleDownloadTemplate">
+          <Icon icon="ep:download" class="mr-4px" />
+          下载标准模板压缩包(2025)
+        </el-button>
+      </template>
 
-      <el-table-column label="所属单位" align="center" prop="deptName" width="220px" />
-      <el-table-column label="年份" align="center" prop="reportYear" width="80px" />
-      <el-table-column
-        label="开始日期"
-        align="center"
-        width="120px"
+      <el-table
+        v-loading="loading"
+        :data="list"
+        :show-overflow-tooltip="true"
       >
-        <template #default="scope">
-          {{ getCurrentDate(scope.row.startDate) }}
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="截止日期"
-        align="center"
-        width="120px"
-      >
-        <template #default="scope">
-          {{ getCurrentDate(scope.row.endDate) }}
-        </template>
-      </el-table-column>
+        <el-table-column label="序号" width="80" type="index" align="center" />
+        <el-table-column label="任务名称" align="center" prop="taskName" min-width="120px">
+          <template #default="scope">
+            <span class="font-bold">{{ scope.row.taskName }}</span>
+          </template>
+        </el-table-column>
 
-      <!-- 剩余时间 -->
-      <el-table-column label="剩余时间" align="center" width="150px">
-        <template #default="scope">
+        <el-table-column label="所属单位" align="center" prop="deptName" width="220px" />
+        <el-table-column label="年份" align="center" prop="reportYear" width="80px" />
+        <el-table-column
+          label="开始日期"
+          align="center"
+          width="120px"
+        >
+          <template #default="scope">
+            {{ getCurrentDate(scope.row.startDate) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="截止日期"
+          align="center"
+          width="120px"
+        >
+          <template #default="scope">
+            {{ getCurrentDate(scope.row.endDate) }}
+          </template>
+        </el-table-column>
+
+        <!-- 剩余时间 -->
+        <el-table-column label="剩余时间" align="center" width="150px">
+          <template #default="scope">
           <span v-if="scope.row.status !== 3" :class="getRemainingTimeClass(scope.row.endDate, scope.row.status)">
             {{ calculateRemainingTime(scope.row.endDate, scope.row.status) }}
           </span>
-          <span v-else class="text-gray-400 font-medium">任务已结束</span>
-        </template>
-      </el-table-column>
+            <span v-else class="text-gray-400 font-medium">任务已结束</span>
+          </template>
+        </el-table-column>
 
-      <!-- 上报进度 -->
-      <el-table-column label="上报进度" align="center" width="200px">
-        <template #default="scope">
-          <div class="flex items-center gap-2">
-            <el-progress
-              :percentage="scope.row.reportProgress"
-              :color="getProgressColor(scope.row.reportProgress)"
-              :stroke-width="8"
-              style="flex: 1"
-            />
-          </div>
-        </template>
-      </el-table-column>
+        <!-- 上报进度 -->
+        <el-table-column label="上报进度" align="center" width="200px">
+          <template #default="scope">
+            <div class="flex items-center gap-2">
+              <el-progress
+                :percentage="scope.row.reportProgress"
+                :color="getProgressColor(scope.row.reportProgress)"
+                :stroke-width="8"
+                style="flex: 1"
+              />
+            </div>
+          </template>
+        </el-table-column>
 
-      <!-- 任务状态 -->
-      <el-table-column label="任务状态" align="center" width="100px">
-        <template #default="scope">
-          <dict-tag :type="DICT_TYPE.REPORT_STATUS_TYPE" :value="scope.row.status" />
-        </template>
-      </el-table-column>
+        <!-- 任务状态 -->
+        <el-table-column label="任务状态" align="center" width="100px">
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.REPORT_STATUS_TYPE" :value="scope.row.status" />
+          </template>
+        </el-table-column>
 
-      <!-- 上报状态 -->
-      <el-table-column label="上报状态" align="center" prop="reportStatus" width="120px">
-        <template #default="scope">
-          <dict-tag :type="DICT_TYPE.REPORT_STATUS" :value="scope.row.reportStatus" />
-        </template>
-      </el-table-column>
+        <!-- 上报状态 -->
+        <el-table-column label="上报状态" align="center" prop="reportStatus" width="150px">
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.REPORT_STATUS" :value="scope.row.reportStatus" />
+          </template>
+        </el-table-column>
 
-      <el-table-column
-        label="任务描述"
-        align="center"
-        prop="description"
-        min-width="150px"
-        show-overflow-tooltip
+        <el-table-column
+          label="任务描述"
+          align="center"
+          prop="description"
+          min-width="150px"
+          show-overflow-tooltip
+        />
+
+        <el-table-column label="操作" align="center" width="260px" fixed="right">
+          <template #default="scope">
+            <div class="action-links">
+              <!-- 任务未结束时显示操作按钮 -->
+              <template v-if="scope.row.status !== 3">
+                <!-- 上报按钮 -->
+                <el-button
+                  v-if="scope.row.reportStatus === 0"
+                  type="primary"
+                  size="small"
+                  @click="handleReport(scope)"
+                >
+                  <Icon icon="ep:upload" class="mr-1" />
+                  上报
+                </el-button>
+
+                <!-- 查看审核状态按钮（已上报/审核中） -->
+                <el-button
+                  v-if="scope.row.reportStatus === 1"
+                  type="primary"
+                  size="small"
+                  @click="handleViewReviewStatus(scope)"
+                >
+                  <Icon icon="ep:view" class="mr-1" />
+                  查看审核
+                </el-button>
+
+                <!-- 重新上报按钮 -->
+                <el-button
+                  v-if="scope.row.reportStatus === 2"
+                  type="warning"
+                  size="small"
+                  @click="handleResubmit(scope)"
+                >
+                  <Icon icon="ep:refresh-left" class="mr-1" />
+                  重新上报
+                </el-button>
+
+                <!-- 提交至国家平台按钮 -->
+                <el-button
+                  v-if="scope.row.reportStatus === 3"
+                  type="danger"
+                  size="small"
+                  @click="handleSubmit(scope)"
+                >
+                  <Icon icon="ep:promotion" class="mr-1" />
+                  提交平台
+                </el-button>
+              </template>
+
+              <!-- 查看类按钮（任务结束与否都可以查看） -->
+              <el-button
+                v-if="scope.row.reportStatus !== 0"
+                type="info"
+                size="small"
+                plain
+                @click="handleCheckStatus(scope)"
+              >
+                <Icon icon="ep:document" class="mr-1" />
+                查看数据
+              </el-button>
+
+              <el-button
+                size="small"
+                plain
+                @click="handleReportLogs(scope)"
+              >
+                <Icon icon="ep:tickets" class="mr-1" />
+                日志
+              </el-button>
+
+              <!-- 任务已结束的提示标签 -->
+              <el-tag
+                v-if="scope.row.status === 3 && scope.row.reportStatus === 0"
+                type="info"
+                size="small"
+              >
+                任务已结束
+              </el-tag>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+      <!-- 分页 -->
+      <Pagination
+        :total="total"
+        v-model:page="queryParams.pageNo"
+        v-model:limit="queryParams.pageSize"
+        @pagination="getList"
       />
-
-      <el-table-column label="操作" align="center" width="260px" fixed="right">
-        <template #default="scope">
-          <div class="action-links">
-            <!-- 任务未结束时显示操作按钮 -->
-            <template v-if="scope.row.status !== 3">
-              <!-- 上报按钮 -->
-              <el-button
-                v-if="scope.row.reportStatus === 0"
-                type="primary"
-                size="small"
-                @click="handleReport(scope)"
-              >
-                <Icon icon="ep:upload" class="mr-1" />
-                上报
-              </el-button>
-
-              <!-- 查看审核状态按钮（已上报/审核中） -->
-              <el-button
-                v-if="scope.row.reportStatus === 1"
-                type="primary"
-                size="small"
-                @click="handleViewReviewStatus(scope)"
-              >
-                <Icon icon="ep:view" class="mr-1" />
-                查看审核
-              </el-button>
-
-              <!-- 重新上报按钮 -->
-              <el-button
-                v-if="scope.row.reportStatus === 2"
-                type="warning"
-                size="small"
-                @click="handleResubmit(scope)"
-              >
-                <Icon icon="ep:refresh-left" class="mr-1" />
-                重新上报
-              </el-button>
-
-              <!-- 提交至国家平台按钮 -->
-              <el-button
-                v-if="scope.row.reportStatus === 3"
-                type="danger"
-                size="small"
-                @click="handleSubmit(scope)"
-              >
-                <Icon icon="ep:promotion" class="mr-1" />
-                提交平台
-              </el-button>
-            </template>
-
-            <!-- 查看类按钮（任务结束与否都可以查看） -->
-            <el-button
-              v-if="scope.row.reportStatus !== 0"
-              type="info"
-              size="small"
-              plain
-              @click="handleCheckStatus(scope)"
-            >
-              <Icon icon="ep:document" class="mr-1" />
-              查看数据
-            </el-button>
-
-            <el-button
-              size="small"
-              plain
-              @click="handleReportLogs(scope)"
-            >
-              <Icon icon="ep:tickets" class="mr-1" />
-              日志
-            </el-button>
-
-            <!-- 任务已结束的提示标签 -->
-            <el-tag
-              v-if="scope.row.status === 3 && scope.row.reportStatus === 0"
-              type="info"
-              size="small"
-            >
-              任务已结束
-            </el-tag>
-          </div>
-        </template>
-      </el-table-column>
-    </el-table>
-    <!-- 分页 -->
-    <Pagination
-      :total="total"
-      v-model:page="queryParams.pageNo"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
     </ContentWrap>
 
     <!-- 日志弹窗 -->
@@ -238,14 +249,17 @@ import { getIntDictOptions, DICT_TYPE } from '@/utils/dict'
 import dayjs from 'dayjs'
 import { ImportTaskVO } from '@/api/drug/batch'
 import { ReportDataApi } from '@/api/drug/reportdata'
+import { ImportTemplateApi } from '@/api/drug/task/template'
 import ReportLogDialog from '../../import/task/ReportLogDialog.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProgressColor } from '@/utils/progressColor'
+import download from '@/utils/download'
 
 // 定义组件名称
 defineOptions({ name: 'DrugReportSubmission' })
 
 const loading = ref(true) // 列表的加载中
+const downloadingTemplate = ref(false) // 下载模板的加载中
 const router = useRouter() // 路由对象
 const queryFormRef = ref() // 搜索的表单
 const reportLogRef = ref() // 日志弹窗ref
@@ -351,6 +365,21 @@ function getRemainingTimeClass(endDate?: number, status?: number): string {
   return 'text-green-500'
 }
 
+/** 下载上报模板 */
+const handleDownloadTemplate = async () => {
+  downloadingTemplate.value = true
+  try {
+    const data = await ImportTemplateApi.downloadStandardTemplatesZip()
+    download.zip(data, '标准导入模板.zip')
+    ElMessage.success('标准模板压缩包下载成功')
+  } catch (error) {
+    console.error('下载失败:', error)
+    ElMessage.error('下载失败，请重试')
+  } finally {
+    downloadingTemplate.value = false
+  }
+}
+
 /** 上报 */
 const handleReport = ({ row }) => {
   router.push({
@@ -437,7 +466,6 @@ onMounted(() => {
 <style scoped>
 .submission-container {
   padding: 20px;
-  min-height: calc(100vh - 50px);
 }
 
 /* 操作按钮区域 */

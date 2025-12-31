@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { formatDate } from '@/utils/formatTime'
 import * as NoticeApi from '@/api/system/notice'
+import { getUnreadFeedbackCount } from '@/api/drug/feedback'
 import { useUserStoreWithOut } from '@/store/modules/user'
 
 defineOptions({ name: 'Message' })
@@ -8,8 +9,14 @@ defineOptions({ name: 'Message' })
 const { push } = useRouter()
 const userStore = useUserStoreWithOut()
 const activeName = ref('notice')
-const unreadCount = ref(0) // 未读消息数量
+const unreadCount = ref(0) // 未读公告数量
+const feedbackCount = ref(0) // 未读反馈数量
 const list = ref<any[]>([]) // 消息列表
+
+// 暴露 feedbackCount 给父组件使用
+defineExpose({
+  feedbackCount
+})
 
 // 获得消息列表
 const getList = async () => {
@@ -18,11 +25,15 @@ const getList = async () => {
   unreadCount.value = 0
 }
 
-// 获得未读消息数
+// 获得未读数量（公告+反馈）
 const getUnreadCount = async () => {
-  NoticeApi.getMyUnreadCount().then((data) => {
-    unreadCount.value = data
-  })
+  // 并行获取公告和反馈的未读数量
+  const [noticeCount, fbCount] = await Promise.all([
+    NoticeApi.getMyUnreadCount(),
+    getUnreadFeedbackCount()
+  ])
+  unreadCount.value = noticeCount || 0
+  feedbackCount.value = fbCount || 0
 }
 
 // 跳转我的公告
@@ -43,6 +54,7 @@ onMounted(() => {
         getUnreadCount()
       } else {
         unreadCount.value = 0
+        feedbackCount.value = 0
       }
     },
     1000 * 60 * 2
@@ -53,9 +65,11 @@ onMounted(() => {
   <div class="message">
     <ElPopover :width="400" placement="bottom" trigger="click">
       <template #reference>
-        <ElBadge :is-dot="unreadCount > 0" class="item">
-          <Icon :size="18" class="cursor-pointer" icon="ep:bell" @click="getList" />
-        </ElBadge>
+        <div class="notice-trigger" @click="getList">
+          <ElBadge :value="unreadCount > 0 ? unreadCount : undefined" :max="99" :hidden="unreadCount === 0" class="notice-badge">
+            <Icon :size="18" class="cursor-pointer" icon="ep:bell" />
+          </ElBadge>
+        </div>
       </template>
       <ElTabs v-model="activeName">
         <ElTabPane label="我的公告" name="notice">
@@ -87,6 +101,20 @@ onMounted(() => {
   </div>
 </template>
 <style lang="scss" scoped>
+.message {
+  .notice-badge {
+    :deep(.el-badge__content) {
+      top: 0px;
+      right: 8px;
+      height: 16px;
+      min-width: 16px;
+      padding: 0 4px;
+      font-size: 10px;
+      line-height: 16px;
+    }
+  }
+}
+
 .message-empty {
   display: flex;
   flex-direction: column;
@@ -106,9 +134,14 @@ onMounted(() => {
     align-items: center;
     padding: 20px 0;
     border-bottom: 1px solid var(--el-border-color-light);
+    cursor: pointer;
 
     &:last-child {
       border: none;
+    }
+    
+    &:hover {
+      background: var(--el-fill-color-light);
     }
 
     .message-icon {

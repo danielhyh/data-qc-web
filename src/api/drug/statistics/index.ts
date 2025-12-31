@@ -437,7 +437,9 @@ export interface InstitutionReportPageReqVO {
   regionCode?: string            // 地区代码
   institutionType?: string       // 机构类型 monitoring/reported/unreported
   hospitalLevel?: string         // 医院等级 3/2/base
+  hospitalGrade?: string         // 医院等次
   reportStatus?: number          // 上报状态 0-5
+  keyword?: string              // 关键字（机构名称/代码/联络员/电话）
   deptName?: string             // 机构名称
   contactPerson?: string        // 联系人
   contactPhone?: string         // 联系人电话
@@ -447,9 +449,12 @@ export interface InstitutionReportPageReqVO {
 export interface InstitutionReportItemVO {
   deptId: number                 // 机构ID
   deptName: string              // 机构名称
+  orgCode?: string              // 机构代码
   cityName?: string             // 所属市
   districtName?: string         // 所属区县
   hospitalLevel?: string        // 医院等级
+  hospitalLevelJ?: string       // 医院等级J（字典值）
+  hospitalGrade?: string        // 医院等次
   hospitalLevelDesc: string     // 医院等级描述
   reportStatus: number          // 上报状态
   contactPerson?: string        // 联系人
@@ -498,6 +503,14 @@ export const InstitutionReportApi = {
     return request.download<Blob>({
       url: '/drug/statistics/institution-report/institutions/export',
       params
+    })
+  },
+
+  // 导出区域汇总报表
+  exportRegionSummary: (reportId: number) => {
+    return request.download<Blob>({
+      url: '/drug/statistics/institution-report/region-summary/export',
+      params: { reportId }
     })
   }
 }

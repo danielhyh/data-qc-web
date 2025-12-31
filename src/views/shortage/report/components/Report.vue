@@ -425,17 +425,28 @@ const isInReportTime = ref(false)
 const remainingTime = ref('')
 const timeConfigDisplay = ref('加载中...')
 
-// 通知标题（包含剩余时间信息）
+// 通知标题（包含时间提示信息）
 const noticeTitle = computed(() => {
-  // 待填报/草稿状态 - 显示剩余时间
-  if ((reportStatus.value === 0 || reportStatus.value === 1) && taskDetail.value?.deadlineTime) {
-    const remaining = calculateRemainingTimeFromTarget(taskDetail.value.deadlineTime, false)
+  // 周期已结束 - 显示已结束
+  if (periodStatus.value === 2) {
+    return '填报须知（已结束）'
+  }
+  
+  // 周期未开始 - 显示距开始时间
+  if (periodStatus.value === 0 && taskDetail.value?.startTime) {
+    const remaining = calculateRemainingTimeFromTarget(taskDetail.value.startTime, true)
     return `填报须知（${remaining}）`
   }
   
-  // 已提交状态 - 不显示剩余时间
+  // 已提交状态 - 显示已完成
   if (reportStatus.value === 2) {
-    return '填报须知'
+    return '填报须知（已完成）'
+  }
+  
+  // 进行中且待填报/草稿状态 - 显示剩余时间
+  if ((reportStatus.value === 0 || reportStatus.value === 1) && taskDetail.value?.deadlineTime) {
+    const remaining = calculateRemainingTimeFromTarget(taskDetail.value.deadlineTime, false)
+    return `填报须知（${remaining}）`
   }
   
   return '填报须知'
@@ -443,14 +454,14 @@ const noticeTitle = computed(() => {
 
 // 计算距离目标时间的剩余时间
 const calculateRemainingTimeFromTarget = (targetTime: string, isStartTime: boolean = false): string => {
-  if (!targetTime) return isStartTime ? '即将开始' : '剩余时间未知'
+  if (!targetTime) return isStartTime ? '即将开始' : '时间未知'
 
   const now = new Date()
   const target = new Date(targetTime)
   const diff = target.getTime() - now.getTime()
 
   if (diff <= 0) {
-    return isStartTime ? '填报已开始' : '已逾期'
+    return isStartTime ? '已开始' : '已逾期'
   }
 
   const absDiff = Math.abs(diff)
@@ -458,7 +469,7 @@ const calculateRemainingTimeFromTarget = (targetTime: string, isStartTime: boole
   const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60))
 
-  const prefix = isStartTime ? '距填报开始还有' : '剩余时间：'
+  const prefix = isStartTime ? '距开始' : '剩余'
 
   // 大于等于1天
   if (days > 0) {
@@ -526,7 +537,7 @@ const getSaveDraftTooltip = computed(() => {
 const getSubmitTooltip = computed(() => {
   if (!isInReportTime.value) {
     if (isTimeRestricted.value) {
-      return `当前不在填报时间内，填报时间：${timeConfigDisplay.value}`
+      return `当前不在填报时间内，${timeConfigDisplay.value}`
     }
     return '当前不在填报时间内'
   }
@@ -962,7 +973,7 @@ onMounted(async () => {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 20px;
-  z-index: 100;
+  z-index: 5;
   transition: all 0.3s ease;
 }
 

@@ -278,6 +278,10 @@ export const ReportRecordApi = {
   exportReportDetail: (params: any) =>
     request.download({ url: `/shortage/report-record/export-report-detail`, params }),
 
+  // 导出区域上报汇总
+  exportRegionSummary: (params: any) =>
+    request.download({ url: `/shortage/report-record/export-region-summary`, params }),
+
   // 获取填报进度统计
   getReportProgress: (params: any) =>
     request.get({ url: `/shortage/report-record/report-progress`, params }),

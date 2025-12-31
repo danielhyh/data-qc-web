@@ -63,7 +63,11 @@ const handleBasicInfoSuccess = async () => {
   align-items: center;
 }
 
-:deep(.el-card .el-card__header, .el-card .el-card__body) {
+:deep(.el-card .el-card__header) {
+  padding: 15px !important;
+}
+
+:deep(.el-card .el-card__body) {
   padding: 15px !important;
 }
 
@@ -105,7 +109,7 @@ const handleBasicInfoSuccess = async () => {
   }
 }
 
-.el-tabs--left .el-tabs__content {
+:deep(.el-tabs--left .el-tabs__content) {
   height: 100%;
 }
 </style>

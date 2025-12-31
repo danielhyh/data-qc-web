@@ -1,18 +1,20 @@
 <!--数据上报流程-->
 <template>
-  <div class="app-container">
-    <!-- 上报进度步骤条卡片（含返回按钮） -->
-    <ContentWrap class="progress-card">
+  <!-- 上报进度步骤条卡片（含返回按钮） -->
+  <ContentWrap class="progress-card">
       <div class="progress-card-header">
         <div class="header-left">
           <el-button class="back-button" @click="handleBackToList" text>
             <el-icon class="back-icon">
               <ArrowLeft />
             </el-icon>
-            <span>返回</span>
+            <span>返回列表</span>
           </el-button>
           <div class="header-divider"></div>
           <h2 class="page-title">数据上报流程</h2>
+          <ElTooltip content="点击已完成的步骤可快速跳转" placement="top">
+            <el-icon class="step-tip-icon"><QuestionFilled /></el-icon>
+          </ElTooltip>
         </div>
         <div class="step-info">
           <span class="step-label">第 {{ currentStep + 1 }} 步</span>
@@ -96,6 +98,7 @@
       <div v-if="currentStep === 0" class="step-content">
         <PrepareTab
           :table-definitions="tableDefinitions"
+          :downloading-template="downloadingTemplate"
           @preview-template="previewTemplate"
           @download-template="downloadTemplate"
           @start-upload="startUpload"
@@ -176,7 +179,6 @@
         />
       </div>
     </div>
-  </div>
 
   <!-- 错误/警告详情对话框 - 分页表格展示 -->
   <Dialog 
@@ -454,7 +456,9 @@ import {
   ArrowLeft,
   WarningFilled,
   CircleCloseFilled,
-  RefreshRight
+  RefreshRight,
+  InfoFilled,
+  QuestionFilled
 } from '@element-plus/icons-vue'
 import { ContentWrap } from '@/components/ContentWrap'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
@@ -488,6 +492,7 @@ const excelPreviewRef = ref()
 // 改为 ref 以便动态设置步骤
 const currentStep = ref(0)
 const loading = ref(false)
+const downloadingTemplate = ref(false)
 const refreshingFileList = ref(false)
 const route = useRoute()
 const router = useRouter()
@@ -928,14 +933,16 @@ const downloadErrorSummary = async () => {
 }
 
 const downloadTemplate = async () => {
+  downloadingTemplate.value = true
   try {
-    message.info('正在生成标准模板压缩包...')
     const data = await ImportTemplateApi.downloadStandardTemplatesZip()
     download.zip(data, '标准导入模板.zip')
     message.success('标准模板压缩包下载成功')
   } catch (error) {
     console.error('下载失败:', error)
     message.error('下载失败，请重试')
+  } finally {
+    downloadingTemplate.value = false
   }
 }
 
@@ -2195,12 +2202,6 @@ const handleSummaryClose = async () => {
 </script>
 
 <style scoped>
-.app-container {
-  padding: 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
-  min-height: 100vh;
-}
-
 /* 步骤条卡片样式优化 */
 .progress-card {
   margin-bottom: 24px;
@@ -2287,6 +2288,17 @@ const handleSummaryClose = async () => {
   color: #1a202c;
   margin: 0;
   line-height: 1;
+}
+
+.step-tip-icon {
+  font-size: 16px;
+  color: #909399;
+  margin-left: 8px;
+  cursor: help;
+  
+  &:hover {
+    color: #409eff;
+  }
 }
 
 .step-info {
@@ -3403,10 +3415,6 @@ const handleSummaryClose = async () => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .app-container {
-    padding: 16px;
-  }
-
   .progress-card {
     top: 16px;
   }

@@ -1,7 +1,10 @@
 <template>
   <div class="user-info-head" @click="open()">
     <el-avatar v-if="sourceValue" :src="sourceValue" alt="avatar" class="img-circle img-lg" />
-    <el-avatar v-if="!sourceValue" :src="avatar" alt="avatar" class="img-circle img-lg" />
+    <!-- 无头像时显示姓名首字 -->
+    <div v-else class="img-circle img-lg text-avatar" :style="{ background: avatarBgColor }">
+      {{ avatarText }}
+    </div>
     <el-button v-if="showBtn" :class="`${prefixCls}-upload-btn`" @click="open()">
       {{ btnText ? btnText : t('cropper.selectImage') }}
     </el-button>
@@ -18,7 +21,7 @@ import { useDesign } from '@/hooks/web/useDesign'
 import { propTypes } from '@/utils/propTypes'
 import { useI18n } from 'vue-i18n'
 import CopperModal from './CopperModal.vue'
-import avatar from '@/assets/imgs/logo.png'
+import { useUserStore } from '@/store/modules/user'
 
 defineOptions({ name: 'CropperAvatar' })
 
@@ -27,6 +30,39 @@ const props = defineProps({
   value: propTypes.string.def(''),
   showBtn: propTypes.bool.def(true),
   btnText: propTypes.string.def('')
+})
+
+const userStore = useUserStore()
+
+// 获取姓名首字作为默认头像文字
+const avatarText = computed(() => {
+  const realName = userStore.user.realName
+  const nickname = userStore.user.nickname
+  // 优先使用真实姓名的第一个字，否则使用昵称的第一个字
+  const name = realName || nickname || ''
+  return name.charAt(0) || '用'
+})
+
+// 根据姓名生成一个稳定的背景色
+const avatarBgColor = computed(() => {
+  const name = userStore.user.realName || userStore.user.nickname || ''
+  // 预定义一组好看的渐变色
+  const colors = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+  ]
+  // 根据姓名的字符码生成一个稳定的索引
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
 })
 
 const emit = defineEmits(['update:value', 'change'])
@@ -123,6 +159,17 @@ $prefix-cls: #{$namespace}--cropper-avatar;
 .img-lg {
   width: 120px;
   height: 120px;
+}
+
+/* 文字头像样式 */
+.text-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 48px;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .user-info-head:hover::after {

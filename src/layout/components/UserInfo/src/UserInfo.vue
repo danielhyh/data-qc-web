@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { ElMessageBox } from 'element-plus'
 
-import avatarImg from '@/assets/imgs/logo.png'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useTagsViewStore } from '@/store/modules/tagsView'
 import { useUserStore } from '@/store/modules/user'
@@ -23,7 +22,42 @@ const { getPrefixCls } = useDesign()
 
 const prefixCls = getPrefixCls('user-info')
 
-const avatar = computed(() => userStore.user.avatar || avatarImg)
+// 头像URL（如果用户上传了头像）
+const avatarUrl = computed(() => userStore.user.avatar || '')
+
+// 是否使用文字头像（没有上传头像时）
+const useTextAvatar = computed(() => !userStore.user.avatar)
+
+// 获取姓名首字作为默认头像文字
+const avatarText = computed(() => {
+  const realName = userStore.user.realName
+  const nickname = userStore.user.nickname
+  // 优先使用真实姓名的第一个字，否则使用昵称的第一个字
+  const name = realName || nickname || ''
+  return name.charAt(0) || '用'
+})
+
+// 根据姓名生成一个稳定的背景色
+const avatarBgColor = computed(() => {
+  const name = userStore.user.realName || userStore.user.nickname || ''
+  // 预定义一组好看的渐变色
+  const colors = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+  ]
+  // 根据姓名的字符码生成一个稳定的索引
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+})
 const userName = computed(() => {
   const nickname = userStore.user.nickname ?? 'Admin'
   const realName = userStore.user.realName
@@ -105,7 +139,12 @@ const toDocument = () => {
     <div class="tech-user-info">
       <!-- 用户头像 -->
       <div class="avatar-container">
-        <ElAvatar :src="avatar" alt="" class="user-avatar" />
+        <!-- 有头像URL时显示图片 -->
+        <ElAvatar v-if="!useTextAvatar" :src="avatarUrl" alt="" class="user-avatar" />
+        <!-- 无头像时显示姓名首字 -->
+        <div v-else class="user-avatar text-avatar" :style="{ background: avatarBgColor }">
+          {{ avatarText }}
+        </div>
       </div>
 
       <!-- 用户信息 -->
@@ -178,6 +217,18 @@ $prefix-cls: #{$namespace}-user-info;
   .user-avatar {
     width: 36px;
     height: 36px;
+  }
+
+  /* 文字头像样式 */
+  .text-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 }
 

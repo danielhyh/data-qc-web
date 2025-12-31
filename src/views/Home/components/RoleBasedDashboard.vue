@@ -3,10 +3,14 @@
     <!-- 系统通知横幅 -->
     <NoticeBar
       title="📢 系统更新"
-      content="1. 操作手册已上线！点击页面右上角的铃铛图标，即可下载完整操作手册。2. 本次更新优化了质控错误信息显示，错误提示更加清晰易懂。"
+      :items="[
+        { icon: '📊', text: '监测进度统计页面改版，新增区域汇总导出功能' },
+        { icon: '📋', text: '短缺药品上报记录支持区域汇总导出' },
+        { icon: '💬', text: '反馈功能优化，交互体验更流畅' }
+      ]"
       type="new"
       action-text="我知道了"
-      storage-key="manual-download-qc-notice-v1"
+      storage-key="statistics-export-feedback-v1"
       @action="handleNoticeAction"
     />
 
@@ -569,7 +573,6 @@ const handleMainActionClick = (action: any) => {
 <style scoped>
 .role-dashboard {
   padding: 20px;
-  min-height: calc(100vh - 50px);
 }
 
 .stats-section {

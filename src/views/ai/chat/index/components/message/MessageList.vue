@@ -27,7 +27,10 @@
       <!-- 靠右 message：user 类型 -->
       <div class="right-message message-item" v-if="item.type === 'user'">
         <div class="avatar">
-          <el-avatar :src="userAvatar" />
+          <el-avatar v-if="!useTextAvatar" :src="userAvatar" />
+          <div v-else class="text-avatar" :style="{ background: avatarBgColor }">
+            {{ avatarText }}
+          </div>
         </div>
         <div class="message">
           <div>
@@ -69,7 +72,6 @@ import { ArrowDownBold, Edit, RefreshRight } from '@element-plus/icons-vue'
 import { ChatMessageApi, ChatMessageVO } from '@/api/ai/chat/message'
 import { ChatConversationVO } from '@/api/ai/chat/conversation'
 import { useUserStore } from '@/store/modules/user'
-import userAvatarDefaultImg from '@/assets/imgs/logo.png'
 import roleAvatarDefaultImg from '@/assets/ai/gpt.svg'
 
 const message = useMessage() // 消息弹窗
@@ -80,7 +82,33 @@ const userStore = useUserStore()
 const messageContainer: any = ref(null)
 const isScrolling = ref(false) //用于判断用户是否在滚动
 
-const userAvatar = computed(() => userStore.user.avatar || userAvatarDefaultImg)
+// 用户头像
+const userAvatar = computed(() => userStore.user.avatar || '')
+const useTextAvatar = computed(() => !userStore.user.avatar)
+const avatarText = computed(() => {
+  const realName = userStore.user.realName
+  const nickname = userStore.user.nickname
+  const name = realName || nickname || ''
+  return name.charAt(0) || '用'
+})
+const avatarBgColor = computed(() => {
+  const name = userStore.user.realName || userStore.user.nickname || ''
+  const colors = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+  ]
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+})
 const roleAvatar = computed(() => props.conversation.roleAvatar ?? roleAvatarDefaultImg)
 
 // 定义 props
@@ -281,5 +309,19 @@ onMounted(async () => {
   right: 50%;
   bottom: 0;
   z-index: 1000;
+}
+
+// 文字头像样式
+.text-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 </style>

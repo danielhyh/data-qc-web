@@ -23,16 +23,9 @@
         </slot>
       </div>
       <template #file="{ file }">
-        <img :src="file.url" class="upload-image" />
-        <div class="upload-handle" @click.stop>
-          <div class="handle-icon" @click="imagePreview(file.url!)">
-            <Icon icon="ep:zoom-in" />
-            <span>查看</span>
-          </div>
-          <div v-if="!disabled" class="handle-icon" @click="handleRemove(file)">
-            <Icon icon="ep:delete" />
-            <span>删除</span>
-          </div>
+        <img :src="file.url" class="upload-image" @click="imagePreview(file.url!)" />
+        <div v-if="!disabled" class="delete-btn" @click.stop="handleRemove(file)">
+          <Icon icon="ep:close" />
         </div>
       </template>
     </el-upload>
@@ -252,45 +245,37 @@ const handleExceed = () => {
       width: 100%;
       height: 100%;
       object-fit: contain;
+      cursor: pointer;
     }
 
-    .upload-handle {
+    .delete-btn {
       position: absolute;
-      top: 0;
-      right: 0;
+      top: 4px;
+      right: 4px;
+      width: 20px;
+      height: 20px;
       display: flex;
-      width: 100%;
-      height: 100%;
-      cursor: pointer;
-      background: rgb(0 0 0 / 60%);
-      opacity: 0;
-      box-sizing: border-box;
-      transition: var(--el-transition-duration-fast);
       align-items: center;
       justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      cursor: pointer;
+      opacity: 0;
+      transition: var(--el-transition-duration-fast);
 
-      .handle-icon {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 0 6%;
-        color: aliceblue;
+      .el-icon {
+        font-size: 12px;
+        color: #fff;
+      }
 
-        .el-icon {
-          margin-bottom: 15%;
-          font-size: 140%;
-        }
-
-        span {
-          font-size: 100%;
-        }
+      &:hover {
+        background: rgba(245, 108, 108, 0.9);
       }
     }
 
     .el-upload-list__item {
       &:hover {
-        .upload-handle {
+        .delete-btn {
           opacity: 1;
         }
       }

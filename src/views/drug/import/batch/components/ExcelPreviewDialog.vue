@@ -12,7 +12,7 @@
         <span class="preview-title-text">{{ dialogTitle }}</span>
       </div>
     </template>
-    <div v-loading="loading" class="preview-container">
+    <div v-loading="loading" class="preview-container" element-loading-text="加载中...">
       <div v-if="!loading && templateInfo" class="excel-content">
         <!-- Excel预览 -->
         <div class="excel-preview-section">
@@ -27,10 +27,6 @@
                   <el-button size="small" @click="toggleExampleData">
                     <Icon icon="ep:view" class="mr-5px" />
                     {{ showExampleData ? '隐藏' : '显示' }}示例数据
-                  </el-button>
-                  <el-button size="small" type="primary" :loading="downloading" @click="downloadTemplate">
-                    <Icon icon="ep:download" class="mr-5px" />
-                    {{ downloading ? '下载中...' : '下载模板' }}
                   </el-button>
                 </div>
               </div>
@@ -90,9 +86,9 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
-        <el-button type="primary" :loading="downloading" @click="downloadTemplate">
+        <el-button type="primary" :loading="downloading" :disabled="downloading" @click="downloadTemplate">
           <Icon icon="ep:download" class="mr-5px" />
-          {{ downloading ? '下载中...' : '下载模板' }}
+          下载模板
         </el-button>
       </div>
     </template>
@@ -315,6 +311,11 @@ defineExpose({
 </script>
 
 <style scoped>
+/* 预览容器 - 确保 loading 居中 */
+.preview-container {
+  min-height: 300px;
+}
+
 /* 标题样式 */
 .preview-dialog-title {
   display: flex;

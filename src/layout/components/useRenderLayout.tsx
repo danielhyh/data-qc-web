@@ -223,7 +223,7 @@ export const useRenderLayout = () => {
                 class={[
                   'layout-border__bottom layout-border__top relative',
                   {
-                    '!fixed w-full top-[var(--top-tool-height)] left-0': fixedHeader.value
+                    '!fixed w-full top-[var(--top-tool-height)] left-0 z-10': fixedHeader.value
                   }
                 ]}
                 style="transition: width var(--transition-time-02), left var(--transition-time-02);"

@@ -316,7 +316,10 @@
                   <div v-for="comment in comments" :key="comment.id" class="comment-item">
                     <div class="comment-header">
                       <div class="user-info">
-                        <el-avatar :size="32" :src="comment.userAvatar" />
+                        <el-avatar v-if="comment.userAvatar" :size="32" :src="comment.userAvatar" />
+                        <div v-else class="comment-text-avatar" :style="{ background: getAvatarBgColor(comment.userName) }">
+                          {{ getAvatarText(comment.userName) }}
+                        </div>
                         <div class="user-details">
                           <div class="user-name">{{ comment.userName }}</div>
                           <div class="comment-time">{{ formatDate(comment.createdAt) }}</div>
@@ -516,6 +519,29 @@ const getChangeTypeName = (type: string) => {
 const formatDate = (date: string | Date) => {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')
+}
+
+// 头像辅助函数
+const getAvatarText = (name: string) => {
+  return (name || '').charAt(0) || '用'
+}
+
+const getAvatarBgColor = (name: string) => {
+  const colors = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+    'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+    'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+  ]
+  let hash = 0
+  for (let i = 0; i < (name || '').length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
 }
 
 const getExpressionText = () => {
@@ -1127,6 +1153,20 @@ if (props.template) {
                   display: flex;
                   align-items: center;
                   gap: 8px;
+
+                  .comment-text-avatar {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #fff;
+                    font-size: 14px;
+                    font-weight: 600;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+                    flex-shrink: 0;
+                  }
 
                   .user-details {
                     .user-name {

@@ -45,3 +45,10 @@ export const getFeedbackPage = (params) => {
     params
   })
 }
+
+// 获取未读反馈数量
+export const getUnreadFeedbackCount = () => {
+  return request.get({
+    url: '/drug/feedback/unread-count'
+  })
+}

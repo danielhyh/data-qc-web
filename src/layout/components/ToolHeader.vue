@@ -11,6 +11,8 @@ import Setting from '@/layout/components/Setting/src/Setting.vue'
 import { Icon } from '@/components/Icon'
 import { useAppStore } from '@/store/modules/app'
 import { useDesign } from '@/hooks/web/useDesign'
+import { useUserStoreWithOut } from '@/store/modules/user'
+import { ElBadge, ElTooltip } from 'element-plus'
 
 const { getPrefixCls, variables } = useDesign()
 
@@ -41,7 +43,20 @@ export default defineComponent({
   setup() {
     // 设置抽屉显示状态
     const router = useRouter()
+    const userStore = useUserStoreWithOut()
     const showSetting = ref(false)
+    
+    // Message 组件引用
+    const messageRef = ref<InstanceType<typeof Message> | null>(null)
+    
+    // 从 Message 组件获取反馈数量
+    const feedbackCount = computed(() => messageRef.value?.feedbackCount || 0)
+    
+    // 判断是否为管理员
+    const isAdmin = computed(() => {
+      const roles = userStore.getRoles || []
+      return roles.some(role => ['super_admin', 'provincial_admin'].includes(role))
+    })
 
     return () => (
       <div
@@ -62,25 +77,35 @@ export default defineComponent({
         ) : undefined}
         <div class="h-full flex items-center">
           {search.value ? <RouterSearch isModal={false} /> : undefined}
-          <div
-            class="custom-hover h-full flex items-center px-10px cursor-pointer"
-            onClick={() => (showSetting.value = true)}
-          >
-            <Icon icon="ep:setting" color="var(--top-header-text-color)" />
-          </div>
+          <ElTooltip content="系统设置" placement="bottom">
+            <div
+              class="custom-hover h-full flex items-center px-10px cursor-pointer"
+              onClick={() => (showSetting.value = true)}
+            >
+              <Icon icon="ep:setting" color="var(--top-header-text-color)" />
+            </div>
+          </ElTooltip>
           {screenfull.value ? (
             <Screenfull class="custom-hover" color="var(--top-header-text-color)"></Screenfull>
           ) : undefined}
           {message.value ? (
-            <Message class="custom-hover" color="var(--top-header-text-color)"></Message>
+            <Message ref={messageRef} class="custom-hover" color="var(--top-header-text-color)"></Message>
           ) : undefined}
-                    <div
-            class="custom-hover h-full flex items-center px-10px cursor-pointer"
-            onClick={() => router.push('/feedback/list')}
-          >
-            <Icon icon="ep:comment" color="var(--top-header-text-color)" />
-                      <span class="ml-5px">问题反馈</span>
-          </div>
+          <ElTooltip content="问题反馈" placement="bottom">
+            <div
+              class="custom-hover h-full flex items-center px-10px cursor-pointer"
+              onClick={() => router.push(isAdmin.value ? '/system/feedback' : '/user/feedback')}
+            >
+              <ElBadge 
+                value={feedbackCount.value > 0 ? feedbackCount.value : undefined}
+                max={99}
+                hidden={feedbackCount.value === 0}
+                class="feedback-badge"
+              >
+                <Icon icon="ep:chat-dot-round" color="var(--top-header-text-color)" />
+              </ElBadge>
+            </div>
+          </ElTooltip>
           <UserInfo></UserInfo>
           <Setting v-model={showSetting.value} />
         </div>
@@ -106,6 +131,19 @@ $prefix-cls: #{$namespace}-tool-header;
     
     &:hover {
       background: var(--tech-hover-bg);
+    }
+  }
+  
+  /* 反馈徽标样式 */
+  .feedback-badge {
+    :deep(.el-badge__content) {
+      top: 0px;
+      right: 8px;
+      height: 16px;
+      min-width: 16px;
+      padding: 0 4px;
+      font-size: 10px;
+      line-height: 16px;
     }
   }
 }
