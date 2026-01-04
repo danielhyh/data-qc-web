@@ -62,7 +62,11 @@
     </ContentWrap>
 
     <!-- 列表 -->
-    <ContentWrap>
+        <ContentWrap
+      title="上报任务列表"
+      headerIcon="ep:list"
+      message="选择任务点击「上报」进入填报页面，支持下载 Excel 模板批量导入数据"
+    >
       <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
         <el-table-column label="序号" width="80" type="index" align="center" />
         <el-table-column label="填报任务" align="center" prop="zoneName" min-width="120px">
