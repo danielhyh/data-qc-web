@@ -176,6 +176,7 @@
         />
 
         <el-table-column prop="specification" label="规格" width="120" show-overflow-tooltip />
+        <el-table-column prop="versionCode" label="版本号" width="120" show-overflow-tooltip />
 
         <el-table-column prop="dosageForm" label="剂型" width="100" />
 

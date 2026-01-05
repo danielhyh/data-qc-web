@@ -63,7 +63,7 @@
               v-model="searchForm.productName"
               placeholder="请输入药品名称"
               clearable
-              style="width: 230px"
+              style="width: 200px"
             />
           </el-form-item>
           <el-form-item label="生产企业">
@@ -71,14 +71,14 @@
               v-model="searchForm.manufacturerName"
               placeholder="请输入生产企业"
               clearable
-              style="width: 230px"
+              style="width: 200px"
             />
           </el-form-item>
 
           <el-form-item label="批准文号">
             <el-input
               v-model="searchForm.approvalNo"
-              placeholder="请输入生产企业"
+              placeholder="请输入批准文号"
               clearable
               style="width: 230px"
             />
