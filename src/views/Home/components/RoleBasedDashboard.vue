@@ -1,18 +1,18 @@
 <template>
   <div class="role-dashboard">
-    <!-- 系统通知横幅 -->
-    <NoticeBar
-      title="📢 系统更新"
-      :items="[
-        { icon: '📊', text: '监测进度统计页面改版，新增区域汇总导出功能' },
-        { icon: '📋', text: '短缺药品上报记录支持区域汇总导出' },
-        { icon: '💬', text: '反馈功能优化，交互体验更流畅' }
-      ]"
-      type="new"
-      action-text="我知道了"
-      storage-key="statistics-export-feedback-v1"
-      @action="handleNoticeAction"
-    />
+    <!-- 系统通知横幅 - 动态加载 -->
+    <template v-for="notice in dashboardNotices" :key="notice.id">
+      <NoticeBar
+        v-if="!isNoticeClosed(notice.id)"
+        :title="notice.title"
+        :html-content="notice.content"
+        type="new"
+        action-text="我知道了"
+        :storage-key="`dashboard-notice-${notice.id}`"
+        @action="handleNoticeClose(notice.id)"
+        @close="handleNoticeClose(notice.id)"
+      />
+    </template>
 
     <!-- 主要功能入口 -->
     <div class="main-actions-section" v-show="!showDrugMonitoring">
@@ -140,10 +140,16 @@ import PendingTasksCard from './PendingTasksCard.vue'
 import MessageCenterCard from './MessageCenterCard.vue'
 import NoticeBar from './NoticeBar.vue'
 import { DashboardApi } from '@/api/system/dashboard'
+import * as NoticeApi from '@/api/system/notice'
 
 const { wsCache } = useCache()
 
 defineOptions({ name: 'RoleBasedDashboard' })
+
+// 工作台通知列表
+const dashboardNotices = ref<NoticeApi.NoticeVO[]>([])
+// 已关闭的通知ID集合
+const closedNoticeIds = ref<Set<number>>(new Set())
 
 // 控制是否显示药品监测功能
 const showDrugMonitoring = ref(false)
@@ -390,6 +396,7 @@ const dashboardConfig = computed(() => ({
 onMounted(() => {
   loadDashboardData()
   loadMenuSystems()
+  loadDashboardNotices()
 })
 
 // 加载菜单系统
@@ -552,6 +559,37 @@ const handleViewAllMessages = () => {
 // 通知横幅操作
 const handleNoticeAction = () => {
   // 用户点击"我知道了"，横幅会自动关闭
+}
+
+// 加载工作台通知
+const loadDashboardNotices = async () => {
+  try {
+    dashboardNotices.value = await NoticeApi.getDashboardNoticeList()
+    // 初始化已关闭的通知
+    initClosedNotices()
+  } catch (error) {
+    console.error('Failed to load dashboard notices:', error)
+  }
+}
+
+// 初始化已关闭的通知（从localStorage读取）
+const initClosedNotices = () => {
+  dashboardNotices.value.forEach(notice => {
+    const key = `notice_closed_dashboard-notice-${notice.id}`
+    if (localStorage.getItem(key) === 'true') {
+      closedNoticeIds.value.add(notice.id!)
+    }
+  })
+}
+
+// 检查通知是否已关闭
+const isNoticeClosed = (noticeId: number) => {
+  return closedNoticeIds.value.has(noticeId)
+}
+
+// 处理通知关闭
+const handleNoticeClose = (noticeId: number) => {
+  closedNoticeIds.value.add(noticeId)
 }
 
 const handleQuickActionClick = (action: any) => {

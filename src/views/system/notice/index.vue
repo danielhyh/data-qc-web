@@ -70,6 +70,12 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
+      <el-table-column label="工作台展示" align="center" prop="showOnDashboard" width="100">
+        <template #default="scope">
+          <el-tag v-if="scope.row.showOnDashboard" type="success" size="small">已开启</el-tag>
+          <el-tag v-else type="info" size="small">未开启</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column
         label="创建时间"
         align="center"
@@ -84,7 +90,7 @@
         width="180"
         :formatter="dateFormatter"
       />
-      <el-table-column label="操作" align="center" width="200" fixed="right">
+      <el-table-column label="操作" align="center" width="280" fixed="right">
         <template #default="scope">
           <el-button
             link
@@ -119,6 +125,15 @@
             v-hasPermi="['system:notice:update']"
           >
             关闭
+          </el-button>
+          <el-button
+            v-if="scope.row.publishStatus === 1"
+            link
+            :type="scope.row.showOnDashboard ? 'warning' : 'success'"
+            @click="handleToggleDashboard(scope.row)"
+            v-hasPermi="['system:notice:update']"
+          >
+            {{ scope.row.showOnDashboard ? '取消工作台' : '推送工作台' }}
           </el-button>
           <el-button
             v-if="scope.row.publishStatus === 1"
@@ -271,6 +286,18 @@ const handleClose = async (id: number) => {
     await message.confirm('是否关闭该公告？关闭后用户不可见')
     await NoticeApi.closeNotice(id)
     message.success('关闭成功')
+    await getList()
+  } catch {}
+}
+
+/** 切换工作台展示状态 */
+const handleToggleDashboard = async (row: any) => {
+  const newStatus = !row.showOnDashboard
+  const actionText = newStatus ? '推送到工作台' : '取消工作台展示'
+  try {
+    await message.confirm(`是否${actionText}？`)
+    await NoticeApi.toggleDashboard(row.id, newStatus)
+    message.success(`${actionText}成功`)
     await getList()
   } catch {}
 }

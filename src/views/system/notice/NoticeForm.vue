@@ -38,6 +38,19 @@
           <el-option label="监测" value="MONITOR" />
         </el-select>
       </el-form-item>
+      <el-form-item prop="showOnDashboard">
+        <template #label>
+          <span>工作台展示</span>
+          <el-tooltip content="开启后，该公告将在目标用户的工作台首页显示" placement="top">
+            <el-icon class="ml-4px cursor-pointer"><QuestionFilled /></el-icon>
+          </el-tooltip>
+        </template>
+        <el-switch
+          v-model="formData.showOnDashboard"
+          active-text="同步到工作台"
+          inactive-text=""
+        />
+      </el-form-item>
       <el-form-item label="备注" prop="remark">
         <el-input v-model="formData.remark" placeholder="请输备注" type="textarea" />
       </el-form-item>
@@ -50,6 +63,7 @@
 </template>
 <script lang="ts" setup>
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import * as NoticeApi from '@/api/system/notice'
 
 defineOptions({ name: 'SystemNoticeForm' })
@@ -68,7 +82,8 @@ const formData = ref({
   content: '',
   remark: '',
   targetAdminLevels: [] as number[],
-  targetBusinessType: 'ALL'
+  targetBusinessType: 'ALL',
+  showOnDashboard: false
 })
 
 // 是否显示目标业务类型选择（当选择了医疗机构时显示）
@@ -97,7 +112,8 @@ const open = async (type: string, id?: number) => {
       formData.value = {
         ...data,
         targetAdminLevels: data.targetAdminLevels || [],
-        targetBusinessType: data.targetBusinessType || 'ALL'
+        targetBusinessType: data.targetBusinessType || 'ALL',
+        showOnDashboard: data.showOnDashboard || false
       }
     } finally {
       formLoading.value = false
@@ -141,8 +157,11 @@ const resetForm = () => {
     content: '',
     remark: '',
     targetAdminLevels: [],
-    targetBusinessType: 'ALL'
+    targetBusinessType: 'ALL',
+    showOnDashboard: false
   }
   formRef.value?.resetFields()
 }
 </script>
+
+

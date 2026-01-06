@@ -18,6 +18,7 @@
               <span class="notice-bar__item-text">{{ item.text }}</span>
             </div>
           </div>
+          <div v-else-if="htmlContent" class="notice-bar__html" v-html="htmlContent"></div>
           <span v-else class="notice-bar__text">{{ content }}</span>
         </div>
 
@@ -68,6 +69,7 @@ defineOptions({ name: 'NoticeBar' })
 interface Props {
   title?: string
   content?: string
+  htmlContent?: string // 支持富文本HTML内容
   items?: Array<{ icon?: string; text: string }>
   type?: 'info' | 'success' | 'warning' | 'error' | 'new'
   icon?: string
@@ -82,6 +84,7 @@ const props = withDefaults(defineProps<Props>(), {
   closable: true,
   storageKey: '',
   content: '',
+  htmlContent: '',
   items: () => []
 })
 
@@ -151,8 +154,9 @@ defineExpose({ show })
     position: relative;
     z-index: 1;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     padding: 16px 20px;
+    padding-bottom: 48px; // 为右下角按钮留出空间
     gap: 16px;
   }
 
@@ -166,6 +170,7 @@ defineExpose({ show })
     background: rgba(255, 255, 255, 0.25);
     backdrop-filter: blur(4px);
     flex-shrink: 0;
+    margin-top: 2px;
   }
 
   &__content {
@@ -187,6 +192,36 @@ defineExpose({ show })
     color: inherit;
     opacity: 0.9;
     line-height: 1.5;
+  }
+
+  &__html {
+    font-size: 14px;
+    color: inherit;
+    opacity: 0.95;
+    line-height: 1.6;
+
+    :deep(p) {
+      margin: 4px 0;
+    }
+
+    :deep(strong), :deep(b) {
+      font-weight: 600;
+    }
+
+    :deep(ul), :deep(ol) {
+      margin: 4px 0;
+      padding-left: 20px;
+    }
+
+    :deep(li) {
+      margin: 2px 0;
+    }
+
+    :deep(br) {
+      display: block;
+      content: "";
+      margin: 4px 0;
+    }
   }
 
   &__items {
@@ -216,20 +251,25 @@ defineExpose({ show })
   }
 
   &__actions {
+    position: absolute;
+    bottom: 12px;
+    right: 16px;
     display: flex;
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
 
     .el-button {
-      background: rgba(255, 255, 255, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: inherit;
-      font-weight: 500;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      color: #409eff;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 
       &:hover {
-        background: rgba(255, 255, 255, 0.35);
-        border-color: rgba(255, 255, 255, 0.5);
+        background: #fff;
+        color: #337ecc;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       }
     }
   }

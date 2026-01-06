@@ -1,16 +1,32 @@
 <template>
+  <div class="data-view-container">
+    <!-- 搜索框 -->
+    <div class="search-bar">
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索 医疗机构代码、机构名称、负责人..."
+        clearable
+        @input="handleSearch"
+        style="width: 400px"
+      >
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+    </div>
+
   <el-table
-    :data="dataViewDialog.data"
+    :data="filteredData"
     stripe
-    max-height="500"
+    max-height="calc(70vh - 120px)"
     v-loading="dataViewDialog.loading"
     :row-class-name="getRowClassName"
   >
-    <el-table-column label="ID" align="center" prop="orderNo">
+    <el-table-column label="Excel行号" align="center" prop="excelRowNum" width="100" sortable>
       <template #default="{ row }">
         <div class="id-cell">
           <el-icon v-if="row.hasError" class="error-icon"><WarningFilled /></el-icon>
-          <span>{{ row.orderNo }}</span>
+          <span>{{ row.excelRowNum || '-' }}</span>
         </div>
       </template>
     </el-table-column>
@@ -62,9 +78,11 @@
       </template>
     </el-table-column>
   </el-table>
+  </div>
 </template>
 <script setup lang="ts">
-import { WarningFilled } from '@element-plus/icons-vue'
+import { ref, computed } from 'vue'
+import { WarningFilled, Search } from '@element-plus/icons-vue'
 
 // 定义组件名称
 defineOptions({ name: 'Hospital' })
@@ -78,6 +96,32 @@ interface Props {
 
 const props = defineProps<Props>()
 
+// 搜索关键字
+const searchKeyword = ref('')
+
+// 过滤后的数据
+const filteredData = computed(() => {
+  if (!props.dataViewDialog?.data) return []
+  
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  if (!keyword) return props.dataViewDialog.data
+  
+  return props.dataViewDialog.data.filter(row => {
+    return (
+      (row.hospitalCode && row.hospitalCode.toLowerCase().includes(keyword)) ||
+      (row.organizationName && row.organizationName.toLowerCase().includes(keyword)) ||
+      (row.unitManager && row.unitManager.toLowerCase().includes(keyword)) ||
+      (row.statisticsManager && row.statisticsManager.toLowerCase().includes(keyword)) ||
+      (row.organizationCode && row.organizationCode.toLowerCase().includes(keyword))
+    )
+  })
+})
+
+// 搜索处理
+const handleSearch = () => {
+  // 搜索逻辑已在 computed 中处理
+}
+
 /** 获取行样式类名 */
 const getRowClassName = ({ row }) => {
   return row.hasError ? 'error-row' : ''
@@ -90,12 +134,7 @@ const formatDate = (dateStr) => {
 
 /** 格式化金额 */
 const formatAmount = (amount) => {
-  if (!amount) return '0'
-  if (amount >= 100000000) {
-    return (amount / 100000000).toFixed(2) + '亿'
-  } else if (amount >= 10000) {
-    return (amount / 10000).toFixed(2) + '万'
-  }
+  if (!amount) return '0.00'
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 </script>
@@ -129,5 +168,15 @@ const formatAmount = (amount) => {
 
 :deep(.error-row:hover > td) {
   background-color: #fde2e2 !important;
+}
+
+.data-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-bar {
+  padding: 0 4px;
 }
 </style>

@@ -17,6 +17,8 @@ export interface NoticeVO {
   // 阅读相关字段
   readStatus?: boolean
   readTime?: Date
+  // 工作台展示
+  showOnDashboard?: boolean
 }
 
 // 查询公告列表
@@ -111,4 +113,14 @@ export interface ReadUserInfo {
 // 获取公告已读统计（分页）
 export const getReadStats = (id: number, pageNo = 1, pageSize = 10) => {
   return request.get({ url: '/system/notice/read-stats', params: { id, pageNo, pageSize } })
+}
+
+// 获取工作台通知列表
+export const getDashboardNoticeList = () => {
+  return request.get({ url: '/system/notice/dashboard' })
+}
+
+// 切换工作台展示状态
+export const toggleDashboard = (id: number, showOnDashboard: boolean) => {
+  return request.put({ url: '/system/notice/toggle-dashboard', params: { id, showOnDashboard } })
 }

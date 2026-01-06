@@ -7,7 +7,7 @@
           <el-icon class="processing-icon"><Loading /></el-icon>
           <h4>{{ currentPhase }}</h4>
         </div>
-        <div class="header-right">
+        <div class="header-right" v-if="totalCount > 0">
           <span class="file-count">{{ uploadedCount }}/{{ totalCount }}</span>
         </div>
       </div>
@@ -20,7 +20,7 @@
     </div>
     
     <!-- 已完成：显示总览 -->
-    <el-alert v-else :type="alertType" :closable="true" @close="handleClose">
+    <el-alert v-else :type="alertType" :closable="false">
       <template #title>
         <div class="summary-title">
           <el-icon><component :is="statusIcon" /></el-icon>
@@ -61,9 +61,9 @@
         
         <!-- 时间信息 -->
         <div class="summary-time" v-if="summaryData.endTime">
-          <span>耗时：{{ formatDuration(summaryData.duration) }}</span>
+          <span>最近处理耗时：{{ formatDuration(summaryData.duration) }}</span>
           <span class="divider">|</span>
-          <span>完成：{{ formatDateTime(summaryData.endTime) }}</span>
+          <span>完成时间：{{ formatDateTime(summaryData.endTime) }}</span>
         </div>
       </div>
     </el-alert>

@@ -782,8 +782,9 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); myCharts
 }
 
 .summary-label {
-  font-size: 12px;
-  color: #909399;
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
   margin: 0 0 4px;
 }
 
@@ -811,8 +812,9 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); myCharts
 }
 
 .summary-value-time {
-  font-size: 13px;
-  color: #606266;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f56c6c;
 }
 
 .summary-value-tag {

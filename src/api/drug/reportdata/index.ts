@@ -205,6 +205,20 @@ export const ReportDataApi = {
     })
   },
 
+  // 批量校验多个Excel表头字段（一次请求）
+  validateHeadersBatch: (files: File[]): Promise<any> => {
+    const formData = new FormData()
+    files.forEach(file => {
+      formData.append('files', file)
+    })
+
+    return request.post({
+      url: '/drug/report-data/validate-headers-batch',
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+
   // 验证并解析文件
   validateAndParseFile: (file: File, taskId: number): Promise<FileValidationResult> => {
     const formData = new FormData()
@@ -217,6 +231,22 @@ export const ReportDataApi = {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
+    })
+  },
+
+  // 批量验证并解析多个文件（一次请求）
+  validateAndParseFilesBatch: (files: File[], taskId: number): Promise<boolean> => {
+    const formData = new FormData()
+    files.forEach(file => {
+      formData.append('files', file)
+    })
+    formData.append('taskId', taskId.toString())
+
+    return request.post({
+      url: '/drug/report-data/validate-and-parse-batch',
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000  // 30秒超时
     })
   },
 
@@ -443,9 +473,14 @@ export const ReportDataApi = {
   },
 
   // ==================== 上传进度和结果API ====================
-  // 获取批次上传进度
+  // 获取批次上传进度（旧版本，只返回文件进度）
   getUploadProgress: (taskId: number): Promise<any> => {
-    return request.get({ url: '/drug/report-data/upload/progress', params: { taskId } })
+    return request.get({ url: '/drug/report-data/upload-progress', params: { taskId } })
+  },
+
+  // 获取批次上传进度V2（新版本，包含总览和文件进度）
+  getUploadProgressV2: (taskId: number): Promise<any> => {
+    return request.get({ url: '/drug/report-data/upload-progress-v2', params: { taskId } })
   },
 
   // 获取批次上传结果

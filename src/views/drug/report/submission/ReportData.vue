@@ -114,6 +114,7 @@
           :refreshing-file-list="refreshingFileList"
           :can-upload-and-q-c="canUploadAndQC"
           :operation-disabled-reason="operationDisabledReason"
+          :downloading-template="downloadingTemplate"
           @refresh-summary="loadStepSummary"
           @summary-close="handleSummaryClose"
           @refresh-file-list="refreshFileList"
@@ -286,6 +287,8 @@
     :title="`查看数据 - ${dataViewDialog.fileName}`"
     width="80%"
     top="5vh"
+    :scroll="true"
+    maxHeight="70vh"
   >
     <component :is="excelDetailTarget" :dataViewDialog="dataViewDialog" ref="excelDetail" />
     <div class="dialog-page">
@@ -324,30 +327,10 @@
         </div>
         <div class="header-stats">
           <div class="pass-rate-badge" :class="errorDetailDialog.passRate >= 80 ? 'good' : errorDetailDialog.passRate >= 50 ? 'warning' : 'bad'">
-            <span class="rate-value">{{ errorDetailDialog.passRate }}%</span>
+            <span class="rate-value">{{ errorDetailDialog.passRate.toFixed(2) }}%</span>
             <span class="rate-label">通过率</span>
           </div>
         </div>
-      </div>
-
-      <!-- 错误类型筛选标签 -->
-      <div class="error-type-filter">
-        <el-radio-group v-model="errorDetailDialog.activeTab" size="default">
-          <el-radio-button value="all">
-            全部 ({{ errorDetailDialog.errorCount }})
-          </el-radio-button>
-          <el-radio-button value="required" v-if="errorDetailDialog.requiredErrors.length > 0">
-            <el-icon class="tab-icon"><CircleCloseFilled /></el-icon>
-            必填为空 ({{ errorDetailDialog.requiredErrors.length }})
-          </el-radio-button>
-          <el-radio-button value="type" v-if="errorDetailDialog.typeErrors.length > 0">
-            <el-icon class="tab-icon"><WarningFilled /></el-icon>
-            类型错误 ({{ errorDetailDialog.typeErrors.length }})
-          </el-radio-button>
-        </el-radio-group>
-        <el-button type="primary" @click="exportValidationErrors" :icon="Download" size="default">
-          导出全部错误
-        </el-button>
       </div>
 
       <!-- 错误列表表格 - 分页展示 -->
@@ -365,16 +348,9 @@
               {{ (errorDetailDialog.currentPage - 1) * errorDetailDialog.pageSize + $index + 1 }}
             </template>
           </el-table-column>
-          <el-table-column prop="rowIndex" label="行号" width="90" align="center">
+          <el-table-column prop="rowIndex" label="Excel行号" width="100" align="center">
             <template #default="{ row }">
               <el-tag type="danger" size="small">第 {{ row.rowIndex }} 行</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="errorType" label="错误类型" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag :type="row.errorType === 'required' ? 'danger' : 'warning'" size="small" effect="plain">
-                {{ row.errorType === 'required' ? '必填为空' : '类型错误' }}
-              </el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="fieldName" label="字段名" width="150">
@@ -384,8 +360,8 @@
           </el-table-column>
           <el-table-column prop="currentValue" label="当前值" width="150">
             <template #default="{ row }">
-              <span v-if="row.errorType === 'required'" class="empty-value">(空)</span>
-              <span v-else class="invalid-value">{{ row.currentValue || '-' }}</span>
+              <span v-if="!row.currentValue || row.currentValue === ''" class="empty-value">(空)</span>
+              <span v-else class="invalid-value">{{ row.currentValue }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="errorMessage" label="错误说明" min-width="280">
@@ -774,19 +750,64 @@ const viewErrorDetail = async (row: any) => {
       errorType: 'type'
     }))
     
+    // 处理组织机构代码错误，添加errorType标识
+    const orgCodeErrors = (result.orgCodeErrors || []).map((err: any) => ({
+      ...err,
+      errorType: 'org_code'
+    }))
+    
+    // 处理基础错误（文件级别错误），转换为统一格式
+    const basicErrors = (result.basicErrors || []).map((err: any) => ({
+      rowIndex: 0,  // 文件级错误没有行号
+      fieldName: '文件处理',
+      errorMessage: err.message || '文件处理失败',
+      errorType: 'basic',
+      currentValue: err.fileName || ''
+    }))
+    
+    // 如果有通用错误信息但没有其他错误，创建一个通用错误条目
+    let generalErrors: any[] = []
+    if (result.generalErrorMessage && 
+        requiredErrors.length === 0 && 
+        typeErrors.length === 0 && 
+        orgCodeErrors.length === 0 &&
+        basicErrors.length === 0) {
+      generalErrors = [{
+        rowIndex: 0,
+        fieldName: '处理错误',
+        errorMessage: result.generalErrorMessage,
+        errorType: 'general',
+        currentValue: ''
+      }]
+    }
+    
     // 合并所有错误并按行号排序
-    const allErrors = [...requiredErrors, ...typeErrors].sort((a, b) => a.rowIndex - b.rowIndex)
+    const allErrors = [...requiredErrors, ...typeErrors, ...orgCodeErrors, ...basicErrors, ...generalErrors]
+        .sort((a, b) => (a.rowIndex || 0) - (b.rowIndex || 0))
+    
+    // 重新计算错误行数（去重，排除文件级错误）
+    const errorRowSet = new Set<number>()
+    allErrors.forEach(err => {
+      if (err.rowIndex && err.rowIndex > 0) errorRowSet.add(err.rowIndex)
+    })
+    const actualErrorRows = errorRowSet.size
+    const actualErrorCount = allErrors.length
+    
+    // 计算通过率：保留两位小数
+    let passRate = 0
+    if (result.totalRows > 0) {
+      const rawRate = ((result.totalRows - actualErrorRows) / result.totalRows) * 100
+      passRate = Math.round(rawRate * 100) / 100  // 保留两位小数
+    }
     
     errorDetailDialog.value = {
       visible: true,
       fileName: row.standardFileName || row.originalFileName,
       fileType: row.fileType,
       totalRows: result.totalRows || 0,
-      errorRows: errorRows,
-      errorCount: errorFieldCount,
-      passRate: result.totalRows > 0
-        ? Math.round(((result.totalRows - errorRows) / result.totalRows) * 100)
-        : 0,
+      errorRows: actualErrorRows,
+      errorCount: actualErrorCount,
+      passRate: passRate,
       requiredErrors: requiredErrors,
       typeErrors: typeErrors,
       allErrors: allErrors,
@@ -849,7 +870,11 @@ const handleValidationErrorSizeChange = (size: number) => {
 
 /** 获取校验错误行样式 */
 const getValidationErrorRowClass = ({ row }: { row: any }) => {
-  return row.errorType === 'required' ? 'required-error-row' : 'type-error-row'
+  if (row.errorType === 'required') return 'required-error-row'
+  if (row.errorType === 'org_code') return 'org-code-error-row'
+  if (row.errorType === 'basic') return 'basic-error-row'
+  if (row.errorType === 'general') return 'general-error-row'
+  return 'type-error-row'
 }
 
 /** 导出校验错误列表 */
@@ -878,7 +903,9 @@ const exportValidationErrors = () => {
     // CSV数据行
     errors.forEach((error, index) => {
       const row = error.rowIndex || '-'
-      const errorType = error.errorType === 'required' ? '必填为空' : '类型错误'
+      let errorType = '类型错误'
+      if (error.errorType === 'required') errorType = '必填为空'
+      else if (error.errorType === 'org_code') errorType = '机构代码不匹配'
       const fieldName = (error.fieldName || '').replace(/"/g, '""')
       const currentValue = error.errorType === 'required' ? '(空)' : (error.currentValue || '-').toString().replace(/"/g, '""')
       const errorMessage = (error.errorMessage || '').replace(/"/g, '""')
@@ -1021,8 +1048,66 @@ const startUpload = async () => {
   }
 }
 
-// ==================== 演示版本：不需要轮询，已移除 ====================
-// startProgressPolling 和 stopProgressPolling 方法已移除，使用前端模拟进度
+// ==================== 上传进度轮询 ====================
+let uploadProgressPollingInterval: ReturnType<typeof setInterval> | null = null
+
+/**
+ * 开始轮询上传进度
+ */
+const startUploadProgressPolling = () => {
+  // 清除已有轮询
+  stopUploadProgressPolling()
+  
+  uploadProgressPollingInterval = setInterval(async () => {
+    try {
+      // 调用后端进度接口
+      const progressData = await ReportDataApi.getUploadProgress(currentTask.value.taskId)
+      
+      if (!progressData || Object.keys(progressData).length === 0) {
+        return
+      }
+      
+      // 更新各文件进度
+      uploadProgress.value = progressData
+      
+      // 计算总体进度
+      const fileProgresses = Object.values(progressData)
+      if (fileProgresses.length > 0) {
+        const totalProgress = fileProgresses.reduce((sum: number, p: any) => sum + (p.progress || 0), 0)
+        const avgProgress = Math.round(totalProgress / fileProgresses.length)
+        overallProgressData.value = { overallProgress: avgProgress }
+        
+        // 检查是否所有文件都已完成（成功或失败）
+        const allCompleted = fileProgresses.every((p: any) => 
+          p.status === 'success' || p.status === 'error'
+        )
+        
+        if (allCompleted) {
+          // 所有文件处理完成，停止轮询
+          stopUploadProgressPolling()
+          isUploading.value = false
+          
+          // 刷新文件列表
+          await refreshFileList()
+          
+          message.success('文件处理完成')
+        }
+      }
+    } catch (error) {
+      console.error('轮询上传进度失败:', error)
+    }
+  }, 1000) // 每1秒轮询一次
+}
+
+/**
+ * 停止轮询上传进度
+ */
+const stopUploadProgressPolling = () => {
+  if (uploadProgressPollingInterval) {
+    clearInterval(uploadProgressPollingInterval)
+    uploadProgressPollingInterval = null
+  }
+}
 
 /**
  * 获取进度条状态
@@ -1045,7 +1130,7 @@ const getProgressTagType = (status: string) => {
 }
 
 /**
- * 拖拽上传文件（演示版本：前端模拟进度）
+ * 拖拽上传文件（使用真实后端进度）
  */
 const handleFileChange = async (uploadFile: any) => {
   const file = uploadFile.raw
@@ -1054,47 +1139,18 @@ const handleFileChange = async (uploadFile: any) => {
   try {
     isUploading.value = true
     const fileName = file.name
-    const isZip = fileName.toLowerCase().endsWith('.zip')
 
-    // 前端模拟进度：开始上传
+    // 初始化进度
     uploadProgress.value = {}
     overallProgressData.value = { overallProgress: 0 }
 
-    // 模拟上传进度
-    const simulateProgress = (start: number, end: number, duration: number) => {
-      return new Promise(resolve => {
-        const step = (end - start) / (duration / 100)
-        let current = start
-        const interval = setInterval(() => {
-          current = Math.min(current + step, end)
-          overallProgressData.value = { overallProgress: Math.round(current) }
-          if (current >= end) {
-            clearInterval(interval)
-            resolve(true)
-          }
-        }, 100)
-      })
-    }
-
-    // 阶段1: 上传文件 (0% -> 30%)
-    message.info('正在上传文件...')
-    await simulateProgress(0, 30, 1000)
-
-    // 阶段2: 解析文件 (30% -> 60%)
-    message.info('正在解析文件...')
-    await simulateProgress(30, 60, 1500)
-
-    // 阶段3: 验证数据 (60% -> 90%)
-    message.info('正在验证数据...')
-    await simulateProgress(60, 90, 1000)
-
-    // 调用后端同步接口
+    // 调用后端异步上传接口
     const formData = new FormData()
     formData.append('file', file)
     formData.append('taskId', String(currentTask.value.taskId))
-    // 传递文件原始名称
     formData.append('originalFileName', file.name)
 
+    // 发起上传请求（异步处理）
     const result = await request.post({
       url: '/drug/report-data/validate-and-parse',
       data: formData,
@@ -1104,32 +1160,22 @@ const handleFileChange = async (uploadFile: any) => {
       timeout: 600000 // 10分钟超时
     })
 
-    // 阶段4: 完成 (90% -> 100%)
-    await simulateProgress(90, 100, 500)
+    // 上传请求已发送，开始轮询进度
+    message.info('文件已提交，正在处理...')
+    startUploadProgressPolling()
 
-    message.success(isZip ? '压缩包上传完成' : '文件上传完成')
-
-    // 刷新文件列表
-    await loadFileList(currentTask.value.taskId)
-
-    // 清空进度
-    overallProgressData.value = { overallProgress: 100 }
-    setTimeout(() => {
-      isUploading.value = false
-      uploadProgress.value = {}
-      overallProgressData.value = null
-    }, 500)
   } catch (error) {
     console.error('文件上传失败:', error)
     message.error('文件上传失败，请重试')
     isUploading.value = false
     uploadProgress.value = {}
     overallProgressData.value = null
+    stopUploadProgressPolling()
   }
 }
 
 /**
- * 操作列单文件上传（演示版本：前端模拟进度）
+ * 操作列单文件上传（使用真实后端进度）
  */
 const handleSingleFileUpload = async (uploadFile: any, row: any) => {
   const file = uploadFile.raw
@@ -1144,41 +1190,13 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
       uploadingFiles.value.push(fileType)
     }
 
-    // 前端模拟单文件进度
+    // 初始化进度
     uploadProgress.value[fileType] = { progress: 0, status: 'uploading' }
 
-    const simulateSingleProgress = (start: number, end: number, duration: number) => {
-      return new Promise(resolve => {
-        const step = (end - start) / (duration / 100)
-        let current = start
-        const interval = setInterval(() => {
-          current = Math.min(current + step, end)
-          uploadProgress.value[fileType] = {
-            progress: Math.round(current),
-            status: current < end ? 'uploading' : 'success'
-          }
-          if (current >= end) {
-            clearInterval(interval)
-            resolve(true)
-          }
-        }, 100)
-      })
-    }
-
-    message.info(`正在上传${displayName}...`)
-    await simulateSingleProgress(0, 30, 800)
-
-    message.info(`正在解析${displayName}...`)
-    await simulateSingleProgress(30, 70, 1000)
-
-    message.info(`正在验证${displayName}...`)
-    await simulateSingleProgress(70, 90, 800)
-
-    // 调用后端同步接口
+    // 调用后端异步上传接口
     const formData = new FormData()
     formData.append('file', file)
     formData.append('taskId', String(currentTask.value.taskId))
-    // 传递文件原始名称
     formData.append('originalFileName', file.name)
 
     const result = await request.post({
@@ -1190,22 +1208,13 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
       timeout: 600000 // 10分钟超时
     })
 
-    await simulateSingleProgress(90, 100, 300)
-    message.success(`${displayName}上传完成`)
-
-    // 刷新文件列表
-    await loadFileList(currentTask.value.taskId)
-
-    // 从上传中列表移除
-    const index = uploadingFiles.value.indexOf(fileType)
-    if (index > -1) {
-      uploadingFiles.value.splice(index, 1)
+    message.info(`${displayName}已提交，正在处理...`)
+    
+    // 开始轮询进度（如果还没有轮询）
+    if (!uploadProgressPollingInterval) {
+      startUploadProgressPolling()
     }
 
-    // 清空该文件进度
-    setTimeout(() => {
-      delete uploadProgress.value[fileType]
-    }, 500)
   } catch (error) {
     console.error('文件上传失败:', error)
     message.error(`${displayName}上传失败，请重试`)
@@ -2124,7 +2133,7 @@ const refreshFileList = async () => {
   try {
     refreshingFileList.value = true
     await loadFileList(currentTask.value.taskId)
-    message.success('文件列表已刷新')
+    // message.success('文件列表已刷新')
   } catch (error) {
     console.error('刷新文件列表失败:', error)
     message.error('刷新文件列表失败')
@@ -4479,6 +4488,10 @@ const handleSummaryClose = async () => {
 
 .validation-error-table :deep(.type-error-row) {
   background: #fffbeb !important;
+}
+
+.validation-error-table :deep(.org-code-error-row) {
+  background: #fef3e2 !important;
 }
 
 /* 分页器 */

@@ -1,10 +1,26 @@
 <template>
-  <el-table :data="dataViewDialog.data" stripe max-height="500" v-loading="dataViewDialog.loading" :row-class-name="getRowClassName">
-    <el-table-column label="ID" align="center" prop="id">
+  <div class="data-view-container">
+    <!-- 搜索框 -->
+    <div class="search-bar">
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索 YPID、产品名称、医疗机构名称..."
+        clearable
+        @input="handleSearch"
+        style="width: 400px"
+      >
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+    </div>
+
+  <el-table :data="filteredData" stripe max-height="calc(70vh - 120px)" v-loading="dataViewDialog.loading" :row-class-name="getRowClassName">
+    <el-table-column label="Excel行号" align="center" prop="excelRowNum" width="100" sortable>
       <template #default="{ row }">
         <div class="id-cell">
           <el-icon v-if="row.hasError" class="error-icon"><WarningFilled /></el-icon>
-          <span>{{ row.orderNo }}</span>
+          <span>{{ row.excelRowNum || '-' }}</span>
         </div>
       </template>
     </el-table-column>
@@ -72,9 +88,11 @@
       </template>
     </el-table-column>
   </el-table>
+  </div>
 </template>
 <script setup lang="ts">
-import { WarningFilled } from '@element-plus/icons-vue'
+import { ref, computed } from 'vue'
+import { WarningFilled, Search } from '@element-plus/icons-vue'
 
 defineOptions({ name: 'OutboundDetails' })
 
@@ -86,6 +104,33 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// 搜索关键字
+const searchKeyword = ref('')
+
+// 过滤后的数据
+const filteredData = computed(() => {
+  if (!props.dataViewDialog?.data) return []
+  
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  if (!keyword) return props.dataViewDialog.data
+  
+  return props.dataViewDialog.data.filter(row => {
+    return (
+      (row.ypid && row.ypid.toLowerCase().includes(keyword)) ||
+      (row.productName && row.productName.toLowerCase().includes(keyword)) ||
+      (row.organizationName && row.organizationName.toLowerCase().includes(keyword)) ||
+      (row.hospitalDrugId && row.hospitalDrugId.toLowerCase().includes(keyword)) ||
+      (row.hospitalCode && row.hospitalCode.toLowerCase().includes(keyword)) ||
+      (row.provinceDrugCode && row.provinceDrugCode.toLowerCase().includes(keyword))
+    )
+  })
+})
+
+// 搜索处理
+const handleSearch = () => {
+  // 搜索逻辑已在 computed 中处理
+}
 
 /** 获取行样式类名 */
 const getRowClassName = ({ row }) => {
@@ -124,5 +169,15 @@ const formatDate = (dateStr: string): string => {
 
 :deep(.error-row:hover > td) {
   background-color: #fde2e2 !important;
+}
+
+.data-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-bar {
+  padding: 0 4px;
 }
 </style>
