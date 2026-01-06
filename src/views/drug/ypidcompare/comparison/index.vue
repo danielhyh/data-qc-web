@@ -140,7 +140,7 @@
             <span>{{ row.autoApplyThreshold || 0 }}%</span>
           </template>
         </el-table-column>
-        <el-table-column label="比对进度" width="250">
+        <el-table-column label="比对数量" width="250">
           <template #default="{ row }">
             <div class="progress-wrapper">
               <el-progress
