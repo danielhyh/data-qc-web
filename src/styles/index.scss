@@ -563,15 +563,15 @@ body,
   font-size: 14px !important;
   font-weight: 450 !important;
   color: #2c3e50 !important;
-  /* 允许内容溢出，解决 dict-tag 等元素 hover 动画被裁剪的问题 */
-  overflow: visible !important;
+  /* 移除 overflow: visible，避免文字溢出与其他列重叠 */
+  /* 已有 show-overflow-tooltip 提供悬停提示，无需文字溢出显示 */
   
   > .cell {
     font-size: 14px !important;
     font-weight: 450 !important;
     line-height: 1.6 !important;
     color: #2c3e50 !important;
-    overflow: visible !important;
+    /* 保持默认的 overflow: hidden，配合 show-overflow-tooltip 使用 */
   }
 }
 

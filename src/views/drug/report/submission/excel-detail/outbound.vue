@@ -4,7 +4,7 @@
     <div class="search-bar">
       <el-input
         v-model="searchKeyword"
-        placeholder="搜索 YPID、产品名称、医疗机构名称..."
+        placeholder="搜索 YPID、产品名称、院内唯一码..."
         clearable
         @input="handleSearch"
         style="width: 400px"
@@ -33,23 +33,16 @@
     <el-table-column label="组织机构代码" align="center" prop="organizationCode" width="120" />
     <el-table-column label="医疗机构代码" align="center" prop="hospitalCode" width="120" />
     <el-table-column
-      label="医疗机构名称"
+      label="院内唯一码"
       align="center"
-      prop="organizationName"
-      min-width="200"
+      prop="hospitalDrugId"
+      width="150"
       show-overflow-tooltip
     />
     <el-table-column
       label="国家药品编码（YPID）"
       align="center"
       prop="ypid"
-      width="150"
-      show-overflow-tooltip
-    />
-    <el-table-column
-      label="院内药品唯一码"
-      align="center"
-      prop="hospitalDrugId"
       width="150"
       show-overflow-tooltip
     />
@@ -119,7 +112,6 @@ const filteredData = computed(() => {
     return (
       (row.ypid && row.ypid.toLowerCase().includes(keyword)) ||
       (row.productName && row.productName.toLowerCase().includes(keyword)) ||
-      (row.organizationName && row.organizationName.toLowerCase().includes(keyword)) ||
       (row.hospitalDrugId && row.hospitalDrugId.toLowerCase().includes(keyword)) ||
       (row.hospitalCode && row.hospitalCode.toLowerCase().includes(keyword)) ||
       (row.provinceDrugCode && row.provinceDrugCode.toLowerCase().includes(keyword))

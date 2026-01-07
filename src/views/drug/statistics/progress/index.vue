@@ -406,29 +406,30 @@ const updateCharts = () => {
       {
         name: '已上报',
         type: 'bar',
+        stack: 'total',
         data: reportedData,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#73d13d' },
-            { offset: 1, color: '#237804' }
+            { offset: 0, color: '#86efac' },
+            { offset: 1, color: '#22c55e' }
           ]),
-          borderRadius: [4, 4, 0, 0]
+          borderRadius: [0, 0, 0, 0]
         },
-        barMaxWidth: 28,
-        barGap: '30%'
+        barMaxWidth: 36
       },
       {
         name: '未上报',
         type: 'bar',
+        stack: 'total',
         data: unreportedData,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#ff7875' },
-            { offset: 1, color: '#cf1322' }
+            { offset: 0, color: '#fca5a5' },
+            { offset: 1, color: '#ef4444' }
           ]),
           borderRadius: [4, 4, 0, 0]
         },
-        barMaxWidth: 28
+        barMaxWidth: 36
       },
       {
         name: '上报率',

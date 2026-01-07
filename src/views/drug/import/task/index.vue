@@ -93,6 +93,7 @@
               plain
               @click="handleBatchPostQc"
               :disabled="multipleSelection.length === 0"
+              v-if="canShowPostQcButton"
           >
             <Icon icon="ep:check" class="mr-5px" /> 批量后置质控
           </el-button>
@@ -100,15 +101,17 @@
               type="danger"
               plain
               @click="handleBatchReject"
-              :disabled="!canBatchApproveOrReject"
+              :disabled="!canBatchReject"
+              v-if="canShowRejectButton"
           >
-            <Icon icon="ep:close" class="mr-5px" /> 批量驳回
+            <Icon icon="ep:close" class="mr-5px" /> 批量退回
           </el-button>
           <el-button
               type="success"
               plain
               @click="handleBatchApprove"
-              :disabled="!canBatchApproveOrReject"
+              :disabled="!canBatchApprove"
+              v-if="canShowApproveButton"
           >
             <Icon icon="ep:circle-check" class="mr-5px" /> 批量通过
           </el-button>
@@ -207,32 +210,32 @@
                     <el-dropdown-item command="log">
                       <Icon icon="ep:tickets" class="mr-5px" />日志
                     </el-dropdown-item>
-                    <!-- 后置质控：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示 -->
+                    <!-- 后置质控：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示，且仅省级管理员可见 -->
                     <el-dropdown-item
-                        v-if="canShowPostQcButton(scope.row.reportStatus)"
+                        v-if="canShowPostQcButton && canShowPostQcButtonForUser(scope.row.reportStatus)"
                         command="postQc"
                         divided
                     >
                       <Icon icon="ep:check" class="mr-5px" />后置质控
                     </el-dropdown-item>
-                    <!-- 驳回：只在状态为6(后置质控通过)时显示 -->
+                    <!-- 退回：只在状态为1(已上报,审核中)、5(已重报,审核中)、6(后置质控通过)时显示，且仅市级/区县级管理员可见 -->
                     <el-dropdown-item
-                        v-if="canShowRejectButton(scope.row.reportStatus)"
+                        v-if="canShowRejectButton && canShowRejectButtonForUser(scope.row.reportStatus)"
                         command="reject"
                     >
-                      <Icon icon="ep:close" class="mr-5px" />驳回
+                      <Icon icon="ep:close" class="mr-5px" />退回
                     </el-dropdown-item>
                     <!-- 通过：只在状态为6(后置质控通过)时显示 -->
                     <el-dropdown-item
-                        v-if="canShowApproveButton(scope.row.reportStatus)"
+                        v-if="canShowApproveButtonForUser(scope.row.reportStatus)"
                         command="approve"
                     >
                       <Icon icon="ep:circle-check" class="mr-5px" />通过
                     </el-dropdown-item>
-                    <!-- 删除 -->
+                    <!-- 删除：仅超级管理员可见 -->
                     <el-dropdown-item
                         command="delete"
-                        v-if="checkPermi(['drug:import-task:delete'])"
+                        v-if="isSuperAdmin"
                     >
                       <Icon icon="ep:delete" class="mr-5px" />删除
                     </el-dropdown-item>
@@ -271,6 +274,7 @@ import RegionTree from '@/views/system/user/RegionTree.vue'
 import ReportLogDialog from './ReportLogDialog.vue'
 import { ElMessageBox } from 'element-plus'
 import { getProgressColor } from '@/utils/progressColor'
+import { useUserStore } from '@/store/modules/user'
 
 /** 药品数据导入任务 列表 */
 defineOptions({ name: 'ImportTask' })
@@ -278,6 +282,7 @@ defineOptions({ name: 'ImportTask' })
 const message = useMessage() // 消息弹窗
 const router = useRouter() // 路由对象
 const { t } = useI18n() // 国际化
+const userStore = useUserStore() // 用户信息
 
 const loading = ref(true) // 列表的加载中
 const list = ref<DataManageImportTaskVO[]>([]) // 列表的数据
@@ -505,10 +510,52 @@ const handleSelectAll = async (selection: DataManageImportTaskVO[]) => {
 }
 
 /** 批量通过/驳回是否可用（只有后置质控通过的才能批量通过或驳回） */
-const canBatchApproveOrReject = computed(() => {
+const canBatchApprove = computed(() => {
   if (multipleSelection.value.length === 0) return false
   // 检查所有选中的任务是否都是后置质控通过状态（状态为6-后置质控通过）
   return multipleSelection.value.every(item => item.reportStatus === 6)
+})
+
+/** 批量退回是否可用（状态为1、5、6的才能批量退回） */
+const canBatchReject = computed(() => {
+  if (multipleSelection.value.length === 0) return false
+  // 检查所有选中的任务是否都是可退回状态（状态为1、5、6）
+  return multipleSelection.value.every(item => 
+    item.reportStatus === 1 || item.reportStatus === 5 || item.reportStatus === 6
+  )
+})
+
+/** 权限判断 - 是否为超级管理员 */
+const isSuperAdmin = computed(() => {
+  const roles = userStore.getRoles || []
+  return roles.includes('super_admin')
+})
+
+/** 权限判断 - 是否为省级管理员（可执行后置质控） */
+const isProvincialAdmin = computed(() => {
+  const roles = userStore.getRoles || []
+  return roles.includes('super_admin') || roles.includes('provincial_admin')
+})
+
+/** 权限判断 - 是否为市级/区县级管理员（可执行退回） */
+const isCityOrDistrictAdmin = computed(() => {
+  const roles = userStore.getRoles || []
+  return roles.includes('super_admin') || roles.includes('city_admin') || roles.includes('district_admin')
+})
+
+/** 批量按钮显示逻辑 - 后置质控按钮（仅省级管理员可见） */
+const canShowPostQcButton = computed(() => {
+  return isProvincialAdmin.value
+})
+
+/** 批量按钮显示逻辑 - 退回按钮（仅市级/区县级管理员可见） */
+const canShowRejectButton = computed(() => {
+  return isCityOrDistrictAdmin.value
+})
+
+/** 批量按钮显示逻辑 - 通过按钮（所有管理员可见） */
+const canShowApproveButton = computed(() => {
+  return true
 })
 
 /** 查看数据 */
@@ -540,18 +587,18 @@ const handlePostQc = async (row: DataManageImportTaskVO) => {
 /** 单个驳回 */
 const handleReject = async (row: DataManageImportTaskVO) => {
   try {
-    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因（可选）', '驳回任务', {
+    const { value: reason } = await ElMessageBox.prompt('请输入退回原因（可选）', '退回任务', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       inputType: 'textarea',
-      inputPlaceholder: '请输入驳回原因...'
+      inputPlaceholder: '请输入退回原因...'
     })
     await rejectTask(row.id!, reason || undefined)
-    message.success('任务驳回成功')
+    message.success('任务退回成功')
     await getList()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('驳回任务失败:', error)
+      console.error('退回任务失败:', error)
     }
   }
 }
@@ -581,20 +628,20 @@ const handleBatchPostQc = async () => {
 /** 批量驳回 */
 const handleBatchReject = async () => {
   try {
-    const { value: reason } = await ElMessageBox.prompt('请输入驳回原因（可选）', `批量驳回 ${multipleSelection.value.length} 个任务`, {
+    const { value: reason } = await ElMessageBox.prompt('请输入退回原因（可选）', `批量退回 ${multipleSelection.value.length} 个任务`, {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       inputType: 'textarea',
-      inputPlaceholder: '请输入驳回原因...'
+      inputPlaceholder: '请输入退回原因...'
     })
     const ids = multipleSelection.value.map(item => item.id!)
     await batchRejectTask(ids, reason || undefined)
-    message.success('批量驳回成功')
+    message.success('批量退回成功')
     clearSelection()
     await getList()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('批量驳回失败:', error)
+      console.error('批量退回失败:', error)
     }
   }
 }
@@ -619,20 +666,20 @@ const clearSelection = () => {
   tableRef.value?.clearSelection()
 }
 
-/** 按钮显示逻辑 - 后置质控 */
-const canShowPostQcButton = (reportStatus: number) => {
+/** 单个操作按钮显示逻辑 - 后置质控（状态1、5可显示，且需要省级管理员权限） */
+const canShowPostQcButtonForUser = (reportStatus: number) => {
   // 只在状态为1(已上报,审核中)、5(已重报,审核中)时显示
   return reportStatus === 1 || reportStatus === 5
 }
 
-/** 按钮显示逻辑 - 驳回 */
-const canShowRejectButton = (reportStatus: number) => {
-  // 只在状态为6(后置质控通过)时显示
-  return reportStatus === 6
+/** 单个操作按钮显示逻辑 - 退回（状态1、5、6可显示，且需要市级/区县级管理员权限） */
+const canShowRejectButtonForUser = (reportStatus: number) => {
+  // 只在状态为1(已上报,审核中)、5(已重报,审核中)、6(后置质控通过)时显示
+  return reportStatus === 1 || reportStatus === 5 || reportStatus === 6
 }
 
-/** 按钮显示逻辑 - 通过 */
-const canShowApproveButton = (reportStatus: number) => {
+/** 单个操作按钮显示逻辑 - 通过（状态6可显示） */
+const canShowApproveButtonForUser = (reportStatus: number) => {
   // 只在状态为6(后置质控通过)时显示
   return reportStatus === 6
 }

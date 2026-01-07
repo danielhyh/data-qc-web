@@ -8,7 +8,8 @@ export interface ReportLogVO {
   operationStatus: number // 操作状态
   operatorType: number // 操作人类型
   operatorId: number // 操作人ID
-  operatorName: string // 操作人名称
+  operatorName: string // 操作人名称（昵称/机构名）
+  operatorRealName: string // 操作人真实姓名
   operationDetail: string // 操作详情JSON
   errorMessage: string // 错误信息
   executionTime: number // 执行耗时
