@@ -210,7 +210,7 @@
                     <el-dropdown-item command="log">
                       <Icon icon="ep:tickets" class="mr-5px" />日志
                     </el-dropdown-item>
-                    <!-- 后置质控：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示，且仅省级管理员可见 -->
+                    <!-- 后置质控：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示，基于权限控制 -->
                     <el-dropdown-item
                         v-if="canShowPostQcButton && canShowPostQcButtonForUser(scope.row.reportStatus)"
                         command="postQc"
@@ -218,14 +218,14 @@
                     >
                       <Icon icon="ep:check" class="mr-5px" />后置质控
                     </el-dropdown-item>
-                    <!-- 退回：只在状态为1(已上报,审核中)、5(已重报,审核中)、6(后置质控通过)时显示，且仅市级/区县级管理员可见 -->
+                    <!-- 退回：只在状态为1(已上报,审核中)、5(已重报,审核中)、6(后置质控通过)时显示，基于权限控制 -->
                     <el-dropdown-item
                         v-if="canShowRejectButton && canShowRejectButtonForUser(scope.row.reportStatus)"
                         command="reject"
                     >
                       <Icon icon="ep:close" class="mr-5px" />退回
                     </el-dropdown-item>
-                    <!-- 通过：只在状态为6(后置质控通过)时显示 -->
+                    <!-- 通过：只在状态为6(后置质控通过)时显示，基于权限控制 -->
                     <el-dropdown-item
                         v-if="canShowApproveButtonForUser(scope.row.reportStatus)"
                         command="approve"
@@ -531,31 +531,19 @@ const isSuperAdmin = computed(() => {
   return roles.includes('super_admin')
 })
 
-/** 权限判断 - 是否为省级管理员（可执行后置质控） */
-const isProvincialAdmin = computed(() => {
-  const roles = userStore.getRoles || []
-  return roles.includes('super_admin') || roles.includes('provincial_admin')
-})
-
-/** 权限判断 - 是否为市级/区县级管理员（可执行退回） */
-const isCityOrDistrictAdmin = computed(() => {
-  const roles = userStore.getRoles || []
-  return roles.includes('super_admin') || roles.includes('city_admin') || roles.includes('district_admin')
-})
-
-/** 批量按钮显示逻辑 - 后置质控按钮（仅省级管理员可见） */
+/** 批量按钮显示逻辑 - 后置质控按钮（基于权限） */
 const canShowPostQcButton = computed(() => {
-  return isProvincialAdmin.value
+  return checkPermi(['drug:import-task:post-qc'])
 })
 
-/** 批量按钮显示逻辑 - 退回按钮（仅市级/区县级管理员可见） */
+/** 批量按钮显示逻辑 - 退回按钮（基于权限） */
 const canShowRejectButton = computed(() => {
-  return isCityOrDistrictAdmin.value
+  return checkPermi(['drug:import-task:reject'])
 })
 
-/** 批量按钮显示逻辑 - 通过按钮（所有管理员可见） */
+/** 批量按钮显示逻辑 - 通过按钮（基于权限） */
 const canShowApproveButton = computed(() => {
-  return true
+  return checkPermi(['drug:import-task:approve'])
 })
 
 /** 查看数据 */

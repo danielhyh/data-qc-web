@@ -314,6 +314,13 @@ export const ReportDataApi = {
     })
   },
 
+  // 获取前置质控实时进度
+  getQcTaskProgress: (taskId: number): Promise<any> => {
+    return request.get({
+      url: `/drug/report-data/qc/task-progress/${taskId}`
+    })
+  },
+
   // 获取前置质控结果
   getPreQCResult: (taskId: number): Promise<QCResultVO> => {
     return request.get({

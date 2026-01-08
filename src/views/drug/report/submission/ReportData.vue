@@ -1342,53 +1342,24 @@ const startPreQC = async () => {
       currentTask.value.currentStep = 2
       currentTask.value.maxCurrentStep = 2
 
-      // 2. 显示质控进度动画
+      // 2. 显示质控进度
       isQCProcessing.value = true
       qcProgress.value = 0
       qcCurrentPhase.value = '准备开始质控...'
 
-      // 初始化文件进度列表
-      qcFileProgress.value = fileList.value.map(file => ({
-        name: tableTypeNameMap[file.fileType] || file.standardFileName,
-        progress: 0,
-        status: 'pending' as const
-      }))
+      // 3. 调用后端质控接口（异步执行）
+      const qcPromise = operateQCResults(currentTask.value.taskId)
 
-      // 阶段1: 准备质控 (0% -> 10%)
-      qcCurrentPhase.value = '正在准备质控环境...'
-      await simulateQCProgress(0, 10, 1500)
+      // 4. 开始轮询后端进度
+      await pollQcProgress(currentTask.value.taskId)
 
-      // 阶段2: 检查数据完整性 (10% -> 30%)
-      qcCurrentPhase.value = '正在检查数据完整性...'
-      await simulateQCProgress(10, 30, 2000)
+      // 5. 等待质控完成
+      await qcPromise
 
-      // 阶段3: 逐个文件质控 (30% -> 70%)
-      for (let i = 0; i < qcFileProgress.value.length; i++) {
-        qcFileProgress.value[i].status = 'processing'
-        qcCurrentPhase.value = `正在质控 ${qcFileProgress.value[i].name}...`
-
-        const startProgress = 30 + (i * 40 / qcFileProgress.value.length)
-        const endProgress = 30 + ((i + 1) * 40 / qcFileProgress.value.length)
-
-        await simulateFileQCProgress(i, startProgress, endProgress, 1500)
-      }
-
-      // 阶段4: 执行质控规则 (70% -> 85%)
-      qcCurrentPhase.value = '正在执行质控规则...'
-      await simulateQCProgress(70, 85, 2000)
-
-      // 3. 调用后端质控接口
-      qcCurrentPhase.value = '正在调用后端质控接口...'
-      await operateQCResults(currentTask.value.taskId)
-
-      // 阶段5: 完成 (85% -> 100%)
-      qcCurrentPhase.value = '质控完成，正在生成报告...'
-      await simulateQCProgress(85, 100, 1500)
-
-      // 4. 加载质控结果
+      // 6. 加载质控结果
       await loadQCResults(currentTask.value.taskId)
 
-      message.success('前置质控完成，所有文件质控通过')
+      message.success('前置质控完成')
     } catch (error) {
       console.error('前置质控失败:', error)
       message.error('前置质控失败，请重试')
@@ -1408,36 +1379,14 @@ const startPreQC = async () => {
       qcProgress.value = 0
       qcCurrentPhase.value = '正在重新进行前置质控...'
 
-      // 初始化文件进度列表（重新质控时也需要显示）
-      qcFileProgress.value = fileList.value.map(file => ({
-        name: tableTypeNameMap[file.fileType] || file.standardFileName,
-        progress: 0,
-        status: 'pending' as const
-      }))
+      // 调用后端质控接口（异步执行）
+      const qcPromise = operateQCResults(currentTask.value.taskId)
 
-      // 阶段1: 准备质控 (0% -> 30%)
-      qcCurrentPhase.value = '正在准备质控环境...'
-      await simulateQCProgress(0, 30, 1500)
+      // 开始轮询后端进度
+      await pollQcProgress(currentTask.value.taskId)
 
-      // 阶段2: 逐个文件质控 (30% -> 70%)
-      for (let i = 0; i < qcFileProgress.value.length; i++) {
-        qcFileProgress.value[i].status = 'processing'
-        qcCurrentPhase.value = `正在质控 ${qcFileProgress.value[i].name}...`
-
-        const startProgress = 30 + (i * 40 / qcFileProgress.value.length)
-        const endProgress = 30 + ((i + 1) * 40 / qcFileProgress.value.length)
-
-        await simulateFileQCProgress(i, startProgress, endProgress, 1200)
-      }
-
-      // 阶段3: 调用后端接口 (70% -> 85%)
-      qcCurrentPhase.value = '正在调用后端质控接口...'
-      await operateQCResults(currentTask.value.taskId)
-      await simulateQCProgress(70, 85, 1000)
-
-      // 阶段4: 完成 (85% -> 100%)
-      qcCurrentPhase.value = '质控完成，正在生成报告...'
-      await simulateQCProgress(85, 100, 1000)
+      // 等待质控完成
+      await qcPromise
 
       await loadQCResults(currentTask.value.taskId)
 
@@ -1453,44 +1402,55 @@ const startPreQC = async () => {
   }
 }
 
-// 模拟质控进度
-const simulateQCProgress = (start: number, end: number, duration: number) => {
-  return new Promise(resolve => {
-    const step = (end - start) / (duration / 50)
-    let current = start
-    const interval = setInterval(() => {
-      current = Math.min(current + step, end)
-      qcProgress.value = Math.round(current)
-      if (current >= end) {
-        clearInterval(interval)
-        resolve(true)
+// 轮询后端质控进度
+const pollQcProgress = async (taskId: number) => {
+  return new Promise<void>((resolve, reject) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await ReportDataApi.getQcTaskProgress(taskId)
+        
+        console.log('[质控进度] 轮询响应:', response)
+        
+        // 处理响应数据：response 可能直接是 data，也可能包含 data 字段
+        const progressData = response.data || response
+        
+        if (progressData) {
+          const { progress, message: msg, currentStage } = progressData
+          
+          // 转换进度为数字（处理 BigDecimal 或字符串类型）
+          const progressNum = Number(progress) || 0
+          
+          console.log('[质控进度] 进度值:', progressNum, '阶段:', currentStage, '消息:', msg)
+          
+          // 更新进度
+          qcProgress.value = Math.round(progressNum)
+          qcCurrentPhase.value = msg || '正在执行质控...'
+          
+          // 检查是否完成或失败
+          if (progressNum >= 100 || currentStage === 'PRE_QC_COMPLETED') {
+            console.log('[质控进度] 质控完成，停止轮询')
+            clearInterval(pollInterval)
+            qcProgress.value = 100
+            qcCurrentPhase.value = '前置质控完成'
+            resolve()
+          } else if (currentStage === 'PRE_QC_FAILED') {
+            console.log('[质控进度] 质控失败，停止轮询')
+            clearInterval(pollInterval)
+            reject(new Error(msg || '前置质控失败'))
+          }
+        }
+      } catch (error) {
+        console.error('[质控进度] 获取质控进度失败:', error)
+        // 不中断轮询，继续尝试
       }
-    }, 50)
-  })
-}
+    }, 1000) // 每1秒轮询一次
 
-// 模拟单个文件质控进度
-const simulateFileQCProgress = (fileIndex: number, start: number, end: number, duration: number) => {
-  return new Promise(resolve => {
-    const step = (end - start) / (duration / 50)
-    let current = start
-    const fileStep = 100 / (duration / 50)
-    let fileProgress = 0
-
-    const interval = setInterval(() => {
-      current = Math.min(current + step, end)
-      fileProgress = Math.min(fileProgress + fileStep, 100)
-
-      qcProgress.value = Math.round(current)
-      qcFileProgress.value[fileIndex].progress = Math.round(fileProgress)
-
-      if (current >= end) {
-        clearInterval(interval)
-        qcFileProgress.value[fileIndex].status = 'success'
-        qcFileProgress.value[fileIndex].progress = 100
-        resolve(true)
-      }
-    }, 50)
+    // 设置超时（10分钟）
+    setTimeout(() => {
+      console.log('[质控进度] 轮询超时')
+      clearInterval(pollInterval)
+      reject(new Error('质控超时'))
+    }, 600000)
   })
 }
 
