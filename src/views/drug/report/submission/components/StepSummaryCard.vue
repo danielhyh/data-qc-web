@@ -1,5 +1,5 @@
 <template>
-  <div class="step-summary-card" v-if="summaryData || isProcessing">
+  <div class="step-summary-card" v-if="parsedSummaryData || isProcessing">
     <!-- 处理中：显示进度 -->
     <div v-if="isProcessing" class="processing-view">
       <div class="progress-header">
@@ -26,6 +26,18 @@
           <el-icon><component :is="statusIcon" /></el-icon>
           <span>{{ stepName }}总览</span>
           <el-tag :type="statusTagType" size="small">{{ statusText }}</el-tag>
+          <!-- 质控步骤显示查看报告按钮 -->
+          <el-button 
+            v-if="stepType === 2" 
+            type="primary" 
+            link 
+            size="small" 
+            @click="handleViewReport"
+            class="view-report-btn"
+          >
+            <el-icon><Document /></el-icon>
+            查看报告
+          </el-button>
         </div>
       </template>
       
@@ -34,36 +46,60 @@
         <div class="summary-stats">
           <div class="stat-item">
             <span class="stat-label">总文件</span>
-            <span class="stat-value">{{ summaryData.totalFiles || 0 }}</span>
+            <span class="stat-value">{{ parsedSummaryData.totalFiles || 0 }}</span>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item success">
             <span class="stat-label">成功</span>
-            <span class="stat-value">{{ summaryData.successFiles || 0 }}</span>
+            <span class="stat-value">{{ parsedSummaryData.successFiles || 0 }}</span>
           </div>
-          <div class="stat-divider" v-if="summaryData.failedFiles > 0"></div>
-          <div class="stat-item failed" v-if="summaryData.failedFiles > 0">
+          <div class="stat-divider" v-if="parsedSummaryData.warningFiles > 0"></div>
+          <div class="stat-item warning" v-if="parsedSummaryData.warningFiles > 0">
+            <span class="stat-label">警告</span>
+            <span class="stat-value">{{ parsedSummaryData.warningFiles }}</span>
+          </div>
+          <div class="stat-divider" v-if="parsedSummaryData.failedFiles > 0"></div>
+          <div class="stat-item failed" v-if="parsedSummaryData.failedFiles > 0">
             <span class="stat-label">失败</span>
-            <span class="stat-value">{{ summaryData.failedFiles }}</span>
+            <span class="stat-value">{{ parsedSummaryData.failedFiles }}</span>
           </div>
         </div>
         
         <!-- 步骤特有信息 -->
-        <div class="step-specific" v-if="summaryData.totalRecords">
+        <div class="step-specific" v-if="parsedSummaryData.totalRecords">
           <div class="info-row">
-            <span>总记录数：{{ summaryData.totalRecords || 0 }}</span>
+            <span>总记录数：{{ formatNumber(parsedSummaryData.totalRecords) }}</span>
             <span class="divider">|</span>
-            <span :class="summaryData.errorRecords > 0 ? 'error-text' : ''">
-              错误数：{{ summaryData.errorRecords || 0 }}
+            <span :class="parsedSummaryData.errorRecords > 0 ? 'error-text' : ''">
+              错误数：{{ formatNumber(parsedSummaryData.errorRecords) }}
             </span>
+            <template v-if="stepType === 2 && parsedSummaryData.passRate !== undefined">
+              <span class="divider">|</span>
+              <span :class="getPassRateClass(parsedSummaryData.passRate)">
+                通过率：{{ parsedSummaryData.passRate?.toFixed(1) }}%
+              </span>
+            </template>
+          </div>
+        </div>
+
+        <!-- 质控步骤：显示规则统计 -->
+        <div class="rule-stats" v-if="stepType === 2 && parsedSummaryData.totalRules">
+          <div class="info-row">
+            <span>执行规则：{{ parsedSummaryData.executedRules || 0 }}/{{ parsedSummaryData.totalRules }}</span>
+            <span class="divider">|</span>
+            <span class="success-text">通过：{{ parsedSummaryData.passedRules || 0 }}</span>
+            <template v-if="parsedSummaryData.failedRules > 0">
+              <span class="divider">|</span>
+              <span class="error-text">失败：{{ parsedSummaryData.failedRules }}</span>
+            </template>
           </div>
         </div>
         
         <!-- 时间信息 -->
-        <div class="summary-time" v-if="summaryData.endTime">
-          <span>最近处理耗时：{{ formatDuration(summaryData.duration) }}</span>
+        <div class="summary-time" v-if="parsedSummaryData.endTime">
+          <span>最近处理耗时：{{ formatDuration(parsedSummaryData.duration) }}</span>
           <span class="divider">|</span>
-          <span>完成时间：{{ formatDateTime(summaryData.endTime) }}</span>
+          <span>完成时间：{{ formatDateTime(parsedSummaryData.endTime) }}</span>
         </div>
       </div>
     </el-alert>
@@ -72,7 +108,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Loading, CircleCheckFilled, WarningFilled, CircleCloseFilled } from '@element-plus/icons-vue'
+import { Loading, CircleCheckFilled, WarningFilled, CircleCloseFilled, Document } from '@element-plus/icons-vue'
 import { getProgressColor } from '@/utils/progressColor'
 import { ReportStepSummaryApi } from '@/api/drug/reportstepsummary/index'
 
@@ -107,9 +143,29 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['refresh', 'close'])
+const emit = defineEmits(['refresh', 'close', 'viewReport'])
 
 const summaryData = ref<any>(null)
+
+// 解析 summaryData JSON 字段中的扩展数据
+const parsedSummaryData = computed(() => {
+  if (!summaryData.value) return null
+  
+  const data = { ...summaryData.value }
+  
+  // 解析 summaryData JSON 字段
+  if (data.summaryData && typeof data.summaryData === 'string') {
+    try {
+      const extraData = JSON.parse(data.summaryData)
+      // 合并扩展数据到主数据
+      Object.assign(data, extraData)
+    } catch (e) {
+      console.warn('解析 summaryData JSON 失败:', e)
+    }
+  }
+  
+  return data
+})
 
 // 步骤名称映射
 const stepNames = {
@@ -123,36 +179,39 @@ const stepName = computed(() => stepNames[props.stepType] || '处理')
 
 // 状态相关计算
 const alertType = computed(() => {
-  if (!summaryData.value) return 'info'
-  if (summaryData.value.status === 1 && summaryData.value.failedFiles === 0) return 'success'
-  if (summaryData.value.status === 3) return 'error'
+  if (!parsedSummaryData.value) return 'info'
+  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0) return 'success'
+  if (parsedSummaryData.value.status === 3) return 'error'
   return 'warning'
 })
 
 const statusIcon = computed(() => {
-  if (!summaryData.value) return CircleCheckFilled
-  if (summaryData.value.status === 1 && summaryData.value.failedFiles === 0) return CircleCheckFilled
-  if (summaryData.value.status === 3) return CircleCloseFilled
+  if (!parsedSummaryData.value) return CircleCheckFilled
+  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0) return CircleCheckFilled
+  if (parsedSummaryData.value.status === 3) return CircleCloseFilled
   return WarningFilled
 })
 
 const statusTagType = computed(() => {
-  if (!summaryData.value) return 'info'
-  if (summaryData.value.status === 1 && summaryData.value.failedFiles === 0) return 'success'
-  if (summaryData.value.status === 3) return 'danger'
+  if (!parsedSummaryData.value) return 'info'
+  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0) return 'success'
+  if (parsedSummaryData.value.status === 3) return 'danger'
   return 'warning'
 })
 
 const statusText = computed(() => {
-  if (!summaryData.value) return '未知'
-  if (summaryData.value.status === 0) return '处理中'
-  if (summaryData.value.status === 1) {
-    return summaryData.value.failedFiles > 0 ? '部分成功' : '已完成'
+  if (!parsedSummaryData.value) return '未知'
+  if (parsedSummaryData.value.status === 0) return '处理中'
+  if (parsedSummaryData.value.status === 1) {
+    return parsedSummaryData.value.failedFiles > 0 ? '部分成功' : '已完成'
   }
-  if (summaryData.value.status === 2) return '部分失败'
-  if (summaryData.value.status === 3) return '失败'
+  if (parsedSummaryData.value.status === 2) return '部分失败'
+  if (parsedSummaryData.value.status === 3) return '失败'
   return '未知'
 })
+
+// 格式化数字
+const formatNumber = (num: number) => num?.toLocaleString() || '0'
 
 // 格式化时长
 const formatDuration = (seconds: number) => {
@@ -169,6 +228,18 @@ const formatDuration = (seconds: number) => {
 const formatDateTime = (date: string | Date) => {
   if (!date) return ''
   return new Date(date).toLocaleString('zh-CN')
+}
+
+// 获取通过率样式类
+const getPassRateClass = (rate: number) => {
+  if (rate >= 95) return 'success-text'
+  if (rate >= 80) return ''
+  return 'error-text'
+}
+
+// 查看报告
+const handleViewReport = () => {
+  emit('viewReport')
 }
 
 // 关闭总览
@@ -300,6 +371,11 @@ defineExpose({
   font-size: 20px;
 }
 
+.view-report-btn {
+  margin-left: auto;
+  font-size: 13px;
+}
+
 .summary-content {
   margin-top: 16px;
 }
@@ -333,6 +409,10 @@ defineExpose({
   color: #67c23a;
 }
 
+.stat-item.warning .stat-value {
+  color: #e6a23c;
+}
+
 .stat-item.failed .stat-value {
   color: #f56c6c;
 }
@@ -343,7 +423,7 @@ defineExpose({
   background: #d1d5db;
 }
 
-.step-specific {
+.step-specific, .rule-stats {
   padding: 12px 0;
 }
 
@@ -361,6 +441,11 @@ defineExpose({
 
 .error-text {
   color: #f56c6c;
+  font-weight: 600;
+}
+
+.success-text {
+  color: #67c23a;
   font-weight: 600;
 }
 

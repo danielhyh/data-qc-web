@@ -121,6 +121,117 @@ export interface ErrorTableVO {
   description: string
 }
 
+// ==================== 质控报告增强类型 ====================
+
+export interface QcReportSummaryVO {
+  taskId: number
+  taskName: string
+  qcTime: string
+  duration: number
+  // 文件统计
+  totalFiles: number
+  successFiles: number
+  warningFiles: number
+  failedFiles: number
+  filePassRate: number
+  // 记录统计
+  totalRecords: number
+  successRecords: number
+  warningRecords: number
+  errorRecords: number
+  anomalyRecords: number
+  recordPassRate: number
+  // 规则统计
+  totalRules: number
+  executedRules: number
+  passedRules: number
+  failedRules: number
+  rulePassRate: number
+  // 质量评分
+  qualityScore: number
+  qualityLevel: string
+  dimensions: QualityDimensionVO
+  // 性能指标
+  processSpeed: number
+  avgRecordTime: number
+}
+
+export interface QualityDimensionVO {
+  completeness: number
+  accuracy: number
+  consistency: number
+}
+
+export interface QcTableResultVO {
+  tableType: string
+  tableName: string
+  checkedCount: number
+  errorCount: number
+  warningCount: number
+  passRate: number
+  executedRules: number
+  failedRules: number
+  qcStatus: number
+}
+
+export interface QcRuleDetailVO {
+  ruleId: number
+  ruleCode: string
+  ruleName: string
+  ruleType: string
+  tableType: string
+  tableName: string
+  checkedCount: number
+  errorCount: number
+  warningCount: number
+  passRate: number
+  executionTime: number
+  errorSamples: QcErrorSampleVO[]
+  fixSuggestion: string
+}
+
+export interface QcErrorSampleVO {
+  rowNumber: number
+  fieldName: string
+  fieldValue: string
+  errorMessage: string
+}
+
+export interface QcIssueSummaryVO {
+  dimension: string
+  dimensionName: string
+  issueCount: number
+  affectedRecords: number
+  percentage: number
+  topIssues: TopIssueVO[]
+}
+
+export interface TopIssueVO {
+  ruleCode: string
+  ruleName: string
+  errorCount: number
+}
+
+export interface QcErrorByRuleVO {
+  ruleId: number
+  ruleCode: string
+  ruleName: string
+  tableType: string
+  tableName: string
+  errorCount: number
+  fixSuggestion: string
+  errors: QcErrorDetailVO[]
+}
+
+export interface QcErrorDetailVO {
+  id: number
+  rowNumber: number
+  fieldName: string
+  fieldValue: string
+  errorMessage: string
+  calculationDetail: string
+}
+
 export interface FileValidationResult {
   success: boolean
   taskId?: number
@@ -517,6 +628,47 @@ export const ReportDataApi = {
     return request.download({ 
       url: '/drug/report-data/file/download-error-summary', 
       params: { taskId } 
+    })
+  },
+
+  // ==================== 质控报告增强API ====================
+  // 获取质控报告汇总
+  getQcReportSummary: (taskId: number): Promise<QcReportSummaryVO> => {
+    return request.get({
+      url: '/drug/report-data/qc/report-summary',
+      params: { taskId }
+    })
+  },
+
+  // 获取分表质控结果
+  getQcTableResults: (taskId: number): Promise<QcTableResultVO[]> => {
+    return request.get({
+      url: '/drug/report-data/qc/table-results',
+      params: { taskId }
+    })
+  },
+
+  // 获取规则执行明细
+  getQcRuleDetails: (taskId: number, tableType?: string): Promise<QcRuleDetailVO[]> => {
+    return request.get({
+      url: '/drug/report-data/qc/rule-details',
+      params: { taskId, tableType }
+    })
+  },
+
+  // 获取问题汇总
+  getQcIssueSummary: (taskId: number): Promise<QcIssueSummaryVO[]> => {
+    return request.get({
+      url: '/drug/report-data/qc/issue-summary',
+      params: { taskId }
+    })
+  },
+
+  // 按规则获取错误详情（分页）
+  getQcErrorsByRule: (taskId: number, tableType?: string, ruleId?: number, pageNo?: number, pageSize?: number): Promise<any> => {
+    return request.get({
+      url: '/drug/report-data/qc/errors-by-rule',
+      params: { taskId, tableType, ruleId, pageNo: pageNo || 1, pageSize: pageSize || 20 }
     })
   },
 }

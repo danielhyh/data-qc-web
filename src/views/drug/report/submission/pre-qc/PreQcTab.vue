@@ -63,29 +63,10 @@
       :task-id="taskId"
       @refresh="$emit('refresh-summary')"
       @close="$emit('summary-close')"
+      @view-report="$emit('view-report')"
     />
 
     <div v-if="!isQCProcessing" class="qc-section">
-      <!-- 质控统计卡片 -->
-      <div class="qc-summary">
-        <div class="summary-card" :class="preQCResult.passed ? 'success' : 'warning'">
-          <div class="summary-icon">
-            <el-icon v-if="preQCResult.passed">
-              <CircleCheck />
-            </el-icon>
-            <el-icon v-else>
-              <Warning />
-            </el-icon>
-          </div>
-          <div class="summary-content">
-            <div class="summary-title">{{ preQCResult.passed ? '质控通过' : '质控未通过' }}</div>
-            <div class="summary-desc">
-              {{ preQCResult.passed ? '所有文件已通过前置质控，可以提交上报' : '部分文件存在问题，请修复后重新上传' }}
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- 文件列表头部（带质控统计和刷新按钮） -->
       <div class="table-header">
         <span class="table-title">文件列表</span>
@@ -285,6 +266,7 @@ const emit = defineEmits<{
   (e: 'fix-and-reupload', row: any): void
   (e: 'back-to-upload'): void
   (e: 'start-submit-report'): void
+  (e: 'view-report'): void
 }>()
 
 // 刷新状态
@@ -509,53 +491,7 @@ const getQCProgressColor = (qcStatus: number): string => {
   }
 
   .qc-section {
-    .qc-summary {
-      margin-bottom: 20px;
-
-      .summary-card {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 20px;
-        border-radius: 8px;
-
-        &.success {
-          background: linear-gradient(135deg, #f0f9eb 0%, #e1f3d8 100%);
-          border: 1px solid #c2e7b0;
-
-          .summary-icon {
-            color: #67c23a;
-          }
-        }
-
-        &.warning {
-          background: linear-gradient(135deg, #fdf6ec 0%, #faecd8 100%);
-          border: 1px solid #f5dab1;
-
-          .summary-icon {
-            color: #e6a23c;
-          }
-        }
-
-        .summary-icon {
-          font-size: 40px;
-        }
-
-        .summary-content {
-          .summary-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #303133;
-            margin-bottom: 4px;
-          }
-
-          .summary-desc {
-            font-size: 14px;
-            color: #606266;
-          }
-        }
-      }
-    }
+    // 质控区域样式
   }
 
   .error-count {

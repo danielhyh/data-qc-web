@@ -218,6 +218,28 @@
                 日志
               </el-button>
 
+              <!-- 任务详情按钮 -->
+              <el-button
+                type="primary"
+                size="small"
+                plain
+                @click="goToImportDetail(scope.row.taskId)"
+              >
+                <Icon icon="ep:view" class="mr-1" />
+                详情
+              </el-button>
+
+              <!-- 进度监控按钮 -->
+              <el-button
+                type="success"
+                size="small"
+                plain
+                @click="goToImportMonitor(scope.row.taskId)"
+              >
+                <Icon icon="ep:monitor" class="mr-1" />
+                监控
+              </el-button>
+
               <!-- 任务已结束的提示标签 -->
               <el-tag
                 v-if="scope.row.status === 3 && scope.row.reportStatus === 0"
@@ -454,6 +476,16 @@ const handleCheckStatus = ({ row }) => {
 const handleReportLogs = ({ row }) => {
   // 打开日志弹窗
   reportLogRef.value.open(row.taskId, row.taskName)
+}
+
+/** 跳转到任务详情页面 */
+const goToImportDetail = (taskId: number) => {
+  router.push({ name: 'DrugImportTaskDetail', params: { id: taskId } })
+}
+
+/** 跳转到进度监控页面 */
+const goToImportMonitor = (taskId: number) => {
+  router.push({ name: 'DrugImportMonitor', params: { id: taskId } })
 }
 
 /** 初始化 **/

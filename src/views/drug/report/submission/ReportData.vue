@@ -146,6 +146,7 @@
           @fix-and-reupload="fixAndReupload"
           @back-to-upload="backToUpload"
           @start-submit-report="startSubmitReport"
+          @view-report="openQcReportDialog"
         />
       </div>
 
@@ -415,6 +416,13 @@
 
   <!-- Excel预览弹窗 -->
   <ExcelPreviewDialog ref="excelPreviewRef" />
+
+  <!-- 质控报告对话框 -->
+  <QcReportDialog
+    v-model="qcReportDialogVisible"
+    :task-id="currentTask.taskId"
+    @view-errors="handleViewErrorsFromReport"
+  />
 </template>
 
 <script setup lang="ts">
@@ -438,6 +446,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ContentWrap } from '@/components/ContentWrap'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
+import QcReportDialog from './components/QcReportDialog.vue'
 import { UploadValidateTab } from './upload-validate'
 import { PrepareTab } from './prepare'
 import { PreQcTab } from './pre-qc'
@@ -541,6 +550,9 @@ const errorDialog = ref<{
   pageSize: 50,
   isWarning: false
 })
+
+// 质控报告对话框
+const qcReportDialogVisible = ref(false)
 
 // ==================== 上传进度跟踪 ====================
 const isUploading = ref(false)
@@ -1520,6 +1532,20 @@ const fixAndReupload = (row: any) => {
   message.info(`请修正 ${row.originalFileName || row.standardFileName || row.fileName} 的错误后重新上传`)
   currentStep.value = 1
   currentTask.value.currentStep = 1
+}
+
+// 打开质控报告对话框
+const openQcReportDialog = () => {
+  qcReportDialogVisible.value = true
+}
+
+// 从质控报告中查看错误详情
+const handleViewErrorsFromReport = (tableType: string) => {
+  // 找到对应的文件
+  const file = fileList.value.find(f => f.fileType === tableType)
+  if (file) {
+    viewQCErrors(file)
+  }
 }
 
 // 处理错误列表分页变化
