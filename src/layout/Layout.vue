@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/modules/app'
 import { useUserStore } from '@/store/modules/user'
 import { Backtop } from '@/components/Backtop'
 import { Setting } from '@/layout/components/Setting'
+import { NoticeDialog } from '@/components/NoticeDialog'
 import { useRenderLayout } from './components/useRenderLayout'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useWatermark } from '@/hooks/web/useWatermark'
@@ -87,6 +88,9 @@ export default defineComponent({
         <Backtop></Backtop>
 
         <Setting></Setting>
+        
+        {/* 全局通知弹框 - 登录后自动检查未读通知 */}
+        <NoticeDialog />
       </section>
     )
   }

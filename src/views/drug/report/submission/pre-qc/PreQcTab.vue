@@ -121,9 +121,10 @@
             <dict-tag :type="DICT_TYPE.QC_STATUS" :value="row.qcStatus" />
           </template>
         </el-table-column>
-        <el-table-column label="质控统计" width="280" align="center">
+        <el-table-column label="质控统计" width="320" align="center">
           <template #default="{ row }">
             <div v-if="row.qcStatus >= 2" class="qc-stats-detail">
+              <!-- 行级统计 -->
               <span class="stat-item passed" :title="`通过 ${getPassedCount(row)} 条`">
                 <span class="stat-label">通过</span>
                 <span class="stat-value">{{ getPassedCount(row).toLocaleString() }}</span>
@@ -138,6 +139,18 @@
                 <span class="stat-label">警告</span>
                 <span class="stat-value">{{ (row.warningCount || 0).toLocaleString() }}</span>
               </span>
+              <!-- 统计级检查（如品种数不足等） -->
+              <template v-if="row.statErrorCount > 0 || row.statWarningCount > 0">
+                <span class="stat-divider">|</span>
+                <span 
+                  class="stat-item stat-check" 
+                  :class="{ 'has-error': row.statErrorCount > 0 }"
+                  :title="`整体检查：${row.statErrorCount || 0}项错误，${row.statWarningCount || 0}项警告`"
+                >
+                  <span class="stat-label">整体</span>
+                  <span class="stat-value">{{ (row.statErrorCount || 0) + (row.statWarningCount || 0) }}项</span>
+                </span>
+              </template>
             </div>
             <span v-else class="text-info">-</span>
           </template>
@@ -311,9 +324,12 @@ const formatFileSize = (bytes: number | undefined): string => {
 
 /**
  * 计算通过率
+ * 如果有整体检查错误（statErrorCount > 0），通过率直接为0
  */
 const calculatePassRate = (row: any): string => {
   if (!row.recordCount || row.recordCount === 0) return '0.00'
+  // 如果有整体检查错误，通过率为0
+  if (row.statErrorCount && row.statErrorCount > 0) return '0.00'
   const errorCount = row.qcErrorCount || 0
   const passRate = ((row.recordCount - errorCount) / row.recordCount) * 100
   return passRate.toFixed(2)
@@ -554,6 +570,18 @@ const getPassedCount = (row: any): number => {
         &.inactive {
           background: #f5f7fa;
           .stat-value { color: #c0c4cc; }
+        }
+      }
+
+      &.stat-check {
+        background: #f0f9eb;
+        border: 1px dashed #c2e7b0;
+        .stat-value { color: #67c23a; }
+        
+        &.has-error {
+          background: #fef0f0;
+          border: 1px dashed #fbc4c4;
+          .stat-value { color: #f56c6c; }
         }
       }
     }

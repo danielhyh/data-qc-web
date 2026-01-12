@@ -2130,10 +2130,12 @@ const loadQCResults = async (taskId: number) => {
         fileSize: file.fileSize,
         fileFormat: file.fileFormat,
         recordCount: file.recordCount,
-        qcErrorCount: file.qcErrorCount,  // 质控错误数
+        qcErrorCount: file.qcErrorCount,  // 行级质控错误数
+        statErrorCount: file.statErrorCount,  // 统计级错误数（整体检查）
         validationErrorCount: file.validationErrorCount,  // 上传校验错误数
         errorCount: file.errorCount,
-        warningCount: file.warningCount
+        warningCount: file.warningCount,  // 行级警告数
+        statWarningCount: file.statWarningCount  // 统计级警告数
       }))
     }
   } catch (error) {

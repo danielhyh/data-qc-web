@@ -26,8 +26,8 @@
           <el-icon><component :is="statusIcon" /></el-icon>
           <span>{{ stepName }}总览</span>
           <el-tag :type="statusTagType" size="small">{{ statusText }}</el-tag>
-          <!-- 质控步骤显示查看报告按钮 -->
-          <el-button 
+          <!-- 质控步骤显示查看报告按钮 - 暂时注释 -->
+          <!-- <el-button 
             v-if="stepType === 2" 
             type="primary" 
             link 
@@ -37,7 +37,7 @@
           >
             <el-icon><Document /></el-icon>
             查看报告
-          </el-button>
+          </el-button> -->
         </div>
       </template>
       
@@ -73,6 +73,13 @@
             <span :class="parsedSummaryData.errorRecords > 0 ? 'error-text' : ''">
               错误数：{{ formatNumber(parsedSummaryData.errorRecords) }}
             </span>
+            <!-- 统计级错误（整体检查） -->
+            <template v-if="stepType === 2 && parsedSummaryData.statErrorRecords > 0">
+              <span class="divider">|</span>
+              <span class="stat-error-text">
+                整体检查：{{ parsedSummaryData.statErrorRecords }}项
+              </span>
+            </template>
             <template v-if="stepType === 2 && parsedSummaryData.passRate !== undefined">
               <span class="divider">|</span>
               <span :class="getPassRateClass(parsedSummaryData.passRate)">
@@ -441,6 +448,11 @@ defineExpose({
 
 .error-text {
   color: #f56c6c;
+  font-weight: 600;
+}
+
+.stat-error-text {
+  color: #e6a23c;
   font-weight: 600;
 }
 

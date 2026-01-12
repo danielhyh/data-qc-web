@@ -3,13 +3,12 @@
     <!-- 系统通知横幅 - 动态加载 -->
     <template v-for="notice in dashboardNotices" :key="notice.id">
       <NoticeBar
-        v-if="!isNoticeClosed(notice.id)"
+        v-if="!notice.readStatus"
         :title="notice.title"
         :html-content="notice.content"
         type="new"
         action-text="我知道了"
-        :storage-key="`dashboard-notice-${notice.id}`"
-        @action="handleNoticeClose(notice.id)"
+        @action="handleNoticeAction(notice.id)"
         @close="handleNoticeClose(notice.id)"
       />
     </template>
@@ -148,8 +147,6 @@ defineOptions({ name: 'RoleBasedDashboard' })
 
 // 工作台通知列表
 const dashboardNotices = ref<NoticeApi.NoticeVO[]>([])
-// 已关闭的通知ID集合
-const closedNoticeIds = ref<Set<number>>(new Set())
 
 // 控制是否显示药品监测功能
 const showDrugMonitoring = ref(false)
@@ -556,40 +553,37 @@ const handleViewAllMessages = () => {
   router.push('/message/center')
 }
 
-// 通知横幅操作
-const handleNoticeAction = () => {
-  // 用户点击"我知道了"，横幅会自动关闭
-}
-
 // 加载工作台通知
 const loadDashboardNotices = async () => {
   try {
     dashboardNotices.value = await NoticeApi.getDashboardNoticeList()
-    // 初始化已关闭的通知
-    initClosedNotices()
   } catch (error) {
     console.error('Failed to load dashboard notices:', error)
   }
 }
 
-// 初始化已关闭的通知（从localStorage读取）
-const initClosedNotices = () => {
-  dashboardNotices.value.forEach(notice => {
-    const key = `notice_closed_dashboard-notice-${notice.id}`
-    if (localStorage.getItem(key) === 'true') {
-      closedNoticeIds.value.add(notice.id!)
+// 处理通知"我知道了"按钮点击
+const handleNoticeAction = async (noticeId: number) => {
+  try {
+    // 调用后端接口标记已读
+    await NoticeApi.markAsRead([noticeId])
+    // 更新本地状态
+    const notice = dashboardNotices.value.find(n => n.id === noticeId)
+    if (notice) {
+      notice.readStatus = true
     }
-  })
+  } catch (error) {
+    console.error('Failed to mark notice as read:', error)
+  }
 }
 
-// 检查通知是否已关闭
-const isNoticeClosed = (noticeId: number) => {
-  return closedNoticeIds.value.has(noticeId)
-}
-
-// 处理通知关闭
+// 处理通知关闭（X按钮）- 不标记已读，只是临时隐藏
 const handleNoticeClose = (noticeId: number) => {
-  closedNoticeIds.value.add(noticeId)
+  // 临时隐藏，刷新页面后会重新显示（除非用户点击"我知道了"）
+  const notice = dashboardNotices.value.find(n => n.id === noticeId)
+  if (notice) {
+    notice.readStatus = true // 临时设置为已读，刷新后会恢复
+  }
 }
 
 const handleQuickActionClick = (action: any) => {

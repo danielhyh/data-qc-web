@@ -9,23 +9,24 @@
   >
     <div v-loading="loading" class="qc-error-content">
       <!-- 顶部统计信息（参考上传校验弹框样式） -->
-      <div class="validation-error-header" v-if="errorData">
+      <div class="validation-error-header" :class="{ 'warning-mode': isWarningMode }" v-if="errorData">
         <div class="header-info">
-          <el-icon class="header-icon error">
-            <CircleCloseFilled />
+          <el-icon :class="['header-icon', isWarningMode ? 'warning' : 'error']">
+            <WarningFilled v-if="isWarningMode" />
+            <CircleCloseFilled v-else />
           </el-icon>
           <div class="header-content">
             <h3 class="header-title">{{ props.fileName }}</h3>
             <p class="header-subtitle">
               共 <span class="total-rows">{{ errorData.totalRows }}</span> 行数据，
-              发现 <span class="error-count-text">{{ errorData.affectedRows }}</span> 处错误
-              （涉及 <span class="error-rows-text">{{ errorData.errorRuleCount }}</span> 条规则）
+              发现 <span :class="isWarningMode ? 'warning-count-text' : 'error-count-text'">{{ errorData.affectedRows }}</span> 处{{ isWarningMode ? '警告' : '错误' }}
+              （涉及 <span :class="isWarningMode ? 'warning-rows-text' : 'error-rows-text'">{{ errorData.errorRuleCount }}</span> 条规则）
             </p>
           </div>
         </div>
         <div class="header-stats">
-          <div class="pass-rate-badge" :class="getPassRateBadgeClass(errorData.passRate)">
-            <span class="rate-value">{{ errorData.passRate?.toFixed(2) }}%</span>
+          <div class="pass-rate-badge" :class="isWarningMode ? 'good' : getPassRateBadgeClass(errorData.passRate)">
+            <span class="rate-value">{{ isWarningMode ? '100.00' : errorData.passRate?.toFixed(2) }}%</span>
             <span class="rate-label">通过率</span>
           </div>
         </div>
@@ -45,8 +46,8 @@
                 <ArrowRight />
               </el-icon>
               <span class="rule-name">{{ ruleGroup.ruleName }}</span>
-              <el-tag type="danger" size="small" class="error-badge">
-                {{ ruleGroup.errorCount }} 个错误
+              <el-tag :type="isWarningMode ? 'warning' : 'danger'" size="small" class="error-badge">
+                {{ ruleGroup.errorCount }} 个{{ isWarningMode ? '警告' : '错误' }}
               </el-tag>
               <el-tag type="info" size="small" class="row-badge">
                 影响 {{ ruleGroup.affectedRows }} 行
@@ -71,7 +72,8 @@
                 <span>{{ errorGroup.errorMessage }}</span>
               </div>
               <!-- 错误行数据展示 -->
-              <div class="row-data-list">
+              <!-- 如果rowNumbers只包含0，说明是统计类规则，不显示行号列表 -->
+              <div class="row-data-list" v-if="!isStatisticalError(errorGroup.rowNumbers)">
                 <div 
                   v-for="rowNum in errorGroup.rowNumbers" 
                   :key="rowNum"
@@ -160,8 +162,11 @@ const dialogVisible = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
+// 是否为警告模式
+const isWarningMode = computed(() => props.errorType === 2)
+
 const dialogTitle = computed(() => {
-  const typeLabel = props.errorType === 2 ? '质控警告详情' : '质控错误详情'
+  const typeLabel = isWarningMode.value ? '质控警告详情' : '质控错误详情'
   return props.fileName ? `${typeLabel} - ${props.fileName}` : typeLabel
 })
 
@@ -175,12 +180,14 @@ const loadingRows = ref<Set<string>>(new Set()) // 正在加载的行
 
 // 字段中英文映射（与数据库实际字段对应）
 const fieldLabelMap: Record<string, string> = {
-  // 通用字段
+  // 通用字段（数据库下划线格式）
+  excel_row_num: 'Excel行号',
   upload_date: '数据上报日期',
   domain_code: '省级行政区划代码',
+  organization_code: '组织机构代码',
   hospital_code: '医疗机构代码',
   hospital_drug_id: '院内药品唯一码',
-  ypid: 'YPID',
+  ypid: '国家药品编码（YPID）',
   
   // 医疗机构表字段
   hospital_name: '医疗机构名称',
@@ -192,49 +199,35 @@ const fieldLabelMap: Record<string, string> = {
   hospital_email: '电子邮箱',
   
   // 药品目录表字段
-  product_name: '药品通用名',
-  spec: '规格',
-  dosage_form: '剂型',
-  pack_material: '包装材质',
-  min_pack_unit: '最小包装单位',
-  pack_quantity: '包装数量',
-  manufacturer_name: '生产企业',
+  product_name: '产品名称',
+  drug_name: '药品通用名',
+  trade_name: '商品名',
+  trade_name_en: '商品名（英文）',
   approval_number: '批准文号',
+  manufacturer: '生产企业',
+  drug_form: '剂型名称',
+  drug_spec: '制剂规格',
+  dosage_unit: '制剂单位',
+  pack_unit: '最小销售包装单位',
+  conversion_factor: '转换系数',
+  is_basic_drug: '是否基本药物',
   
   // 入库表字段
-  purchase_price: '采购价格',
-  purchase_quantity: '采购数量',
-  purchase_amount: '采购金额',
-  supplier_name: '供应商名称',
-  purchase_date: '采购日期',
+  inbound_total_amount: '入库总金额（元）',
+  inbound_pack_quantity: '入库数量（最小销售包装单位）',
+  inbound_dosage_quantity: '入库数量（最小制剂单位）',
   
   // 出库表字段
-  sale_price: '销售价格',
-  sale_quantity: '销售数量',
-  sale_amount: '销售金额',
-  sale_date: '销售日期',
-  sale_type: '销售类型',
+  province_drug_code: '省级药品编码',
+  province_drug_id: '省级药品编码',
+  outbound_pack_quantity: '出库数量（最小销售包装单位）',
+  outbound_dosage_quantity: '出库数量（最小制剂单位）',
   
   // 使用表字段
   use_quantity: '使用数量',
   use_amount: '使用金额',
   use_date: '使用日期',
-  dept_name: '科室名称',
-  
-  // 兼容旧字段名
-  drug_name: '药品通用名',
-  drug_spec: '规格',
-  manufacturer: '生产企业',
-  inbound_date: '入库日期',
-  inbound_quantity: '入库数量',
-  inbound_amount: '入库金额',
-  outbound_date: '出库日期',
-  outbound_quantity: '出库数量',
-  outbound_amount: '出库金额',
-  outbound_type: '出库类型',
-  usage_date: '使用日期',
-  usage_quantity: '使用数量',
-  usage_amount: '使用金额'
+  dept_name: '科室名称'
 }
 
 // 加载数据
@@ -263,6 +256,14 @@ const toggleRuleExpand = (index: number) => {
   } else {
     expandedRules.value.push(index)
   }
+}
+
+// 判断是否为统计类错误（行号为0或空表示整体统计，不是具体某一行的问题）
+const isStatisticalError = (rowNumbers: number[]) => {
+  if (!rowNumbers || rowNumbers.length === 0) return true
+  // 如果只有一个行号且为0，说明是统计类规则
+  if (rowNumbers.length === 1 && rowNumbers[0] === 0) return true
+  return false
 }
 
 // 生成行展开的唯一key
@@ -329,12 +330,14 @@ const formatFieldValue = (value: any) => {
 // 获取行数据预览（显示前几个关键字段）
 const getRowPreview = (rowData: Record<string, any>) => {
   if (!rowData) return ''
-  // 按优先级尝试不同的字段名（兼容不同表类型）
+  // 按优先级尝试不同的字段名（兼容不同表类型，使用数据库下划线格式）
   const previewFields = [
-    'product_name', 'drug_name',  // 药品名称
-    'hospital_drug_id',           // 院内药品唯一码
-    'hospital_name',              // 医疗机构名称
-    'upload_date'                 // 上报日期
+    'product_name',       // 产品名称
+    'drug_name',          // 药品通用名
+    'hospital_drug_id',   // 院内药品唯一码
+    'hospital_name',      // 医疗机构名称
+    'ypid',               // YPID
+    'upload_date'         // 上报日期
   ]
   const previews: string[] = []
   const usedLabels = new Set<string>()
@@ -342,7 +345,7 @@ const getRowPreview = (rowData: Record<string, any>) => {
   for (const field of previewFields) {
     if (rowData[field]) {
       const label = fieldLabelMap[field] || field
-      // 避免重复显示相同标签（如 product_name 和 drug_name 都是药品名称）
+      // 避免重复显示相同标签
       if (!usedLabels.has(label)) {
         previews.push(`${label}: ${rowData[field]}`)
         usedLabels.add(label)
@@ -419,6 +422,12 @@ watch(() => props.modelValue, (val) => {
   border-radius: 8px;
   margin-bottom: 16px;
 
+  // 警告模式样式
+  &.warning-mode {
+    background: linear-gradient(135deg, #fdf6ec 0%, #fff 100%);
+    border: 1px solid #f5dab1;
+  }
+
   .header-info {
     display: flex;
     align-items: center;
@@ -429,6 +438,10 @@ watch(() => props.modelValue, (val) => {
 
       &.error {
         color: #f56c6c;
+      }
+      
+      &.warning {
+        color: #e6a23c;
       }
     }
 
@@ -453,6 +466,12 @@ watch(() => props.modelValue, (val) => {
         .error-count-text,
         .error-rows-text {
           color: #f56c6c;
+          font-weight: 600;
+        }
+        
+        .warning-count-text,
+        .warning-rows-text {
+          color: #e6a23c;
           font-weight: 600;
         }
       }
