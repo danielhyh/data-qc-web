@@ -423,6 +423,15 @@
     :task-id="currentTask.taskId"
     @view-errors="handleViewErrorsFromReport"
   />
+
+  <!-- 质控错误分组弹框 -->
+  <QcErrorGroupedDialog
+    v-model="qcErrorGroupedDialog.visible"
+    :task-id="qcErrorGroupedDialog.taskId"
+    :table-type="qcErrorGroupedDialog.tableType"
+    :file-name="qcErrorGroupedDialog.fileName"
+    :error-type="qcErrorGroupedDialog.errorType"
+  />
 </template>
 
 <script setup lang="ts">
@@ -447,6 +456,7 @@ import {
 import { ContentWrap } from '@/components/ContentWrap'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
 import QcReportDialog from './components/QcReportDialog.vue'
+import QcErrorGroupedDialog from './components/QcErrorGroupedDialog.vue'
 import { UploadValidateTab } from './upload-validate'
 import { PrepareTab } from './prepare'
 import { PreQcTab } from './pre-qc'
@@ -553,6 +563,15 @@ const errorDialog = ref<{
 
 // 质控报告对话框
 const qcReportDialogVisible = ref(false)
+
+// 质控错误分组弹框
+const qcErrorGroupedDialog = ref({
+  visible: false,
+  taskId: 0,
+  tableType: '',
+  fileName: '',
+  errorType: 1 // 1=错误，2=警告
+})
 
 // ==================== 上传进度跟踪 ====================
 const isUploading = ref(false)
@@ -1472,59 +1491,16 @@ const viewQCErrors = async (row: any) => {
     return
   }
   
-  const isWarning = row.qcStatus === 3
+  // 根据qcStatus确定errorType: qcStatus=4是错误(errorType=1), qcStatus=3是警告(errorType=2)
+  const errorType = row.qcStatus === 3 ? 2 : 1
   
-  try {
-    const response = await ReportDataApi.getQCErrors(currentTask.value.taskId, row.fileType) as any
-
-    // 解析数据 - 根据是否为警告模式选择正确的列表
-    // 后端返回格式: { warnings: [...], errors: [...] }
-    let errorList: any[] = []
-
-    if (response && typeof response === 'object') {
-      // 优先使用 warnings/errors 分离的结构
-      if (isWarning && Array.isArray(response.warnings)) {
-        errorList = response.warnings
-      } else if (!isWarning && Array.isArray(response.errors)) {
-        errorList = response.errors
-      }
-      // 兼容旧格式: { data: { errors: [...], warnings: [...] } }
-      else if (response.data && typeof response.data === 'object') {
-        if (isWarning && Array.isArray(response.data.warnings)) {
-          errorList = response.data.warnings
-        } else if (Array.isArray(response.data.errors)) {
-          errorList = response.data.errors
-        } else if (Array.isArray(response.data)) {
-          errorList = response.data
-        }
-      }
-      // 直接是数组的情况
-      else if (Array.isArray(response)) {
-        errorList = response
-      }
-    } else if (Array.isArray(response)) {
-      errorList = response
-    }
-
-    // 统一字段名 (后端可能返回 errorMessage/message 和 excelRowNum/row)
-    const normalizedErrors = errorList.map((item: any) => ({
-      row: item.excelRowNum || item.row || item.rowNum || '-',
-      message: item.errorMessage || item.message || '未知错误',
-      id: item.id
-    }))
-
-    // 设置错误数据和分页信息
-    errorDialog.value.errors = normalizedErrors
-    errorDialog.value.totalErrors = normalizedErrors.length
-    errorDialog.value.fileName = row.originalFileName || row.standardFileName || row.fileName
-    errorDialog.value.currentPage = 1 // 重置到第一页
-    errorDialog.value.pageSize = 50 // 默认每页50条
-    errorDialog.value.isWarning = isWarning // 设置是否为警告模式
-    errorDialog.value.visible = true
-  } catch (error) {
-    console.error('获取错误详情失败:', error)
-    message.error('获取错误详情失败')
-    errorDialog.value.errors = []
+  // 使用新的分组弹框
+  qcErrorGroupedDialog.value = {
+    visible: true,
+    taskId: currentTask.value.taskId,
+    tableType: row.fileType,
+    fileName: row.originalFileName || row.standardFileName || row.fileName,
+    errorType: errorType
   }
 }
 

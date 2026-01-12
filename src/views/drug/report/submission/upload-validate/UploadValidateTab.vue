@@ -251,7 +251,7 @@
               @click="$emit('view-error-detail', row)"
             >
               <el-icon class="mr-5px"><WarningFilled /></el-icon>
-              {{ row.uploadStatus === 3 ? '查看失败原因' : '查看详情' }}
+              {{ row.uploadStatus === 3 ? '查看失败原因' : '查看错误' }}
             </el-button>
 
             <!-- 上传/重新上传按钮 -->

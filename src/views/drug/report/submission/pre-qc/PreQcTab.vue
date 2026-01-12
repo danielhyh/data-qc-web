@@ -100,58 +100,56 @@
         :data="preQCResult.details"
         :show-overflow-tooltip="true"
       >
-        <el-table-column label="序号" width="80" type="index" align="center" />
-        <el-table-column prop="fileType" label="文件类型" width="150" align="center">
+        <el-table-column label="序号" width="60" type="index" align="center" />
+        <el-table-column prop="fileType" label="文件类型" width="120" align="center">
           <template #default="{ row }">
             <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="row.fileType" />
           </template>
         </el-table-column>
-        <el-table-column prop="standardFileName" label="标准文件名称" min-width="180" align="center">
-          <template #default="scope">
-            <span class="font-bold">{{ scope.row.standardFileName }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="originalFileName" label="实际文件名称" min-width="200" align="center">
+        <el-table-column prop="originalFileName" label="文件名称" min-width="200" align="center">
           <template #default="scope">
             <span class="font-bold">{{ scope.row.originalFileName }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="uploadStatus" label="上传状态" width="120" align="center">
+        <el-table-column prop="recordCount" label="数据行数" width="100" align="center">
           <template #default="{ row }">
-            <dict-tag :type="DICT_TYPE.UPLOAD_STATUS" :value="row.uploadStatus" />
+            <span class="record-count">{{ row.recordCount?.toLocaleString() || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="qcStatus" label="质检状态" width="120" align="center">
+        <el-table-column prop="qcStatus" label="质检状态" width="180" align="center">
           <template #default="{ row }">
             <dict-tag :type="DICT_TYPE.QC_STATUS" :value="row.qcStatus" />
           </template>
         </el-table-column>
-        <el-table-column prop="fileSize" label="文件大小" width="120" align="center">
+        <el-table-column label="质控统计" width="280" align="center">
           <template #default="{ row }">
-            {{ formatFileSize(row.fileSize) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="fileFormat" label="文件格式" width="120" align="center" />
-        <el-table-column label="质控问题" width="140" align="center">
-          <template #default="{ row }">
-            <div class="qc-issue-tags">
-              <el-tag v-if="row.qcErrorCount > 0" type="danger" size="small">
-                错误 {{ row.qcErrorCount }}
-              </el-tag>
-              <el-tag v-if="row.warningCount > 0" type="warning" size="small">
-                警告 {{ row.warningCount }}
-              </el-tag>
-              <span v-if="!row.qcErrorCount && !row.warningCount" class="text-success">无</span>
+            <div v-if="row.qcStatus >= 2" class="qc-stats-detail">
+              <span class="stat-item passed" :title="`通过 ${getPassedCount(row)} 条`">
+                <span class="stat-label">通过</span>
+                <span class="stat-value">{{ getPassedCount(row).toLocaleString() }}</span>
+              </span>
+              <span class="stat-divider">/</span>
+              <span class="stat-item error" :class="{ inactive: !row.qcErrorCount }" :title="`错误 ${row.qcErrorCount || 0} 条`">
+                <span class="stat-label">错误</span>
+                <span class="stat-value">{{ (row.qcErrorCount || 0).toLocaleString() }}</span>
+              </span>
+              <span class="stat-divider">/</span>
+              <span class="stat-item warning" :class="{ inactive: !row.warningCount }" :title="`警告 ${row.warningCount || 0} 条`">
+                <span class="stat-label">警告</span>
+                <span class="stat-value">{{ (row.warningCount || 0).toLocaleString() }}</span>
+              </span>
             </div>
+            <span v-else class="text-info">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="质控进度" width="180" align="center">
+        <el-table-column label="通过率" width="100" align="center">
           <template #default="{ row }">
-            <el-progress
-              :percentage="getQCProgress(row.qcStatus)"
-              :color="getQCProgressColor(row.qcStatus)"
-              :stroke-width="8"
-            />
+            <template v-if="row.qcStatus >= 2 && row.recordCount > 0">
+              <span :class="getPassRateClass(row)">
+                {{ calculatePassRate(row) }}%
+              </span>
+            </template>
+            <span v-else class="text-info">-</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right" align="center">
@@ -162,7 +160,7 @@
               @click="$emit('view-file-data', row)"
             >
               <el-icon class="mr-5px"><Document /></el-icon>
-              查看详情
+              查看数据
             </el-button>
             <!-- 警告状态(3)：显示查看警告按钮 -->
             <el-button
@@ -222,6 +220,8 @@ import {
   Document,
   CircleCheck,
   CircleCheckFilled,
+  CircleCloseFilled,
+  WarningFilled,
   Warning,
   RefreshRight,
   ArrowLeft,
@@ -310,31 +310,32 @@ const formatFileSize = (bytes: number | undefined): string => {
 }
 
 /**
- * 根据质控状态获取进度百分比
- * 0=未质控, 1=质控中, 2=质控通过, 3=质控警告, 4=质控未通过
+ * 计算通过率
  */
-const getQCProgress = (qcStatus: number): number => {
-  switch (qcStatus) {
-    case 0: return 0    // 未质控
-    case 1: return 50   // 质控中
-    case 2: return 100  // 质控通过
-    case 3: return 100  // 质控警告（完成但有警告）
-    case 4: return 100  // 质控未通过（完成但失败）
-    default: return 0
-  }
+const calculatePassRate = (row: any): string => {
+  if (!row.recordCount || row.recordCount === 0) return '0.00'
+  const errorCount = row.qcErrorCount || 0
+  const passRate = ((row.recordCount - errorCount) / row.recordCount) * 100
+  return passRate.toFixed(2)
 }
 
 /**
- * 根据质控状态获取进度条颜色
- * 0=未质控, 1=质控中, 2=质控通过, 3=质控警告, 4=质控未通过
+ * 获取通过率样式类
  */
-const getQCProgressColor = (qcStatus: number): string => {
-  switch (qcStatus) {
-    case 2: return '#67c23a'  // 通过 - 绿色
-    case 3: return '#e6a23c'  // 警告 - 橙色
-    case 4: return '#f56c6c'  // 失败 - 红色
-    default: return '#409eff' // 进行中 - 蓝色
-  }
+const getPassRateClass = (row: any): string => {
+  const rate = parseFloat(calculatePassRate(row))
+  if (rate >= 95) return 'pass-rate-good'
+  if (rate >= 80) return 'pass-rate-warning'
+  return 'pass-rate-bad'
+}
+
+/**
+ * 计算通过的记录数
+ */
+const getPassedCount = (row: any): number => {
+  if (!row.recordCount) return 0
+  const errorCount = row.qcErrorCount || 0
+  return Math.max(0, row.recordCount - errorCount)
 }
 </script>
 
@@ -504,6 +505,87 @@ const getQCProgressColor = (qcStatus: number): string => {
     flex-wrap: wrap;
     gap: 4px;
     justify-content: center;
+  }
+
+  .qc-stats-detail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      min-width: 50px;
+
+      .stat-label {
+        font-size: 11px;
+        color: #909399;
+        margin-bottom: 2px;
+      }
+
+      .stat-value {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      &.passed {
+        background: #f0f9eb;
+        .stat-value { color: #67c23a; }
+      }
+
+      &.error {
+        background: #fef0f0;
+        .stat-value { color: #f56c6c; }
+        
+        &.inactive {
+          background: #f5f7fa;
+          .stat-value { color: #c0c4cc; }
+        }
+      }
+
+      &.warning {
+        background: #fdf6ec;
+        .stat-value { color: #e6a23c; }
+        
+        &.inactive {
+          background: #f5f7fa;
+          .stat-value { color: #c0c4cc; }
+        }
+      }
+    }
+
+    .stat-divider {
+      color: #dcdfe6;
+      font-size: 12px;
+    }
+  }
+
+  .record-count {
+    font-weight: 500;
+    color: #303133;
+  }
+
+  .pass-rate-good {
+    color: #67c23a;
+    font-weight: 600;
+  }
+
+  .pass-rate-warning {
+    color: #e6a23c;
+    font-weight: 600;
+  }
+
+  .pass-rate-bad {
+    color: #f56c6c;
+    font-weight: 600;
+  }
+
+  .text-info {
+    color: #909399;
   }
 
   .qc-actions {

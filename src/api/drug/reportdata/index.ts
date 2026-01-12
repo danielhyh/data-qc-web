@@ -232,6 +232,35 @@ export interface QcErrorDetailVO {
   calculationDetail: string
 }
 
+// ==================== 质控错误分组显示类型 ====================
+
+export interface QcErrorGroupedVO {
+  totalRows: number
+  errorRuleCount: number
+  errorGroupCount: number
+  affectedRows: number
+  passRate: number
+  ruleGroups: RuleErrorGroup[]
+}
+
+export interface RuleErrorGroup {
+  ruleId: number
+  ruleCode: string
+  ruleName: string
+  ruleDescription: string
+  errorCount: number
+  affectedRows: number
+  errorGroups: ErrorTypeGroup[]
+}
+
+export interface ErrorTypeGroup {
+  errorMessage: string
+  groupKey: string
+  rowNumbers: number[]
+  rowCount: number
+  rowDataMap?: Record<number, Record<string, any>>
+}
+
 export interface FileValidationResult {
   success: boolean
   taskId?: number
@@ -669,6 +698,22 @@ export const ReportDataApi = {
     return request.get({
       url: '/drug/report-data/qc/errors-by-rule',
       params: { taskId, tableType, ruleId, pageNo: pageNo || 1, pageSize: pageSize || 20 }
+    })
+  },
+
+  // 获取质控错误分组显示数据
+  getQcErrorsGrouped: (taskId: number, tableType: string, errorType: number = 1): Promise<QcErrorGroupedVO> => {
+    return request.get({
+      url: '/drug/report-data/qc/errors-grouped',
+      params: { taskId, tableType, errorType }
+    })
+  },
+
+  // 获取单行错误数据详情（懒加载）
+  getErrorRowData: (taskId: number, tableType: string, excelRowNum: number): Promise<Record<string, any>> => {
+    return request.get({
+      url: '/drug/report-data/qc/error-row-data',
+      params: { taskId, tableType, excelRowNum }
     })
   },
 }
