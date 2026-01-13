@@ -75,7 +75,9 @@ export const getMyUnreadList = (size?: number) => {
 
 // 标记公告已读
 export const markAsRead = (ids: number[]) => {
-  return request.put({ url: '/system/notice/mark-read', params: { ids } })
+  // 将数组参数转换为查询字符串格式
+  const queryParams = ids.map(id => `ids=${id}`).join('&')
+  return request.put({ url: `/system/notice/mark-read?${queryParams}` })
 }
 
 // 标记所有公告已读

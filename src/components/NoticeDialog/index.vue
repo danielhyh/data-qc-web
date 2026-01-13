@@ -113,7 +113,12 @@ const handleConfirm = async () => {
     } else {
       // 所有通知都已确认，关闭弹框
       dialogVisible.value = false
-      ElMessage.success('所有通知已确认')
+      // 根据通知数量显示不同的提示信息
+      if (notices.value.length === 1) {
+        ElMessage.success('通知已确认')
+      } else {
+        ElMessage.success('所有通知已确认')
+      }
     }
   } catch (error) {
     console.error('标记已读失败:', error)

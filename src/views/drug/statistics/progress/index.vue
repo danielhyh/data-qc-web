@@ -450,6 +450,31 @@ const updateCharts = () => {
           color: '#1890ff',
           borderWidth: 2,
           borderColor: '#fff'
+        },
+        label: {
+          show: false,
+          position: 'top',
+          formatter: '{c}%',
+          fontSize: 11,
+          fontWeight: 600,
+          color: '#1890ff',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          padding: [4, 8],
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: '#1890ff'
+        },
+        emphasis: {
+          label: {
+            show: true
+          },
+          itemStyle: {
+            color: '#1890ff',
+            borderWidth: 3,
+            borderColor: '#fff',
+            shadowBlur: 10,
+            shadowColor: 'rgba(24, 144, 255, 0.5)'
+          }
         }
       }
     ]
