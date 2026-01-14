@@ -10,17 +10,17 @@
         <div class="header-actions">
           <el-form :model="queryParams" :inline="true" class="search-form">
             <el-form-item label="填报任务">
-              <el-select 
-                v-model="queryParams.reportId" 
-                placeholder="请选择填报任务" 
+              <el-select
+                v-model="queryParams.reportId"
+                placeholder="请选择填报任务"
                 style="width: 240px"
                 @change="handleChangeReport"
               >
-                <el-option 
-                  v-for="task in reportTaskList" 
-                  :key="task.id" 
-                  :label="task.taskName" 
-                  :value="task.id" 
+                <el-option
+                  v-for="task in reportTaskList"
+                  :key="task.id"
+                  :label="task.taskName"
+                  :value="task.id"
                 />
               </el-select>
             </el-form-item>
@@ -275,32 +275,32 @@ const getLevelIconClass = (levelDesc: string) => {
 /** 初始化柱状图 */
 const initCharts = () => {
   if (!barCharts.value) return
-  
+
   // 销毁旧实例
   if (myCharts.value) {
     myCharts.value.dispose()
     myCharts.value = null
   }
-  
+
   // 创建新实例
   myCharts.value = echarts.init(barCharts.value)
-  
+
   // 设置配置
   updateCharts()
-  
+
   // 绑定点击事件 - 监听整个图表区域的点击
   myCharts.value.getZr().on('click', (params: any) => {
     if (!myCharts.value) return
-    
+
     // 获取点击位置的像素坐标
     const pointInPixel = [params.offsetX, params.offsetY]
-    
+
     // 检查点击是否在grid区域内
     if (myCharts.value.containPixel('grid', pointInPixel)) {
       // 将像素坐标转换为数据索引
       const pointInGrid = myCharts.value.convertFromPixel({ seriesIndex: 0 }, pointInPixel)
       const dataIndex = Math.round(pointInGrid[0])
-      
+
       // 确保索引在有效范围内
       if (dataIndex >= 0 && dataIndex < chartsData.value.length) {
         const cityData = chartsData.value[dataIndex]
@@ -308,7 +308,7 @@ const initCharts = () => {
           // 触发联动动画
           isDetailUpdating.value = true
           getCityReportData(Number(queryParams.value.reportId), cityData.regionId)
-            .then(res => { 
+            .then(res => {
               reportChartDetails.value = res
               // 动画结束后重置状态
               setTimeout(() => { isDetailUpdating.value = false }, 600)
@@ -323,12 +323,12 @@ const initCharts = () => {
 /** 更新图表数据 */
 const updateCharts = () => {
   if (!myCharts.value || !chartsData.value.length) return
-  
+
   const cityNames = chartsData.value.map(item => item.cityName)
   const reportedData = chartsData.value.map(item => item.reportedCount || 0)
   const unreportedData = chartsData.value.map(item => item.unreportedCount || 0)
   const reportRates = chartsData.value.map(item => Number(((item.reportRate || 0) * 100).toFixed(1)))
-  
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -479,7 +479,7 @@ const updateCharts = () => {
       }
     ]
   }
-  
+
   myCharts.value.setOption(option, true)
 }
 
@@ -538,7 +538,7 @@ const handleRefresh = async () => {
     // 重新获取任务列表，确保下拉框显示正确
     const taskList = await getReportTaskList()
     reportTaskList.value = taskList
-    
+
     if (queryParams.value.reportId) {
       // 刷新当前选中任务的统计数据
       const [stats, chart] = await Promise.all([
@@ -683,12 +683,12 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); myCharts
 
 .search-form {
   margin: 0;
-  
+
   :deep(.el-form-item) {
     margin-bottom: 0;
     margin-right: 12px;
   }
-  
+
   :deep(.el-form-item__label) {
     font-weight: 500;
     color: #606266;
@@ -933,19 +933,19 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); myCharts
   flex-shrink: 0;
 }
 
-.level-icon-wrap.icon-purple { 
+.level-icon-wrap.icon-purple {
   color: #a855f7;
   background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%);
 }
-.level-icon-wrap.icon-blue { 
+.level-icon-wrap.icon-blue {
   color: #3b82f6;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%);
 }
-.level-icon-wrap.icon-green { 
+.level-icon-wrap.icon-green {
   color: #10b981;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(52, 211, 153, 0.1) 100%);
 }
-.level-icon-wrap.icon-orange { 
+.level-icon-wrap.icon-orange {
   color: #f59e0b;
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.1) 100%);
 }
@@ -1043,17 +1043,17 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); myCharts
 }
 
 @keyframes itemHighlight {
-  0% { 
+  0% {
     transform: scale(1);
     background: #f8fafc;
     box-shadow: none;
   }
-  30% { 
+  30% {
     transform: scale(1.02);
     background: #e0e7ff;
     box-shadow: 0 0 16px rgba(99, 102, 241, 0.4);
   }
-  100% { 
+  100% {
     transform: scale(1);
     background: #f8fafc;
     box-shadow: none;
