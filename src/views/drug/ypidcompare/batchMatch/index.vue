@@ -65,6 +65,29 @@
 
       <!-- 数据列表 -->
       <el-card class="data-card" shadow="never">
+        <!-- 筛选栏 -->
+        <div class="filter-bar">
+          <el-checkbox v-model="filterUnmatched" @change="handleFilterChange">
+            只显示未匹配
+          </el-checkbox>
+          <el-input
+            v-model="searchProductName"
+            placeholder="请输入药品名称搜索"
+            clearable
+            class="search-input"
+            @keyup.enter="handleSearch"
+            @clear="handleSearch"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+            <template #append>
+              <el-button @click="handleSearch">
+                <el-icon><Search /></el-icon>
+              </el-button>
+            </template>
+          </el-input>
+        </div>
         <!-- 批量操作栏 -->
         <div v-if="activeTab === 'needConfirm'" class="batch-actions">
           <el-alert title="待确认项操作" type="info" :closable="false" class="batch-alert">
@@ -338,7 +361,8 @@ import {
   Edit,
   User,
   RefreshLeft,
-  Clock
+  Clock,
+  Search
 } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader/index.vue'
 import ManualMatchPanel from './components/ManualMatchPanel.vue'
@@ -399,8 +423,13 @@ const queryParams = reactive({
   pageNo: 1,
   pageSize: 20,
   matchTaskId: undefined as number | undefined,
-  matchStatus: undefined as number | undefined
+  matchStatus: undefined as number | undefined,
+  productName: undefined as string | undefined
 })
+
+// 筛选条件
+const filterUnmatched = ref(false)
+const searchProductName = ref('')
 
 // 页面状态
 const pageTitle = computed(() => `YPID批量匹配 - ${taskInfo.taskName || '加载中...'}`)
@@ -657,15 +686,30 @@ const getMatchStatistics = async () => {
   }
 }
 
+// 处理筛选变化
+const handleFilterChange = () => {
+  queryParams.pageNo = 1
+  // 勾选时传 matchStatus=0，取消则不传
+  queryParams.matchStatus = filterUnmatched.value ? 0 : undefined
+  getDataList()
+}
+
+// 处理搜索
+const handleSearch = () => {
+  queryParams.pageNo = 1
+  queryParams.productName = searchProductName.value.trim() || undefined
+  getDataList()
+}
+
 // 获取数据列表方法更新
 const getDataList = async () => {
-  const statusMap = {
-    whole: 0,
-    needConfirm: 1,
-    confirmed: 2,
-    failed: 3
-  }
-  queryParams.matchStatus = statusMap[activeTab.value]
+  // const statusMap = {
+  //   whole: 0,
+  //   needConfirm: 1,
+  //   confirmed: 2,
+  //   failed: 3
+  // }
+  // queryParams.matchStatus = statusMap[activeTab.value]
 
   loading.value = true
   try {
@@ -1101,5 +1145,20 @@ const getConfirmUserText = (confirmUser: number | string) => {
   font-size: 12px;
   color: #b0b0b0;
   font-style: italic;
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.search-input {
+  width: 300px;
 }
 </style>
