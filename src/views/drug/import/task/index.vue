@@ -86,17 +86,19 @@
           </el-form-item>
         </el-form>
 
-        <!-- 批量操作按钮 -->
-        <div class="mb-10px mt-15px">
+        <!-- 操作按钮 -->
+        <div class="mb-10px mt-15px flex items-center">
+          <!-- 后置质控按钮（针对整个报送任务） -->
           <el-button
               type="warning"
-              plain
-              @click="handleBatchPostQc"
-              :disabled="multipleSelection.length === 0"
+              @click="handleStartPostQc"
+              :disabled="!queryParams.reportTaskId"
+              :loading="postQcLoading"
               v-if="canShowPostQcButton"
           >
-            <Icon icon="ep:check" class="mr-5px" /> 批量后置质控
+            <Icon icon="ep:checked" class="mr-5px" /> 启动后置质控
           </el-button>
+          <!-- 批量退回 -->
           <el-button
               type="danger"
               plain
@@ -106,6 +108,7 @@
           >
             <Icon icon="ep:close" class="mr-5px" /> 批量退回
           </el-button>
+          <!-- 批量通过 -->
           <el-button
               type="success"
               plain
@@ -117,7 +120,7 @@
           </el-button>
           <el-text type="info" class="ml-10px">
             <span v-if="isLoadingAll">正在加载全部数据...</span>
-            <span v-else>已选择 {{ multipleSelection.length }} 项</span>
+            <span v-else-if="multipleSelection.length > 0">已选择 {{ multipleSelection.length }} 项</span>
           </el-text>
         </div>
       </ContentWrap>
@@ -210,18 +213,11 @@
                     <el-dropdown-item command="log">
                       <Icon icon="ep:tickets" class="mr-5px" />日志
                     </el-dropdown-item>
-                    <!-- 后置质控：只在状态为1(已上报,审核中)、5(已重报,审核中)时显示，基于权限控制 -->
-                    <el-dropdown-item
-                        v-if="canShowPostQcButton && canShowPostQcButtonForUser(scope.row.reportStatus)"
-                        command="postQc"
-                        divided
-                    >
-                      <Icon icon="ep:check" class="mr-5px" />后置质控
-                    </el-dropdown-item>
                     <!-- 退回：只在状态为1(已上报,审核中)、5(已重报,审核中)、6(后置质控通过)时显示，基于权限控制 -->
                     <el-dropdown-item
                         v-if="canShowRejectButton && canShowRejectButtonForUser(scope.row.reportStatus)"
                         command="reject"
+                        divided
                     >
                       <Icon icon="ep:close" class="mr-5px" />退回
                     </el-dropdown-item>
@@ -267,8 +263,9 @@
 import { getIntDictOptions, DICT_TYPE, getDictLabel } from '@/utils/dict'
 import { checkPermi } from '@/utils/permission'
 import download from '@/utils/download'
-import { getDataManageImportTaskPage, exportDataManageImportTask, DataManageImportTaskVO, getReportTaskList, ReportTaskVO, executePostQc, rejectTask, approveTask, batchExecutePostQc, batchRejectTask, batchApproveTask } from '@/api/drug/dataManage'
+import { getDataManageImportTaskPage, exportDataManageImportTask, DataManageImportTaskVO, getReportTaskList, ReportTaskVO, rejectTask, approveTask, batchRejectTask, batchApproveTask } from '@/api/drug/dataManage'
 import { ImportTaskApi } from '@/api/drug/batch'
+import { startPostQc } from '@/api/drug/postqc'
 import ImportTaskForm from './ImportTaskForm.vue'
 import RegionTree from '@/views/system/user/RegionTree.vue'
 import ReportLogDialog from './ReportLogDialog.vue'
@@ -315,6 +312,7 @@ const queryParams = reactive({
 })
 const queryFormRef = ref() // 搜索的表单
 const exportLoading = ref(false) // 导出的加载中
+const postQcLoading = ref(false) // 后置质控的加载中
 
 /** 开始拖拽调整大小 */
 const startResize = (e: MouseEvent) => {
@@ -562,14 +560,37 @@ const handleViewLog = (row: DataManageImportTaskVO) => {
   reportLogRef.value.open(row.id, row.taskName)
 }
 
-/** 单个后置质控 */
-const handlePostQc = async (row: DataManageImportTaskVO) => {
+/** 启动后置质控（针对整个报送任务） */
+const handleStartPostQc = async () => {
+  if (!queryParams.reportTaskId) {
+    message.warning('请先选择填报任务')
+    return
+  }
   try {
-    await message.confirm('确认对此任务执行后置质控吗？')
-    await executePostQc(row.id!)
-    message.success('后置质控执行成功')
+    await message.confirm('确认对当前报送任务启动后置质控吗？这将对所有已提交的机构数据执行后置质控检查。')
+    postQcLoading.value = true
+    const result = await startPostQc(queryParams.reportTaskId)
+    // 显示执行结果
+    ElMessageBox.alert(
+      `后置质控执行完成！<br/>
+      <br/>总机构数：${result.totalOrgs}
+      <br/>通过：${result.passedOrgs}
+      <br/>待审核：${result.pendingReviewOrgs}
+      <br/>自动退回：${result.autoReturnOrgs}
+      <br/>标尺YPID数：${result.benchmarkYpidCount}
+      <br/>耗时：${result.executionTime}ms`,
+      '后置质控结果',
+      {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '确定'
+      }
+    )
     await getList()
-  } catch {}
+  } catch (error) {
+    console.error('后置质控执行失败:', error)
+  } finally {
+    postQcLoading.value = false
+  }
 }
 
 /** 单个驳回 */
@@ -597,18 +618,6 @@ const handleApprove = async (row: DataManageImportTaskVO) => {
     await message.confirm('确认通过此任务吗？')
     await approveTask(row.id!)
     message.success('任务通过成功')
-    await getList()
-  } catch {}
-}
-
-/** 批量后置质控 */
-const handleBatchPostQc = async () => {
-  try {
-    await message.confirm(`确认对选中的 ${multipleSelection.value.length} 个任务执行后置质控吗？`)
-    const ids = multipleSelection.value.map(item => item.id!)
-    await batchExecutePostQc(ids)
-    message.success('批量后置质控执行成功')
-    clearSelection()
     await getList()
   } catch {}
 }
@@ -654,12 +663,6 @@ const clearSelection = () => {
   tableRef.value?.clearSelection()
 }
 
-/** 单个操作按钮显示逻辑 - 后置质控（状态1、5可显示，且需要省级管理员权限） */
-const canShowPostQcButtonForUser = (reportStatus: number) => {
-  // 只在状态为1(已上报,审核中)、5(已重报,审核中)时显示
-  return reportStatus === 1 || reportStatus === 5
-}
-
 /** 单个操作按钮显示逻辑 - 退回（状态1、5、6可显示，且需要市级/区县级管理员权限） */
 const canShowRejectButtonForUser = (reportStatus: number) => {
   // 只在状态为1(已上报,审核中)、5(已重报,审核中)、6(后置质控通过)时显示
@@ -677,9 +680,6 @@ const handleCommand = async (command: string, row: DataManageImportTaskVO) => {
   switch (command) {
     case 'log':
       handleViewLog(row)
-      break
-    case 'postQc':
-      handlePostQc(row)
       break
     case 'reject':
       handleReject(row)

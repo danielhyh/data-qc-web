@@ -54,11 +54,6 @@ export const getReportTaskList = async () => {
   return await request.get({ url: '/drug/data-manage/report-task/list' })
 }
 
-// 执行后置质控
-export const executePostQc = async (id: number) => {
-  return await request.post({ url: '/drug/data-manage/import-task/post-qc', params: { id } })
-}
-
 // 驳回任务
 export const rejectTask = async (id: number, reason?: string) => {
   const params: any = { id }
@@ -71,11 +66,6 @@ export const rejectTask = async (id: number, reason?: string) => {
 // 通过任务
 export const approveTask = async (id: number) => {
   return await request.post({ url: '/drug/data-manage/import-task/approve', params: { id } })
-}
-
-// 批量执行后置质控
-export const batchExecutePostQc = async (ids: number[]) => {
-  return await request.post({ url: '/drug/data-manage/import-task/batch-post-qc', data: ids })
 }
 
 // 批量驳回任务

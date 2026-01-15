@@ -363,7 +363,7 @@ const handleImport = async () => {
       importing.value = false
       dialogVisible.value = false
       emit('success', result)
-      ElMessage.success(`导入任务已提交，共${result.totalRecords}条记录，请在页面上查看进度`)
+      ElMessage.success(`导入任务已提交，请在页面上查看进度`)
     }
   } catch (error: any) {
     stopProgressPolling()
