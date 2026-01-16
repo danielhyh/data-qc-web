@@ -5,9 +5,13 @@ export interface ReportTaskVO {
   id: number // 主键ID
   taskName: string // 任务名称
   reportYear: number // 上报年份（系统自动生成）
-  startDate: Date // 上报开始时间
-  endDate: Date // 上报截止时间
-  status: number // 状态：1-未开始 2-进行中 3-已结束 4-已关闭（系统自动计算）
+  startDate: Date // 上报开始时间（前置质控开始）
+  endDate: Date // 上报截止时间（前置质控结束）
+  postQcStartDate?: string // 后置质控开始日期
+  postQcEndDate?: string // 后置质控截止日期
+  nationalReportStartDate?: string // 国家上报开始日期
+  nationalReportEndDate?: string // 国家上报截止日期
+  status: number // 状态：1-未开始,2-上报中,3-审核中,4-国家上报中,5-已完成
   description: string // 任务描述
   reportableOrgs: string // 可填报机构ID列表，逗号分隔
 }
@@ -58,4 +62,4 @@ export const ReportTaskApi = {
   getCurrentActiveTask: async () => {
     return await request.get({ url: `/drug/report-task/current-active` })
   },
-}
+}

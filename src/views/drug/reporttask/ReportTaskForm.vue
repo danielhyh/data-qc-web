@@ -15,6 +15,8 @@
           <el-form-item label="任务名称" prop="taskName">
             <el-input v-model="formData.taskName" placeholder="请输入任务名称" />
           </el-form-item>
+          <!-- 前置质控时间窗口 -->
+          <el-divider content-position="left">前置质控（机构上报）</el-divider>
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="上报开始时间" prop="startDate">
@@ -34,6 +36,58 @@
                   type="date"
                   value-format="x"
                   placeholder="选择截止时间"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- 后置质控时间窗口 -->
+          <el-divider content-position="left">后置质控（省级审核）</el-divider>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="审核开始日期" prop="postQcStartDate">
+                <el-date-picker
+                  v-model="formData.postQcStartDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="选择开始日期"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="审核截止日期" prop="postQcEndDate">
+                <el-date-picker
+                  v-model="formData.postQcEndDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="选择截止日期"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <!-- 国家上报时间窗口 -->
+          <el-divider content-position="left">国家上报</el-divider>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="上报开始日期" prop="nationalReportStartDate">
+                <el-date-picker
+                  v-model="formData.nationalReportStartDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="选择开始日期"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="上报截止日期" prop="nationalReportEndDate">
+                <el-date-picker
+                  v-model="formData.nationalReportEndDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="选择截止日期"
                   style="width: 100%"
                 />
               </el-form-item>
@@ -196,6 +250,10 @@ const formData = ref({
   taskName: undefined,
   startDate: undefined,
   endDate: undefined,
+  postQcStartDate: undefined,
+  postQcEndDate: undefined,
+  nationalReportStartDate: undefined,
+  nationalReportEndDate: undefined,
   description: undefined,
   reportableOrgs: undefined
 })
@@ -417,6 +475,10 @@ const resetForm = () => {
     taskName: undefined,
     startDate: undefined,
     endDate: undefined,
+    postQcStartDate: undefined,
+    postQcEndDate: undefined,
+    nationalReportStartDate: undefined,
+    nationalReportEndDate: undefined,
     description: undefined,
     reportableOrgs: undefined
   }
