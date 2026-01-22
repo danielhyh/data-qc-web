@@ -67,19 +67,27 @@
       <el-table-column label="年度药品总收入（元）" align="center" width="160">
         <template #default="{ row }">
           <div class="income-comparison">
-            <div>导入: ¥{{ formatAmount(row.annualDrugIncomeImport) }}</div>
-            <div>直报: ¥{{ formatAmount(row.annualDrugIncomeSync) }}</div>
+            <div>导入: {{ formatAmount(row.annualDrugIncomeImport) }}元</div>
+            <div>直报: {{ formatAmount(row.annualDrugIncomeSync) }}元</div>
             <div class="difference"
-              >差异: ¥{{
+              >差异: {{
                 formatAmount((row.annualDrugIncomeImport || 0) - (row.annualDrugIncomeSync || 0))
-              }}</div
+              }}元</div
             >
           </div>
         </template>
       </el-table-column>
       <el-table-column label="实有床位数" align="center" prop="bedCount">
         <template #default="{ row }">
-          <el-tag type="info" effect="plain">{{ row.bedCount || 0 }}</el-tag>
+          <div class="income-comparison">
+          <div>导入：{{ row.bedCount || 0 }}</div>
+          <div>直报：{{ row.bedCountSync || 0 }}</div>
+            <div class="difference"
+            >差异:{{
+                 ((row.bedCount || 0) - (row.bedCountSync || 0))
+              }}</div
+            >
+          </div>
         </template>
       </el-table-column>
       <el-table-column
