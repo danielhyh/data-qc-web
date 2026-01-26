@@ -98,6 +98,16 @@
           >
             <Icon icon="ep:checked" class="mr-5px" /> 启动后置质控
           </el-button>
+          <!-- 查看后置质控统计按钮 -->
+          <el-button
+              type="primary"
+              plain
+              @click="viewPostQcStatistics"
+              :disabled="!queryParams.reportTaskId"
+              v-if="canShowPostQcButton"
+          >
+            <Icon icon="ep:data-analysis" class="mr-5px" /> 查看后置质控统计
+          </el-button>
           <!-- 批量退回 -->
           <el-button
               type="danger"
@@ -260,12 +270,16 @@
 </template>
 
 <script setup lang="ts">
+import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getIntDictOptions, DICT_TYPE, getDictLabel } from '@/utils/dict'
 import { checkPermi } from '@/utils/permission'
+import { useMessage } from '@/hooks/web/useMessage'
 import download from '@/utils/download'
 import { getDataManageImportTaskPage, exportDataManageImportTask, DataManageImportTaskVO, getReportTaskList, ReportTaskVO, rejectTask, approveTask, batchRejectTask, batchApproveTask } from '@/api/drug/dataManage'
 import { ImportTaskApi } from '@/api/drug/batch'
-import { startPostQc } from '@/api/drug/postqc'
+import { startPostQc, benchmarkExists, getPostQcProgress, PostQcProgressVO } from '@/api/drug/postqc'
 import ImportTaskForm from './ImportTaskForm.vue'
 import RegionTree from '@/views/system/user/RegionTree.vue'
 import ReportLogDialog from './ReportLogDialog.vue'
@@ -566,30 +580,226 @@ const handleStartPostQc = async () => {
     message.warning('请先选择填报任务')
     return
   }
+  
   try {
-    await message.confirm('确认对当前报送任务启动后置质控吗？这将对所有已提交的机构数据执行后置质控检查。')
-    postQcLoading.value = true
-    const result = await startPostQc(queryParams.reportTaskId)
-    // 显示执行结果
-    ElMessageBox.alert(
-      `后置质控执行完成！<br/>
-      <br/>总机构数：${result.totalOrgs}
-      <br/>通过：${result.passedOrgs}
-      <br/>待审核：${result.pendingReviewOrgs}
-      <br/>自动退回：${result.autoReturnOrgs}
-      <br/>标尺YPID数：${result.benchmarkYpidCount}
-      <br/>耗时：${result.executionTime}ms`,
-      '后置质控结果',
+    // 获取当前选中的任务名称
+    const currentTask = reportTaskList.value.find(t => t.id === queryParams.reportTaskId)
+    const taskName = currentTask?.taskName || '未知任务'
+    
+    // 获取已提交机构数（状态为1、5、6的机构）
+    const submittedData = await getDataManageImportTaskPage({
+      reportTaskId: queryParams.reportTaskId,
+      reportStatus: undefined, // 获取所有状态
+      pageNo: 1,
+      pageSize: -1 // 获取全部
+    })
+    const submittedCount = submittedData.list.filter((item: DataManageImportTaskVO) => 
+      item.reportStatus === 1 || item.reportStatus === 5 || item.reportStatus === 6
+    ).length
+    
+    // 检查标尺状态
+    const benchmarkExistsResult = await benchmarkExists(queryParams.reportTaskId)
+    const benchmarkStatus = benchmarkExistsResult ? '✅ 已计算' : '⚠️ 未计算（将自动计算）'
+    
+    // 显示确认弹框
+    await ElMessageBox.confirm(
+      `<div style="line-height: 1.8;">
+        <p style="margin-bottom: 16px;">确认对<strong>【${taskName}】</strong>报送任务启动后置质控吗？</p>
+        <p style="margin-bottom: 12px; font-weight: 500;">这将执行以下操作：</p>
+        <ul style="margin: 0 0 16px 20px; padding: 0;">
+          <li>计算标尺参数（如果尚未计算）</li>
+          <li>对所有已提交机构执行8条后置质控规则</li>
+          <li>自动判断需退回/待审核/通过状态</li>
+        </ul>
+        <div style="background: #f5f7fa; padding: 12px; border-radius: 4px; margin-top: 16px;">
+          <p style="margin: 0 0 8px 0; font-weight: 500;">当前状态：</p>
+          <p style="margin: 4px 0;">已提交机构: <strong>${submittedCount}</strong> 个</p>
+          <p style="margin: 4px 0;">标尺状态: ${benchmarkStatus}</p>
+        </div>
+      </div>`,
+      '⚠️ 确认启动后置质控',
       {
+        confirmButtonText: '确认启动',
+        cancelButtonText: '取消',
+        type: 'warning',
         dangerouslyUseHTMLString: true,
-        confirmButtonText: '确定'
+        customClass: 'post-qc-confirm-dialog'
       }
     )
-    await getList()
+    
+    // 用户确认后，启动后置质控并显示进度弹框
+    postQcLoading.value = true
+    
+    try {
+      // 异步启动后置质控（不等待完成）
+      await startPostQc(queryParams.reportTaskId)
+      
+      // 等待100ms让后端初始化进度
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // 显示进度弹框
+      await showProgressDialog(queryParams.reportTaskId, taskName)
+      
+      // 刷新列表
+      await getList()
+    } catch (error) {
+      console.error('后置质控启动失败:', error)
+      message.error('后置质控启动失败')
+    }
+    
   } catch (error) {
-    console.error('后置质控执行失败:', error)
+    if (error !== 'cancel') {
+      console.error('后置质控执行失败:', error)
+    }
   } finally {
     postQcLoading.value = false
+  }
+}
+
+/** 显示后置质控进度弹框 */
+const showProgressDialog = async (reportTaskId: number, taskName: string): Promise<void> => {
+  let progressTimer: number | null = null
+  let messageBoxInstance: any = null
+  
+  // 定义全局回调函数，用于"查看质控结果"按钮
+  ;(window as any).postQcViewResults = () => {
+    // 关闭弹框
+    const closeBtn = document.querySelector('.post-qc-progress-dialog .el-message-box__headerbtn') as HTMLElement
+    if (closeBtn) {
+      closeBtn.click()
+    }
+    // 跳转到统计页面
+    router.push({
+      name: 'PostQcStatistics',
+      query: {
+        reportTaskId: reportTaskId
+      }
+    })
+  }
+  
+  // 更新进度内容
+  const updateProgressContent = (progress: PostQcProgressVO) => {
+    const contentEl = document.getElementById('post-qc-progress-content')
+    if (!contentEl) return
+    
+    const percentage = progress.progressPercentage || 0
+    const statusText = progress.status === 'RUNNING' ? '执行中' : 
+                      progress.status === 'COMPLETED' ? '已完成' : '失败'
+    const statusColor = progress.status === 'RUNNING' ? '#409eff' : 
+                       progress.status === 'COMPLETED' ? '#67c23a' : '#f56c6c'
+    
+    contentEl.innerHTML = `
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span style="color: ${statusColor}; font-weight: 500;">${statusText}</span>
+          <span style="font-weight: 500;">${percentage}%</span>
+        </div>
+        <div style="width: 100%; height: 20px; background: #f5f7fa; border-radius: 10px; overflow: hidden;">
+          <div style="width: ${percentage}%; height: 100%; background: ${statusColor}; transition: width 0.3s;"></div>
+        </div>
+      </div>
+      
+      <div style="background: #f5f7fa; padding: 12px; border-radius: 4px; margin-bottom: 16px;">
+        <p style="margin: 4px 0; font-size: 13px;">
+          ${progress.benchmarkCalculated ? '✅' : '⏳'} 标尺计算: 
+          ${progress.benchmarkCalculated ? `已完成 (${progress.benchmarkYpidCount} 个YPID)` : '计算中...'}
+        </p>
+        <p style="margin: 4px 0; font-size: 13px; color: #606266;">
+          ${progress.currentStep || '准备中...'}
+        </p>
+      </div>
+      
+      ${progress.status === 'COMPLETED' ? `
+        <div style="margin-top: 16px; text-align: center;">
+          <button 
+            onclick="window.postQcViewResults()"
+            style="padding: 8px 20px; background: #409eff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px;"
+          >
+            查看质控结果
+          </button>
+          <button 
+            onclick="document.querySelector('.post-qc-progress-dialog .el-message-box__headerbtn').click()"
+            style="padding: 8px 20px; background: #909399; color: white; border: none; border-radius: 4px; cursor: pointer;"
+          >
+            关闭
+          </button>
+        </div>
+      ` : ''}
+      
+      ${progress.errorMessage ? `
+        <div style="margin-top: 16px; padding: 12px; background: #fef0f0; border-radius: 4px; color: #f56c6c;">
+          错误: ${progress.errorMessage}
+        </div>
+      ` : ''}
+    `
+  }
+  
+  // 轮询获取进度
+  const pollProgress = async () => {
+    try {
+      const progress = await getPostQcProgress(reportTaskId)
+      if (progress) {
+        updateProgressContent(progress)
+        
+        // 如果完成或失败，停止轮询
+        if (progress.status === 'COMPLETED' || progress.status === 'FAILED') {
+          if (progressTimer) {
+            clearInterval(progressTimer)
+            progressTimer = null
+          }
+          
+          // 2秒后自动关闭
+          setTimeout(() => {
+            const closeBtn = document.querySelector('.post-qc-progress-dialog .el-message-box__headerbtn') as HTMLElement
+            if (closeBtn) {
+              closeBtn.click()
+            }
+          }, 2000)
+        }
+      }
+    } catch (error) {
+      console.error('获取进度失败:', error)
+    }
+  }
+  
+  // 创建进度弹框
+  messageBoxInstance = ElMessageBox.alert(
+    '<div id="post-qc-progress-content" style="line-height: 1.8;">正在初始化...</div>',
+    '后置质控执行中',
+    {
+      showCancelButton: false,
+      showConfirmButton: false,
+      closeOnClickModal: false,
+      closeOnPressEscape: false,
+      customClass: 'post-qc-progress-dialog',
+      dangerouslyUseHTMLString: true,
+      beforeClose: (action, instance, done) => {
+        // 清理定时器
+        if (progressTimer) {
+          clearInterval(progressTimer)
+          progressTimer = null
+        }
+        done()
+      }
+    }
+  )
+  
+  // 立即获取一次进度
+  await pollProgress()
+  
+  // 每秒轮询一次
+  progressTimer = window.setInterval(pollProgress, 1000)
+  
+  // 等待弹框关闭
+  try {
+    await messageBoxInstance
+  } catch (error) {
+    // 用户关闭弹框
+  } finally {
+    if (progressTimer) {
+      clearInterval(progressTimer)
+      progressTimer = null
+    }
   }
 }
 
@@ -696,6 +906,20 @@ const handleCommand = async (command: string, row: DataManageImportTaskVO) => {
   }
 }
 
+/** 查看后置质控统计 */
+const viewPostQcStatistics = () => {
+  if (!queryParams.reportTaskId) {
+    message.warning('请先选择填报任务')
+    return
+  }
+  router.push({
+    name: 'PostQcStatistics',
+    query: {
+      reportTaskId: queryParams.reportTaskId
+    }
+  })
+}
+
 /** 初始化 **/
 onMounted(async () => {
   await getReportTaskListData()
@@ -733,4 +957,27 @@ onMounted(async () => {
 .more-btn {
   margin-left: 8px;
 }
+
+/* 后置质控确认弹框样式 */
+:deep(.post-qc-confirm-dialog) {
+  width: 560px;
+  
+  .el-message-box__header {
+    padding: 20px 20px 10px;
+  }
+  
+  .el-message-box__title {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  
+  .el-message-box__content {
+    padding: 20px;
+  }
+  
+  .el-message-box__message {
+    font-size: 14px;
+  }
+}
+
 </style>

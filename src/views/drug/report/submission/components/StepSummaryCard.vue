@@ -11,14 +11,14 @@
           <span class="file-count">{{ uploadedCount }}/{{ totalCount }}</span>
         </div>
       </div>
-      <el-progress 
-        :percentage="overallProgress" 
+      <el-progress
+        :percentage="overallProgress"
         :color="getProgressColor(overallProgress)"
         :stroke-width="16"
         :show-text="true"
       />
     </div>
-    
+
     <!-- 已完成：显示总览 -->
     <el-alert v-else :type="alertType" :closable="false">
       <template #title>
@@ -26,21 +26,20 @@
           <el-icon><component :is="statusIcon" /></el-icon>
           <span>{{ stepName }}总览</span>
           <el-tag :type="statusTagType" size="small">{{ statusText }}</el-tag>
-          <!-- 质控步骤显示查看报告按钮 - 暂时注释 -->
-          <!-- <el-button 
-            v-if="stepType === 2" 
-            type="primary" 
-            link 
-            size="small" 
+          <!-- 质控步骤显示查看报告按钮 -->
+          <el-button
+            v-if="stepType === 2"
+            type="primary"
+            size="default"
             @click="handleViewReport"
             class="view-report-btn"
           >
             <el-icon><Document /></el-icon>
             查看报告
-          </el-button> -->
+          </el-button>
         </div>
       </template>
-      
+
       <div class="summary-content">
         <!-- 统计数据 -->
         <div class="summary-stats">
@@ -64,7 +63,7 @@
             <span class="stat-value">{{ parsedSummaryData.failedFiles }}</span>
           </div>
         </div>
-        
+
         <!-- 步骤特有信息 -->
         <div class="step-specific" v-if="parsedSummaryData.totalRecords">
           <div class="info-row">
@@ -92,7 +91,11 @@
         <!-- 质控步骤：显示规则统计 -->
         <div class="rule-stats" v-if="stepType === 2 && parsedSummaryData.totalRules">
           <div class="info-row">
-            <span>执行规则：{{ parsedSummaryData.executedRules || 0 }}/{{ parsedSummaryData.totalRules }}</span>
+            <span
+              >执行规则：{{ parsedSummaryData.executedRules || 0 }}/{{
+                parsedSummaryData.totalRules
+              }}</span
+            >
             <span class="divider">|</span>
             <span class="success-text">通过：{{ parsedSummaryData.passedRules || 0 }}</span>
             <template v-if="parsedSummaryData.failedRules > 0">
@@ -101,7 +104,7 @@
             </template>
           </div>
         </div>
-        
+
         <!-- 时间信息 -->
         <div class="summary-time" v-if="parsedSummaryData.endTime">
           <span>最近处理耗时：{{ formatDuration(parsedSummaryData.duration) }}</span>
@@ -114,8 +117,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { Loading, CircleCheckFilled, WarningFilled, CircleCloseFilled, Document } from '@element-plus/icons-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import {
+  CircleCheckFilled,
+  CircleCloseFilled,
+  Document,
+  Loading,
+  WarningFilled
+} from '@element-plus/icons-vue'
 import { getProgressColor } from '@/utils/progressColor'
 import { ReportStepSummaryApi } from '@/api/drug/reportstepsummary/index'
 
@@ -157,9 +166,9 @@ const summaryData = ref<any>(null)
 // 解析 summaryData JSON 字段中的扩展数据
 const parsedSummaryData = computed(() => {
   if (!summaryData.value) return null
-  
+
   const data = { ...summaryData.value }
-  
+
   // 解析 summaryData JSON 字段
   if (data.summaryData && typeof data.summaryData === 'string') {
     try {
@@ -170,7 +179,7 @@ const parsedSummaryData = computed(() => {
       console.warn('解析 summaryData JSON 失败:', e)
     }
   }
-  
+
   return data
 })
 
@@ -187,21 +196,24 @@ const stepName = computed(() => stepNames[props.stepType] || '处理')
 // 状态相关计算
 const alertType = computed(() => {
   if (!parsedSummaryData.value) return 'info'
-  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0) return 'success'
+  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0)
+    return 'success'
   if (parsedSummaryData.value.status === 3) return 'error'
   return 'warning'
 })
 
 const statusIcon = computed(() => {
   if (!parsedSummaryData.value) return CircleCheckFilled
-  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0) return CircleCheckFilled
+  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0)
+    return CircleCheckFilled
   if (parsedSummaryData.value.status === 3) return CircleCloseFilled
   return WarningFilled
 })
 
 const statusTagType = computed(() => {
   if (!parsedSummaryData.value) return 'info'
-  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0) return 'success'
+  if (parsedSummaryData.value.status === 1 && parsedSummaryData.value.failedFiles === 0)
+    return 'success'
   if (parsedSummaryData.value.status === 3) return 'danger'
   return 'warning'
 })
@@ -249,26 +261,19 @@ const handleViewReport = () => {
   emit('viewReport')
 }
 
-// 关闭总览
-const handleClose = async () => {
-  try {
-    await ReportStepSummaryApi.closeStepSummary(props.taskId, props.stepType)
-    summaryData.value = null
-    emit('close')
-  } catch (error) {
-    console.error('关闭总览失败:', error)
-  }
-}
-
 // 加载总览数据
 const loadSummary = async () => {
   if (!props.taskId || props.stepType === 0 || props.isProcessing) {
     return
   }
-  
+
   try {
-    const result = await ReportStepSummaryApi.getStepSummaryByTaskAndStep(props.taskId, props.stepType)
-    if (result && result.status !== 0) { // 只显示已完成的总览
+    const result = await ReportStepSummaryApi.getStepSummaryByTaskAndStep(
+      props.taskId,
+      props.stepType
+    )
+    if (result && result.status !== 0) {
+      // 只显示已完成的总览
       summaryData.value = result
     }
   } catch (error) {
@@ -277,11 +282,15 @@ const loadSummary = async () => {
 }
 
 // 监听任务ID和步骤变化
-watch(() => [props.taskId, props.stepType, props.isProcessing], () => {
-  if (!props.isProcessing) {
-    loadSummary()
-  }
-}, { immediate: true })
+watch(
+  () => [props.taskId, props.stepType, props.isProcessing],
+  () => {
+    if (!props.isProcessing) {
+      loadSummary()
+    }
+  },
+  { immediate: true }
+)
 
 // 组件挂载时加载
 onMounted(() => {
@@ -379,8 +388,22 @@ defineExpose({
 }
 
 .view-report-btn {
-  margin-left: auto;
-  font-size: 13px;
+  margin-left: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.view-report-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
+}
+
+.view-report-btn .el-icon {
+  font-size: 16px;
 }
 
 .summary-content {
@@ -430,7 +453,8 @@ defineExpose({
   background: #d1d5db;
 }
 
-.step-specific, .rule-stats {
+.step-specific,
+.rule-stats {
   padding: 12px 0;
 }
 
@@ -475,4 +499,3 @@ defineExpose({
   color: #d1d5db;
 }
 </style>
-

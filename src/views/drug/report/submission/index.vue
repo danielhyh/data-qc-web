@@ -104,7 +104,7 @@
         <!-- 剩余时间 -->
         <el-table-column label="剩余时间" align="center" width="150px">
           <template #default="scope">
-          <span v-if="scope.row.status !== 3" :class="getRemainingTimeClass(scope.row.endDate, scope.row.status)">
+          <span v-if="scope.row.status !== 5" :class="getRemainingTimeClass(scope.row.endDate, scope.row.status)">
             {{ calculateRemainingTime(scope.row.endDate, scope.row.status) }}
           </span>
             <span v-else class="text-gray-400 font-medium">任务已结束</span>
@@ -150,9 +150,9 @@
         <el-table-column label="操作" align="center" width="260px" fixed="right">
           <template #default="scope">
             <div class="action-links">
-              <!-- 任务未结束时显示操作按钮 -->
-              <template v-if="scope.row.status !== 3">
-                <!-- 上报按钮 -->
+              <!-- 任务未结束时显示操作按钮（status=5为已完成） -->
+              <template v-if="scope.row.status !== 5">
+                <!-- 上报按钮（仅未上报状态显示） -->
                 <el-button
                   v-if="scope.row.reportStatus === 0"
                   type="primary"
@@ -163,10 +163,21 @@
                   上报
                 </el-button>
 
-                <!-- 查看审核状态按钮（已上报/审核中） -->
+                <!-- 查看审核状态按钮（已上报/审核中状态显示） -->
+                <el-button
+                  v-if="scope.row.reportStatus === 3"
+                  type="primary"
+                  size="small"
+                  @click="handleViewReviewStatus(scope)"
+                >
+                  <Icon icon="ep:view" class="mr-1" />
+                  查看审核
+                </el-button>
+
+                <!-- 查看审核状态按钮（已提交状态显示） -->
                 <el-button
                   v-if="scope.row.reportStatus === 1"
-                  type="primary"
+                  type="success"
                   size="small"
                   @click="handleViewReviewStatus(scope)"
                 >
@@ -185,9 +196,9 @@
                   重新上报
                 </el-button>
 
-                <!-- 提交至国家平台按钮 -->
+                <!-- 提交至国家平台按钮（仅审核通过后显示） -->
                 <el-button
-                  v-if="scope.row.reportStatus === 3"
+                  v-if="scope.row.reportStatus === 4"
                   type="danger"
                   size="small"
                   @click="handleSubmit(scope)"
@@ -220,7 +231,7 @@
 
               <!-- 任务已结束的提示标签 -->
               <el-tag
-                v-if="scope.row.status === 3 && scope.row.reportStatus === 0"
+                v-if="scope.row.status === 5 && scope.row.reportStatus === 0"
                 type="info"
                 size="small"
               >
@@ -316,11 +327,11 @@ const getCurrentDate = (timestamp) => {
 /**
  * 计算任务剩余时间或逾期时间
  * @param endDate 截止时间戳
- * @param status 任务状态，已结束直接返回标签文案
+ * @param status 任务状态（5=已完成）
  * @returns 剩余/逾期时间描述
  */
 function calculateRemainingTime(endDate?: number, status?: number): string {
-  if (status === 3) {
+  if (status === 5) {
     return '任务已结束'
   }
 
@@ -349,11 +360,11 @@ function calculateRemainingTime(endDate?: number, status?: number): string {
 /**
  * 获取剩余时间样式类
  * @param endDate 截止时间戳
- * @param status 任务状态，已结束时返回灰色
+ * @param status 任务状态（5=已完成）
  * @returns 颜色 class
  */
 function getRemainingTimeClass(endDate?: number, status?: number): string {
-  if (status === 3) {
+  if (status === 5) {
     return 'text-gray-400 font-medium'
   }
 

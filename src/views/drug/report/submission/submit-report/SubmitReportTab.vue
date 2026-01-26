@@ -162,6 +162,13 @@
           返回前置质控
         </el-button>
         <el-button
+          type="warning"
+          @click="$emit('view-post-qc-errors')"
+        >
+          <el-icon class="mr-5px"><Warning /></el-icon>
+          查看后置质控错误详情
+        </el-button>
+        <el-button
           v-if="reviewStatus === null"
           type="success"
           size="large"
@@ -185,7 +192,8 @@ import {
   RefreshLeft,
   Promotion,
   Document,
-  ArrowLeft
+  ArrowLeft,
+  Warning
 } from '@element-plus/icons-vue'
 import DictTag from '@/components/DictTag/src/DictTag.vue'
 import StepSummaryCard from '../components/StepSummaryCard.vue'
@@ -235,6 +243,7 @@ defineEmits<{
   (e: 'view-file-data', row: any): void
   (e: 'back-to-pre-qc'): void
   (e: 'submit-report'): void
+  (e: 'view-post-qc-errors'): void
 }>()
 
 /**

@@ -168,6 +168,7 @@
           @view-file-data="viewFileData"
           @back-to-pre-qc="currentStep = 2"
           @submit-report="submitReport"
+          @view-post-qc-errors="handleViewPostQcErrors"
         />
       </div>
 
@@ -432,6 +433,12 @@
     :file-name="qcErrorGroupedDialog.fileName"
     :error-type="qcErrorGroupedDialog.errorType"
   />
+
+  <!-- 后置质控错误详情弹窗（机构端） -->
+  <PostQcErrorDetailDialog
+    v-model="postQcErrorDialog.visible"
+    :task-id="postQcErrorDialog.taskId"
+  />
 </template>
 
 <script setup lang="ts">
@@ -457,6 +464,7 @@ import { ContentWrap } from '@/components/ContentWrap'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
 import QcReportDialog from './components/QcReportDialog.vue'
 import QcErrorGroupedDialog from './components/QcErrorGroupedDialog.vue'
+import PostQcErrorDetailDialog from './components/PostQcErrorDetailDialog.vue'
 import { UploadValidateTab } from './upload-validate'
 import { PrepareTab } from './prepare'
 import { PreQcTab } from './pre-qc'
@@ -571,6 +579,12 @@ const qcErrorGroupedDialog = ref({
   tableType: '',
   fileName: '',
   errorType: 1 // 1=错误，2=警告
+})
+
+// 后置质控错误详情弹窗（机构端）
+const postQcErrorDialog = ref({
+  visible: false,
+  taskId: 0
 })
 
 // ==================== 上传进度跟踪 ====================
@@ -1516,11 +1530,21 @@ const openQcReportDialog = () => {
 }
 
 // 从质控报告中查看错误详情
-const handleViewErrorsFromReport = (tableType: string) => {
+const handleViewErrorsFromReport = (tableType: string, errorType: number = 1) => {
+  // errorType: 1=错误, 2=警告
   // 找到对应的文件
   const file = fileList.value.find(f => f.fileType === tableType)
   if (file) {
-    viewQCErrors(file)
+    // 使用分组弹框显示错误/警告
+    qcErrorGroupedDialog.value = {
+      visible: true,
+      taskId: currentTask.value.taskId,
+      tableType: tableType,
+      fileName: file.originalFileName || file.standardFileName || file.fileName,
+      errorType: errorType
+    }
+  } else {
+    message.warning('未找到对应的文件')
   }
 }
 
@@ -1690,6 +1714,12 @@ const submitReport = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 查看后置质控错误详情
+const handleViewPostQcErrors = () => {
+  postQcErrorDialog.value.visible = true
+  postQcErrorDialog.value.taskId = currentTask.value.taskId
 }
 
 // 审核状态相关方法

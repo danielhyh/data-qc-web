@@ -502,6 +502,28 @@ const remainingRouter: AppRouteRecordRaw[] = [
     ]
   },
   {
+    path: '/drug/postqc',
+    component: Layout,
+    name: 'DrugPostQcCenter',
+    meta: {
+      hidden: true
+    },
+    children: [
+      {
+        path: 'statistics',
+        name: 'PostQcStatistics',
+        component: () => import('@/views/drug/postqc/statistics/index.vue'),
+        meta: {
+          title: '后置质控统计',
+          icon: 'ep:data-analysis',
+          noCache: true,
+          canTo: true,
+          hidden: true
+        }
+      }
+    ]
+  },
+  {
     path: '/drug/ypid',
     component: Layout,
     name: 'DrugYpidCenter',

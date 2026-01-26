@@ -1,0 +1,486 @@
+<template>
+  <div class="post-qc-statistics">
+    <!-- 顶部统计卡片 -->
+    <el-row :gutter="16" class="statistics-cards">
+      <el-col :span="8">
+        <el-card shadow="hover" class="stat-card total">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon><Document /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalRules }}</div>
+              <div class="stat-label">后置质控规则数</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card shadow="hover" class="stat-card error">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon><WarningFilled /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalErrorOrgs }}</div>
+              <div class="stat-label">错误机构数（去重）</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card shadow="hover" class="stat-card suggested-return">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon><CircleClose /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalSuggestedReturnOrgs }}</div>
+              <div class="stat-label">建议退回机构数</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 规则列表（折叠面板） -->
+    <ContentWrap title="后置质控规则详情" class="mt-16px">
+      <el-collapse v-model="activeRules" v-loading="loading">
+        <el-collapse-item 
+          v-for="rule in ruleStatistics" 
+          :key="rule.ruleCode" 
+          :name="rule.ruleCode"
+        >
+          <template #title>
+            <div class="rule-header">
+              <div class="rule-title">
+                <el-tag type="primary" size="large">{{ rule.ruleCode }}</el-tag>
+                <span class="rule-name">{{ rule.ruleName }}</span>
+              </div>
+              <div class="rule-stats">
+                <el-tag type="danger" size="small">
+                  错误机构: {{ rule.totalErrorOrgs }}
+                </el-tag>
+                <el-tag type="warning" size="small" class="ml-8px">
+                  建议退回: {{ rule.suggestedReturnOrgs }}
+                </el-tag>
+                <el-tag type="info" size="small" class="ml-8px">
+                  错误记录: {{ rule.totalErrorRecords }}
+                </el-tag>
+              </div>
+            </div>
+          </template>
+
+          <!-- 规则描述 -->
+          <div class="rule-description" v-if="rule.ruleDescription">
+            <el-alert :title="rule.ruleDescription" type="info" :closable="false" />
+          </div>
+
+          <!-- 机构错误列表（虚拟列表） -->
+          <div class="virtual-table-container mt-12px">
+            <el-auto-resizer>
+              <template #default="{ height, width }">
+                <el-table-v2
+                  :columns="getOrgErrorColumns(rule.ruleCode)"
+                  :data="rule.orgErrors"
+                  :width="width"
+                  :height="Math.min(height, 500)"
+                  :row-height="50"
+                  fixed
+                />
+              </template>
+            </el-auto-resizer>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
+
+      <!-- 空状态 -->
+      <el-empty 
+        v-if="!loading && ruleStatistics.length === 0" 
+        description="暂无后置质控数据"
+      />
+    </ContentWrap>
+  </div>
+
+  <!-- 后置质控错误弹框 -->
+  <QcErrorGroupedDialog
+    v-model="errorDialog.visible"
+    :task-id="errorDialog.taskId"
+    :table-type="errorDialog.tableType"
+    :file-name="errorDialog.fileName"
+    :error-type="1"
+  />
+</template>
+
+<script setup lang="tsx">
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { Document, WarningFilled, CircleClose, Warning } from '@element-plus/icons-vue'
+import { Column, TableV2FixedDir } from 'element-plus'
+import { ContentWrap } from '@/components/ContentWrap'
+import { getRuleStatistics, type PostQcRuleStatistics } from '@/api/drug/postqc'
+import QcErrorGroupedDialog from '@/views/drug/report/submission/components/QcErrorGroupedDialog.vue'
+import { useMessage } from '@/hooks/web/useMessage'
+
+defineOptions({ name: 'PostQcStatistics' })
+
+const route = useRoute()
+const message = useMessage()
+
+const loading = ref(false)
+const ruleStatistics = ref<PostQcRuleStatistics[]>([])
+const activeRules = ref<string[]>([]) // 默认展开的规则
+const errorDialog = ref({
+  visible: false,
+  taskId: 0,
+  tableType: '',
+  fileName: ''
+})
+
+// 总规则数
+const totalRules = computed(() => ruleStatistics.value.length)
+
+// 总错误机构数（去重）
+const totalErrorOrgs = computed(() => {
+  const orgSet = new Set<number>()
+  ruleStatistics.value.forEach(rule => {
+    rule.orgErrors.forEach(org => orgSet.add(org.taskId))
+  })
+  return orgSet.size
+})
+
+// 总建议退回机构数（去重）
+const totalSuggestedReturnOrgs = computed(() => {
+  const orgSet = new Set<number>()
+  ruleStatistics.value.forEach(rule => {
+    rule.orgErrors.forEach(org => {
+      if (org.suggestedReturn) {
+        orgSet.add(org.taskId)
+      }
+    })
+  })
+  return orgSet.size
+})
+
+// 获取等级标签类型
+const getLevelTagType = (level: number) => {
+  switch (level) {
+    case 1: return 'danger'  // 三级
+    case 2: return 'warning' // 二级
+    case 3: return 'success' // 基层
+    default: return 'info'
+  }
+}
+
+// 获取错误率标签类型
+const getErrorRateType = (errorRate: number, hospitalLevel: number) => {
+  if (!errorRate) return 'success'
+  
+  // 三级、二级：错误率 >= 5% 为danger
+  if (hospitalLevel === 1 || hospitalLevel === 2) {
+    return errorRate >= 5 ? 'danger' : errorRate >= 2 ? 'warning' : 'success'
+  }
+  // 基层：错误率 >= 55% 为danger
+  else if (hospitalLevel === 3) {
+    return errorRate >= 55 ? 'danger' : errorRate >= 30 ? 'warning' : 'success'
+  }
+  
+  return 'info'
+}
+
+// 查看错误详情
+const viewErrors = (row: any, ruleCode: string) => {
+  errorDialog.value = {
+    visible: true,
+    taskId: row.taskId,
+    tableType: 'all', // 显示所有表的错误
+    fileName: `${row.deptName} - ${ruleCode}`
+  }
+}
+
+// 定义虚拟表格列
+const getOrgErrorColumns = (ruleCode: string): Column[] => [
+  {
+    dataKey: 'index',
+    title: '序号',
+    width: 60,
+    align: 'center',
+    cellRenderer: ({ rowIndex }: any) => rowIndex + 1
+  },
+  {
+    dataKey: 'deptName',
+    title: '机构名称',
+    width: 250,
+    cellRenderer: ({ cellData }: any) => (
+      <div class="text-ellipsis" title={cellData}>
+        {cellData}
+      </div>
+    )
+  },
+  {
+    dataKey: 'orgCode',
+    title: '机构代码',
+    width: 120,
+    align: 'center'
+  },
+  {
+    dataKey: 'hospitalLevelName',
+    title: '等级',
+    width: 100,
+    align: 'center',
+    cellRenderer: ({ rowData }: any) => (
+      <el-tag type={getLevelTagType(rowData.hospitalLevel)} size="small">
+        {rowData.hospitalLevelName}
+      </el-tag>
+    )
+  },
+  {
+    dataKey: 'totalRecords',
+    title: '总记录数',
+    width: 100,
+    align: 'center'
+  },
+  {
+    dataKey: 'errorRecords',
+    title: '错误记录数',
+    width: 110,
+    align: 'center',
+    cellRenderer: ({ cellData }: any) => (
+      <span class="error-text">{cellData}</span>
+    )
+  },
+  {
+    dataKey: 'errorRate',
+    title: '错误率',
+    width: 100,
+    align: 'center',
+    cellRenderer: ({ cellData, rowData }: any) => (
+      <el-tag type={getErrorRateType(cellData, rowData.hospitalLevel)}>
+        {cellData?.toFixed(2) || 0}%
+      </el-tag>
+    )
+  },
+  {
+    dataKey: 'suggestedReturn',
+    title: '是否建议退回',
+    width: 120,
+    align: 'center',
+    cellRenderer: ({ cellData }: any) => (
+      <el-tag type={cellData ? 'danger' : 'success'}>
+        {cellData ? '是' : '否'}
+      </el-tag>
+    )
+  },
+  {
+    dataKey: 'suggestedReason',
+    title: '建议退回原因',
+    width: 280,
+    cellRenderer: ({ cellData, rowData }: any) => (
+      <div class="text-ellipsis" title={cellData}>
+        {rowData.suggestedReturn ? (
+          <span class="warning-text">{cellData}</span>
+        ) : (
+          <span class="text-gray">-</span>
+        )}
+      </div>
+    )
+  },
+  {
+    dataKey: 'actions',
+    title: '操作',
+    width: 150,
+    align: 'center',
+    fixed: TableV2FixedDir.RIGHT,
+    cellRenderer: ({ rowData }: any) => (
+      <el-button 
+        type="primary" 
+        link 
+        onClick={() => viewErrors(rowData, ruleCode)}
+      >
+        <el-icon><Warning /></el-icon>
+        查看错误
+      </el-button>
+    )
+  }
+]
+
+// 加载规则统计数据
+const loadRuleStatistics = async () => {
+  const reportId = Number(route.query.reportTaskId)
+  if (!reportId) {
+    message.error('缺少报送任务ID')
+    return
+  }
+  
+  loading.value = true
+  try {
+    const result = await getRuleStatistics(reportId)
+    ruleStatistics.value = result.rules || []
+    
+    // 默认展开第一条规则
+    if (ruleStatistics.value.length > 0) {
+      activeRules.value = [ruleStatistics.value[0].ruleCode]
+    }
+  } catch (error) {
+    console.error('加载规则统计数据失败:', error)
+    message.error('加载规则统计数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadRuleStatistics()
+})
+</script>
+
+<style scoped lang="scss">
+.post-qc-statistics {
+  padding: 16px;
+}
+
+.statistics-cards {
+  .stat-card {
+    :deep(.el-card__body) {
+      padding: 20px;
+    }
+
+    .stat-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+      }
+
+      .stat-info {
+        flex: 1;
+
+        .stat-value {
+          font-size: 32px;
+          font-weight: 700;
+          line-height: 1.2;
+          margin-bottom: 4px;
+        }
+
+        .stat-label {
+          font-size: 14px;
+          color: #909399;
+        }
+      }
+    }
+
+    &.total {
+      .stat-icon {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+      }
+      .stat-value {
+        color: #667eea;
+      }
+    }
+
+    &.error {
+      .stat-icon {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        color: #fff;
+      }
+      .stat-value {
+        color: #f56c6c;
+      }
+    }
+
+    &.suggested-return {
+      .stat-icon {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        color: #fff;
+      }
+      .stat-value {
+        color: #e6a23c;
+      }
+    }
+  }
+}
+
+.rule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-right: 20px;
+
+  .rule-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .rule-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #303133;
+    }
+  }
+
+  .rule-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.rule-description {
+  margin-bottom: 12px;
+}
+
+.error-text {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.warning-text {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.text-gray {
+  color: #909399;
+}
+
+.ml-8px {
+  margin-left: 8px;
+}
+
+.mt-12px {
+  margin-top: 12px;
+}
+
+:deep(.el-collapse-item__header) {
+  height: auto;
+  padding: 16px 0;
+  line-height: 1.5;
+}
+
+:deep(.el-collapse-item__content) {
+  padding-bottom: 16px;
+}
+
+.virtual-table-container {
+  width: 100%;
+  height: 500px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
