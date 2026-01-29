@@ -244,6 +244,13 @@ export interface PostQcOrgErrorGroupedVO {
   deptId: number
   deptName: string
   totalErrors: number  // 改为 totalErrors
+  // 新增：机构统计信息
+  totalRecords: number
+  errorRecords: number
+  warningRecords: number
+  errorRate: number
+  suggestedReturn: boolean
+  hospitalLevel: number
   ruleGroups: PostQcRuleGroup[]
 }
 

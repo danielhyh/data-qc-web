@@ -29,6 +29,57 @@
         </div>
       </div>
 
+      <!-- 机构统计信息卡片 -->
+      <div class="org-statistics-card" v-if="orgStatistics">
+        <div class="statistics-row">
+          <div class="stat-item">
+            <div class="stat-label">总记录数</div>
+            <div class="stat-value">{{ orgStatistics.totalRecords }}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">错误记录数</div>
+            <div class="stat-value error-text">{{ orgStatistics.errorRecords }}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">警告数</div>
+            <div class="stat-value warning-text">{{ orgStatistics.warningRecords }}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">错误率</div>
+            <div class="stat-value" :class="getErrorRateClass(orgStatistics.errorRate, orgStatistics.hospitalLevel)">
+              {{ orgStatistics.errorRate?.toFixed(2) || 0 }}%
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">是否建议退回</div>
+            <div class="stat-value">
+              <el-tag :type="orgStatistics.suggestedReturn ? 'danger' : 'success'">
+                {{ orgStatistics.suggestedReturn ? '是' : '否' }}
+              </el-tag>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 错误率阈值提示 -->
+        <el-alert
+          type="warning"
+          :closable="false"
+          class="threshold-tip"
+        >
+          <template #title>
+            <div class="threshold-tip-content">
+              <span class="tip-icon">💡</span>
+              <span class="tip-text">
+                <strong>质控标准：</strong>
+                二级、三级医院异常率达到 <strong class="threshold-value">4%</strong> 时建议退回修改；
+                基层医疗机构异常率达到 <strong class="threshold-value">40%</strong> 时建议退回修改
+                <span class="tip-note">（异常率仅统计标记为"异常"的数据，不包含"警告"提示）</span>
+              </span>
+            </div>
+          </template>
+        </el-alert>
+      </div>
+
       <!-- 按规则分组的错误列表 -->
       <div class="rule-groups" v-if="errorData?.ruleGroups?.length">
         <div 
@@ -121,7 +172,14 @@ import { useMessage } from '@/hooks/web/useMessage'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   taskId: { type: Number, required: true },
-  deptName: { type: String, default: '' }
+  deptName: { type: String, default: '' },
+  // 机构统计信息
+  totalRecords: { type: Number, default: 0 },
+  errorRecords: { type: Number, default: 0 },
+  warningRecords: { type: Number, default: 0 },
+  errorRate: { type: Number, default: 0 },
+  suggestedReturn: { type: Boolean, default: false },
+  hospitalLevel: { type: Number, default: 0 }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -139,6 +197,35 @@ const dialogTitle = computed(() => {
 const loading = ref(false)
 const errorData = ref<PostQcOrgErrorGroupedVO | null>(null)
 const expandedRules = ref<number[]>([])
+
+// 机构统计信息（优先使用props，如果没有则从errorData中获取）
+const orgStatistics = computed(() => {
+  // 如果props中有统计信息，优先使用
+  if (props.totalRecords > 0) {
+    return {
+      totalRecords: props.totalRecords,
+      errorRecords: props.errorRecords,
+      warningRecords: props.warningRecords,
+      errorRate: props.errorRate,
+      suggestedReturn: props.suggestedReturn,
+      hospitalLevel: props.hospitalLevel
+    }
+  }
+  
+  // 否则从errorData中获取（后端API返回）
+  if (errorData.value && errorData.value.totalRecords) {
+    return {
+      totalRecords: errorData.value.totalRecords,
+      errorRecords: errorData.value.errorRecords,
+      warningRecords: errorData.value.warningRecords,
+      errorRate: errorData.value.errorRate,
+      suggestedReturn: errorData.value.suggestedReturn,
+      hospitalLevel: errorData.value.hospitalLevel
+    }
+  }
+  
+  return null
+})
 
 // 表类型映射
 const tableTypeMap: Record<string, string> = {
@@ -179,11 +266,28 @@ const getTableTypeName = (tableType: string) => {
   return tableTypeMap[tableType] || tableType
 }
 
+// 获取错误率样式类
+const getErrorRateClass = (errorRate: number, hospitalLevel: number) => {
+  if (!errorRate) return 'success-text'
+
+  // 三级、二级：错误率 >= 4% 为danger
+  if (hospitalLevel === 3 || hospitalLevel === 2) {
+    return errorRate >= 4 ? 'danger-text' : errorRate >= 2 ? 'warning-text' : 'success-text'
+  }
+  // 基层：错误率 >= 40% 为danger
+  else if (hospitalLevel === 1) {
+    return errorRate >= 40 ? 'danger-text' : errorRate >= 20 ? 'warning-text' : 'success-text'
+  }
+
+  return 'info-text'
+}
+
 // 加载数据
 const loadData = async () => {
   if (!props.taskId) return
   loading.value = true
   try {
+    // 加载错误详情
     errorData.value = await getOrgPostQcErrorsGrouped(props.taskId)
     // 默认展开所有规则
     if (errorData.value?.ruleGroups) {
@@ -339,6 +443,109 @@ watch(() => props.modelValue, (val) => {
 
   .header-actions {
     flex-shrink: 0;
+  }
+}
+
+// 机构统计信息卡片样式
+.org-statistics-card {
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #fff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+
+  .statistics-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+      .stat-label {
+        font-size: 13px;
+        color: #909399;
+        margin-bottom: 6px;
+      }
+
+      .stat-value {
+        font-size: 20px;
+        font-weight: 600;
+        color: #303133;
+
+        &.error-text {
+          color: #f56c6c;
+        }
+
+        &.warning-text {
+          color: #e6a23c;
+        }
+
+        &.danger-text {
+          color: #f56c6c;
+          font-weight: 700;
+        }
+
+        &.success-text {
+          color: #67c23a;
+        }
+
+        &.info-text {
+          color: #909399;
+        }
+      }
+    }
+  }
+
+  .threshold-tip {
+    margin-top: 0;
+    
+    :deep(.el-alert__title) {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .threshold-tip-content {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+
+      .tip-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+
+      .tip-text {
+        flex: 1;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #606266;
+
+        strong {
+          color: #303133;
+        }
+
+        .threshold-value {
+          color: #e6a23c;
+          font-size: 14px;
+        }
+
+        .tip-note {
+          display: block;
+          margin-top: 4px;
+          font-size: 12px;
+          color: #909399;
+        }
+      }
+    }
   }
 }
 

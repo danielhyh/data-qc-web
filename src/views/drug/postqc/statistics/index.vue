@@ -99,11 +99,22 @@
     </el-alert>
 
     <el-alert
-      title="⚠️ 建议退回阈值：二三级医院错误率 ≥ 4%，基层医院错误率 ≥ 40%（仅统计异常数据，不含警告）"
       type="warning"
       :closable="false"
       class="threshold-alert"
-    />
+    >
+      <template #title>
+        <div class="threshold-tip-content">
+          <span class="tip-icon">💡</span>
+          <span class="tip-text">
+            <strong>质控标准：</strong>
+            二级、三级医院异常率达到 <strong class="threshold-value">4%</strong> 时建议退回修改；
+            基层医疗机构异常率达到 <strong class="threshold-value">40%</strong> 时建议退回修改
+            <span class="tip-note">（异常率仅统计标记为"异常"的数据，不包含"警告"提示）</span>
+          </span>
+        </div>
+      </template>
+    </el-alert>
 
     <!-- 批量操作按钮 -->
     <div class="batch-actions mb-16px">
@@ -379,6 +390,12 @@
     v-model="errorDialogVisible"
     :task-id="errorDialogTaskId"
     :dept-name="errorDialogDeptName"
+    :total-records="errorDialogOrgData?.totalRecords || 0"
+    :error-records="errorDialogOrgData?.errorRecords || 0"
+    :warning-records="errorDialogOrgData?.warningRecords || 0"
+    :error-rate="errorDialogOrgData?.errorRate || 0"
+    :suggested-return="errorDialogOrgData?.suggestedReturn || false"
+    :hospital-level="errorDialogOrgData?.hospitalLevel || 0"
   />
 
   <!-- 退回机构市属统计表弹窗 -->
@@ -910,24 +927,11 @@ const getTableTypeName = (tableType: string) => {
 
 // 查看规则机构错误详情
 const viewRuleOrgErrors = async (ruleCode: string, rowData: any) => {
-  const rule = ruleStatistics.value.find((r) => r.ruleCode === ruleCode)
-
-  ruleErrorDialog.value = {
-    visible: true,
-    loading: true,
-    ruleCode,
-    ruleName: rule?.ruleName || '',
-    taskId: rowData.taskId,
-    deptName: rowData.deptName,
-    errorList: [],
-    pagination: {
-      page: 1,
-      pageSize: 20,
-      total: 0
-    }
-  }
-
-  await loadRuleOrgErrorList()
+  // 使用统一的错误详情弹窗
+  errorDialogTaskId.value = rowData.taskId
+  errorDialogDeptName.value = rowData.deptName
+  errorDialogOrgData.value = rowData // 保存完整的机构数据
+  errorDialogVisible.value = true
 }
 
 // 加载规则机构错误列表
@@ -965,6 +969,7 @@ const handleSizeChange = (size: number) => {
 const errorDialogVisible = ref(false)
 const errorDialogTaskId = ref(0)
 const errorDialogDeptName = ref('')
+const errorDialogOrgData = ref<any>(null) // 存储当前机构的完整数据
 
 // 退回机构市属统计弹窗
 const cityStatisticsDialog = ref({
@@ -978,6 +983,7 @@ const cityStatisticsDialog = ref({
 const viewOrgErrors = (row: any) => {
   errorDialogTaskId.value = row.taskId
   errorDialogDeptName.value = row.deptName
+  errorDialogOrgData.value = row // 保存完整的机构数据
   errorDialogVisible.value = true
 }
 
@@ -1533,11 +1539,45 @@ onMounted(() => {
 
 .threshold-alert {
   margin-top: 12px;
-  font-size: 15px;
-  font-weight: 600;
 
   :deep(.el-alert__title) {
-    font-size: 15px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .threshold-tip-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+
+    .tip-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .tip-text {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #606266;
+
+      strong {
+        color: #303133;
+      }
+
+      .threshold-value {
+        color: #e6a23c;
+        font-size: 14px;
+      }
+
+      .tip-note {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        color: #909399;
+      }
+    }
   }
 }
 
