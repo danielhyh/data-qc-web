@@ -22,6 +22,11 @@
             </p>
           </div>
         </div>
+        <div class="header-actions">
+          <el-button type="primary" @click="exportErrors" :icon="Download">
+            导出错误清单
+          </el-button>
+        </div>
       </div>
 
       <!-- 按规则分组的错误列表 -->
@@ -99,6 +104,9 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="exportErrors" :icon="Download">
+          导出错误清单
+        </el-button>
       </div>
     </template>
   </Dialog>
@@ -106,7 +114,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ArrowRight, WarningFilled, CircleCloseFilled } from '@element-plus/icons-vue'
+import { ArrowRight, WarningFilled, CircleCloseFilled, Download } from '@element-plus/icons-vue'
 import { getOrgPostQcErrorsGrouped, type PostQcOrgErrorGroupedVO } from '@/api/drug/postqc'
 import { useMessage } from '@/hooks/web/useMessage'
 
@@ -134,11 +142,26 @@ const expandedRules = ref<number[]>([])
 
 // 表类型映射
 const tableTypeMap: Record<string, string> = {
+  // 标准枚举类型
   USAGE_DEFAULT: '使用数据',
   INBOUND_DEFAULT: '入库数据',
   OUTBOUND_DEFAULT: '出库数据',
   CATALOG_DEFAULT: '目录数据',
-  HOSPITAL_DEFAULT: '机构信息'
+  HOSPITAL_DEFAULT: '机构信息',
+  
+  // 原始表名映射
+  drug_usage: '使用数据',
+  drug_inbound: '入库数据',
+  drug_outbound: '出库数据',
+  drug_catalog: '目录数据',
+  drug_hospital: '机构信息',
+  
+  // 带后缀的表名
+  drug_usage_default: '使用数据',
+  drug_inbound_default: '入库数据',
+  drug_outbound_default: '出库数据',
+  drug_catalog_default: '目录数据',
+  drug_hospital_default: '机构信息'
 }
 
 // 获取表类型中文名（支持逗号分隔的多个表类型）
@@ -181,6 +204,67 @@ const toggleRuleExpand = (index: number) => {
     expandedRules.value.splice(idx, 1)
   } else {
     expandedRules.value.push(index)
+  }
+}
+
+// 导出错误清单
+const exportErrors = () => {
+  if (!errorData.value || !errorData.value.ruleGroups || errorData.value.ruleGroups.length === 0) {
+    message.warning('暂无错误数据可导出')
+    return
+  }
+
+  try {
+    const timestamp = new Date().toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }).replace(/\//g, '-').replace(/:/g, '-')
+
+    // CSV表头（去除Excel行号列）
+    let csvContent = '\uFEFF' // UTF-8 BOM
+    csvContent += '序号,规则编码,规则名称,错误类型,表类型,错误详情\n'
+
+    // 遍历所有规则组
+    let rowIndex = 1
+    errorData.value.ruleGroups.forEach(ruleGroup => {
+      const errorType = ruleGroup.executeAction === 'MARK_ANOMALY' ? '异常（错误）' : '疑似问题（警告）'
+      
+      // 遍历该规则的所有错误详情
+      ruleGroup.errorDetails.forEach(errorDetail => {
+        const row = [
+          rowIndex++,
+          ruleGroup.ruleCode,
+          ruleGroup.ruleName,
+          errorType,
+          getTableTypeName(errorDetail.tableType),
+          `"${(errorDetail.errorMessage || '').replace(/"/g, '""')}"` // 转义双引号
+        ].join(',')
+        
+        csvContent += row + '\n'
+      })
+    })
+
+    // 创建Blob并下载
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `后置质控错误清单_${errorData.value.deptName}_${timestamp}.csv`)
+    link.style.visibility = 'hidden'
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    message.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    message.error('导出失败，请重试')
   }
 }
 
@@ -251,6 +335,10 @@ watch(() => props.modelValue, (val) => {
         }
       }
     }
+  }
+
+  .header-actions {
+    flex-shrink: 0;
   }
 }
 

@@ -2,192 +2,200 @@
 <template>
   <!-- 上报进度步骤条卡片（含返回按钮） -->
   <ContentWrap class="progress-card">
-      <div class="progress-card-header">
-        <div class="header-left">
-          <el-button class="back-button" @click="handleBackToList" text>
-            <el-icon class="back-icon">
-              <ArrowLeft />
-            </el-icon>
-            <span>返回列表</span>
-          </el-button>
-          <div class="header-divider"></div>
-          <h2 class="page-title">数据上报流程</h2>
-          <ElTooltip content="点击已完成的步骤可快速跳转" placement="top">
-            <el-icon class="step-tip-icon"><QuestionFilled /></el-icon>
-          </ElTooltip>
-        </div>
-        <div class="step-info">
-          <span class="step-label">第 {{ currentStep + 1 }} 步</span>
-          <span class="step-divider">/</span>
-          <span class="step-total">共 5 步</span>
-        </div>
+    <div class="progress-card-header">
+      <div class="header-left">
+        <el-button class="back-button" @click="handleBackToList" text>
+          <el-icon class="back-icon">
+            <ArrowLeft />
+          </el-icon>
+          <span>返回列表</span>
+        </el-button>
+        <div class="header-divider"></div>
+        <h2 class="page-title">数据上报流程</h2>
+        <ElTooltip content="点击已完成的步骤可快速跳转" placement="top">
+          <el-icon class="step-tip-icon"><QuestionFilled /></el-icon>
+        </ElTooltip>
       </div>
-      
-      <el-steps :active="currentStep" align-center :process-status="getProcessStatus()">
-        <el-step 
-          title="准备" 
-          @click="changeSteps(0)"
-          :class="{ 'step-clickable': 0 <= currentTask.maxCurrentStep }"
-        >
-          <template #icon>
-            <el-tooltip :content="getStepTooltip(0, '准备阶段', '准备上报文件')" placement="top">
-              <el-icon>
-                <Document />
-              </el-icon>
-            </el-tooltip>
-          </template>
-        </el-step>
-        <el-step
-          title="上传与校验"
-          @click="changeSteps(1)"
-          :class="{ 'step-clickable': 1 <= currentTask.maxCurrentStep }"
-        >
-          <template #icon>
-            <el-tooltip :content="getStepTooltip(1, '上传与校验阶段', '上传数据文件并进行基础校验')" placement="top">
-              <el-icon>
-                <Upload />
-              </el-icon>
-            </el-tooltip>
-          </template>
-        </el-step>
-        <el-step
-          title="前置质控"
-          @click="changeSteps(2)"
-          :class="{ 'step-clickable': 2 <= currentTask.maxCurrentStep }"
-        >
-          <template #icon>
-            <el-tooltip :content="getStepTooltip(2, '前置质控阶段', '数据格式验证')" placement="top">
-              <el-icon>
-                <CircleCheck />
-              </el-icon>
-            </el-tooltip>
-          </template>
-        </el-step>
-        <el-step
-          title="提交上报"
-          @click="changeSteps(3)"
-          :class="{ 'step-clickable': 3 <= currentTask.maxCurrentStep }"
-        >
-          <template #icon>
-            <el-tooltip :content="getStepTooltip(3, '提交上报阶段', '提交至管理端审核')" placement="top">
-              <el-icon>
-                <Promotion />
-              </el-icon>
-            </el-tooltip>
-          </template>
-        </el-step>
-        <el-step
-          title="提交国家平台"
-          @click="changeSteps(4)"
-          :class="{ 'step-clickable': 4 <= currentTask.maxCurrentStep }"
-        >
-          <template #icon>
-            <el-tooltip :content="getStepTooltip(4, '提交国家平台阶段', '提交至国家平台')" placement="top">
-              <el-icon>
-                <Promotion />
-              </el-icon>
-            </el-tooltip>
-          </template>
-        </el-step>
-      </el-steps>
-    </ContentWrap>
-
-    <!-- 主要内容区域 -->
-    <div class="content-card" v-loading="loading && currentStep !== 2">
-      <!-- 步骤0: 准备阶段（使用独立组件） -->
-      <div v-if="currentStep === 0" class="step-content">
-        <PrepareTab
-          :table-definitions="tableDefinitions"
-          :downloading-template="downloadingTemplate"
-          @preview-template="previewTemplate"
-          @download-template="downloadTemplate"
-          @start-upload="startUpload"
-        />
-      </div>
-
-      <!-- 步骤1: 上传与校验（使用独立组件） -->
-      <div v-if="currentStep === 1" class="step-content">
-        <UploadValidateTab
-          :task-id="currentTask.taskId"
-          :file-list="fileList"
-          :step-summary-key="stepSummaryKey"
-          :refreshing-file-list="refreshingFileList"
-          :can-upload-and-q-c="canUploadAndQC"
-          :operation-disabled-reason="operationDisabledReason"
-          :downloading-template="downloadingTemplate"
-          @refresh-summary="loadStepSummary"
-          @summary-close="handleSummaryClose"
-          @refresh-file-list="refreshFileList"
-          @download-error-summary="downloadErrorSummary"
-          @view-file-data="viewFileData"
-          @view-error-detail="viewErrorDetail"
-          @back-to-prepare="currentStep = 0"
-          @start-pre-qc="startPreQC"
-          @download-template="downloadTemplate"
-          @file-uploaded="handleFileUploaded"
-        />
-      </div>
-
-      <!-- 步骤2: 前置质控（使用独立组件） -->
-      <div v-if="currentStep === 2" class="step-content">
-        <PreQcTab
-          :task-id="currentTask.taskId"
-          :step-summary-key="stepSummaryKey"
-          :is-q-c-processing="isQCProcessing"
-          :qc-progress="qcProgress"
-          :qc-current-phase="qcCurrentPhase"
-          :qc-file-progress="qcFileProgress"
-          :pre-q-c-result="preQCResult"
-          @refresh-summary="loadStepSummary"
-          @refresh-file-list="refreshQCFileList"
-          @summary-close="handleSummaryClose"
-          @view-file-data="viewFileData"
-          @view-qc-errors="viewQCErrors"
-          @fix-and-reupload="fixAndReupload"
-          @back-to-upload="backToUpload"
-          @start-submit-report="startSubmitReport"
-          @view-report="openQcReportDialog"
-        />
-      </div>
-
-      <!-- 步骤3: 提交上报（使用独立组件） -->
-      <div v-if="currentStep === 3" class="step-content">
-        <SubmitReportTab
-          :task-id="currentTask.taskId"
-          :step-summary-key="stepSummaryKey"
-          :review-status="reviewStatus"
-          :review-info="reviewInfo"
-          :submit-info="submitInfo"
-          :pre-q-c-result="preQCResult"
-          :refreshing-review="refreshingReview"
-          @refresh-summary="loadStepSummary"
-          @summary-close="handleSummaryClose"
-          @refresh-review-status="refreshReviewStatus"
-          @go-to-national-submit="goToNationalSubmit"
-          @back-to-upload-for-resubmit="backToUploadForResubmit"
-          @view-file-data="viewFileData"
-          @back-to-pre-qc="currentStep = 2"
-          @submit-report="submitReport"
-          @view-post-qc-errors="handleViewPostQcErrors"
-        />
-      </div>
-
-      <!-- 步骤4: 提交国家平台（使用独立组件） -->
-      <div v-if="currentStep === 4" class="step-content">
-        <NationalSubmitTab
-          :current-task="currentTask"
-          :file-count="fileList.length"
-          @back-to-submit-report="currentStep = 3"
-          @submit-to-national-platform="submitToNationalPlatform"
-        />
+      <div class="step-info">
+        <span class="step-label">第 {{ currentStep + 1 }} 步</span>
+        <span class="step-divider">/</span>
+        <span class="step-total">共 5 步</span>
       </div>
     </div>
 
+    <el-steps :active="currentStep" align-center :process-status="getProcessStatus()">
+      <el-step
+        title="准备"
+        @click="changeSteps(0)"
+        :class="{ 'step-clickable': 0 <= currentTask.maxCurrentStep }"
+      >
+        <template #icon>
+          <el-tooltip :content="getStepTooltip(0, '准备阶段', '准备上报文件')" placement="top">
+            <el-icon>
+              <Document />
+            </el-icon>
+          </el-tooltip>
+        </template>
+      </el-step>
+      <el-step
+        title="上传与校验"
+        @click="changeSteps(1)"
+        :class="{ 'step-clickable': 1 <= currentTask.maxCurrentStep }"
+      >
+        <template #icon>
+          <el-tooltip
+            :content="getStepTooltip(1, '上传与校验阶段', '上传数据文件并进行基础校验')"
+            placement="top"
+          >
+            <el-icon>
+              <Upload />
+            </el-icon>
+          </el-tooltip>
+        </template>
+      </el-step>
+      <el-step
+        title="前置质控"
+        @click="changeSteps(2)"
+        :class="{ 'step-clickable': 2 <= currentTask.maxCurrentStep }"
+      >
+        <template #icon>
+          <el-tooltip :content="getStepTooltip(2, '前置质控阶段', '数据格式验证')" placement="top">
+            <el-icon>
+              <CircleCheck />
+            </el-icon>
+          </el-tooltip>
+        </template>
+      </el-step>
+      <el-step
+        title="提交上报"
+        @click="changeSteps(3)"
+        :class="{ 'step-clickable': 3 <= currentTask.maxCurrentStep }"
+      >
+        <template #icon>
+          <el-tooltip
+            :content="getStepTooltip(3, '提交上报阶段', '提交至管理端审核')"
+            placement="top"
+          >
+            <el-icon>
+              <Promotion />
+            </el-icon>
+          </el-tooltip>
+        </template>
+      </el-step>
+      <el-step
+        title="提交国家平台"
+        @click="changeSteps(4)"
+        :class="{ 'step-clickable': 4 <= currentTask.maxCurrentStep }"
+      >
+        <template #icon>
+          <el-tooltip
+            :content="getStepTooltip(4, '提交国家平台阶段', '提交至国家平台')"
+            placement="top"
+          >
+            <el-icon>
+              <Promotion />
+            </el-icon>
+          </el-tooltip>
+        </template>
+      </el-step>
+    </el-steps>
+  </ContentWrap>
+
+  <!-- 主要内容区域 -->
+  <div class="content-card" v-loading="loading && currentStep !== 2">
+    <!-- 步骤0: 准备阶段（使用独立组件） -->
+    <div v-if="currentStep === 0" class="step-content">
+      <PrepareTab
+        :table-definitions="tableDefinitions"
+        :downloading-template="downloadingTemplate"
+        @preview-template="previewTemplate"
+        @download-template="downloadTemplate"
+        @start-upload="startUpload"
+      />
+    </div>
+
+    <!-- 步骤1: 上传与校验（使用独立组件） -->
+    <div v-if="currentStep === 1" class="step-content">
+      <UploadValidateTab
+        :task-id="currentTask.taskId"
+        :file-list="fileList"
+        :step-summary-key="stepSummaryKey"
+        :refreshing-file-list="refreshingFileList"
+        :can-upload-and-q-c="canUploadAndQC"
+        :operation-disabled-reason="operationDisabledReason"
+        :downloading-template="downloadingTemplate"
+        @refresh-summary="loadStepSummary"
+        @summary-close="handleSummaryClose"
+        @refresh-file-list="refreshFileList"
+        @download-error-summary="downloadErrorSummary"
+        @view-file-data="viewFileData"
+        @view-error-detail="viewErrorDetail"
+        @back-to-prepare="currentStep = 0"
+        @start-pre-qc="startPreQC"
+        @download-template="downloadTemplate"
+        @file-uploaded="handleFileUploaded"
+      />
+    </div>
+
+    <!-- 步骤2: 前置质控（使用独立组件） -->
+    <div v-if="currentStep === 2" class="step-content">
+      <PreQcTab
+        :task-id="currentTask.taskId"
+        :step-summary-key="stepSummaryKey"
+        :is-q-c-processing="isQCProcessing"
+        :qc-progress="qcProgress"
+        :qc-current-phase="qcCurrentPhase"
+        :qc-file-progress="qcFileProgress"
+        :pre-q-c-result="preQCResult"
+        @refresh-summary="loadStepSummary"
+        @refresh-file-list="refreshQCFileList"
+        @summary-close="handleSummaryClose"
+        @view-file-data="viewFileData"
+        @view-qc-errors="viewQCErrors"
+        @fix-and-reupload="fixAndReupload"
+        @back-to-upload="backToUpload"
+        @start-submit-report="startSubmitReport"
+        @view-report="openQcReportDialog"
+      />
+    </div>
+
+    <!-- 步骤3: 提交上报（使用独立组件） -->
+    <div v-if="currentStep === 3" class="step-content">
+      <SubmitReportTab
+        :task-id="currentTask.taskId"
+        :step-summary-key="stepSummaryKey"
+        :review-status="reviewStatus"
+        :review-info="reviewInfo"
+        :submit-info="submitInfo"
+        :pre-q-c-result="preQCResult"
+        :refreshing-review="refreshingReview"
+        @refresh-summary="loadStepSummary"
+        @summary-close="handleSummaryClose"
+        @refresh-review-status="refreshReviewStatus"
+        @go-to-national-submit="goToNationalSubmit"
+        @back-to-upload-for-resubmit="backToUploadForResubmit"
+        @view-file-data="viewFileData"
+        @back-to-pre-qc="currentStep = 2"
+        @submit-report="submitReport"
+      />
+    </div>
+
+    <!-- 步骤4: 提交国家平台（使用独立组件） -->
+    <div v-if="currentStep === 4" class="step-content">
+      <NationalSubmitTab
+        :current-task="currentTask"
+        :file-count="fileList.length"
+        @back-to-submit-report="currentStep = 3"
+        @submit-to-national-platform="submitToNationalPlatform"
+      />
+    </div>
+  </div>
+
   <!-- 错误/警告详情对话框 - 分页表格展示 -->
-  <Dialog 
-    v-model="errorDialog.visible" 
-    :title="errorDialog.isWarning ? '质检警告详情' : '质检错误详情'" 
-    width="900px" 
+  <Dialog
+    v-model="errorDialog.visible"
+    :title="errorDialog.isWarning ? '质检警告详情' : '质检错误详情'"
+    width="900px"
     top="5vh"
   >
     <div class="qc-error-details">
@@ -200,8 +208,17 @@
           <div class="header-content">
             <h3 class="header-title">{{ errorDialog.fileName }}</h3>
             <p class="header-subtitle">
-              共检测到 <span :class="errorDialog.isWarning ? 'warning-count-text' : 'error-count-text'">{{ errorDialog.totalErrors }}</span> 个{{ errorDialog.isWarning ? '警告' : '错误' }}
-              <span class="page-info">（当前显示第 {{ (errorDialog.currentPage - 1) * errorDialog.pageSize + 1 }}-{{ Math.min(errorDialog.currentPage * errorDialog.pageSize, errorDialog.totalErrors) }} 条）</span>
+              共检测到
+              <span :class="errorDialog.isWarning ? 'warning-count-text' : 'error-count-text'">{{
+                errorDialog.totalErrors
+              }}</span>
+              个{{ errorDialog.isWarning ? '警告' : '错误' }}
+              <span class="page-info"
+                >（当前显示第 {{ (errorDialog.currentPage - 1) * errorDialog.pageSize + 1 }}-{{
+                  Math.min(errorDialog.currentPage * errorDialog.pageSize, errorDialog.totalErrors)
+                }}
+                条）</span
+              >
             </p>
           </div>
         </div>
@@ -261,13 +278,11 @@
 
       <!-- 提示信息 -->
       <div class="error-tips">
-        <el-alert
-          type="info"
-          :closable="false"
-          show-icon
-        >
+        <el-alert type="info" :closable="false" show-icon>
           <template #default>
-            <div>💡 数据较多时建议导出Excel文件查看。支持切换每页显示数量，可快速跳转到指定页。</div>
+            <div
+              >💡 数据较多时建议导出Excel文件查看。支持切换每页显示数量，可快速跳转到指定页。</div
+            >
           </template>
         </el-alert>
       </div>
@@ -321,14 +336,23 @@
           <div class="header-content">
             <h3 class="header-title">{{ errorDetailDialog.fileName }}</h3>
             <p class="header-subtitle">
-              共 <span class="total-rows">{{ errorDetailDialog.totalRows }}</span> 行数据，
-              发现 <span class="error-count-text">{{ errorDetailDialog.errorCount }}</span> 处错误
-              （影响 <span class="error-rows-text">{{ errorDetailDialog.errorRows }}</span> 行）
+              共 <span class="total-rows">{{ errorDetailDialog.totalRows }}</span> 行数据， 发现
+              <span class="error-count-text">{{ errorDetailDialog.errorCount }}</span> 处错误 （影响
+              <span class="error-rows-text">{{ errorDetailDialog.errorRows }}</span> 行）
             </p>
           </div>
         </div>
         <div class="header-stats">
-          <div class="pass-rate-badge" :class="errorDetailDialog.passRate >= 80 ? 'good' : errorDetailDialog.passRate >= 50 ? 'warning' : 'bad'">
+          <div
+            class="pass-rate-badge"
+            :class="
+              errorDetailDialog.passRate >= 80
+                ? 'good'
+                : errorDetailDialog.passRate >= 50
+                  ? 'warning'
+                  : 'bad'
+            "
+          >
             <span class="rate-value">{{ errorDetailDialog.passRate.toFixed(2) }}%</span>
             <span class="rate-label">通过率</span>
           </div>
@@ -362,7 +386,9 @@
           </el-table-column>
           <el-table-column prop="currentValue" label="当前值" width="150">
             <template #default="{ row }">
-              <span v-if="!row.currentValue || row.currentValue === ''" class="empty-value">(空)</span>
+              <span v-if="!row.currentValue || row.currentValue === ''" class="empty-value"
+                >(空)</span
+              >
               <span v-else class="invalid-value">{{ row.currentValue }}</span>
             </template>
           </el-table-column>
@@ -395,7 +421,10 @@
       <div class="validation-error-tips">
         <el-alert type="info" :closable="false" show-icon>
           <template #default>
-            <div>💡 请根据错误提示修改Excel文件后重新上传。数据较多时建议导出错误清单进行批量修改。</div>
+            <div
+              >💡
+              请根据错误提示修改Excel文件后重新上传。数据较多时建议导出错误清单进行批量修改。</div
+            >
           </template>
         </el-alert>
       </div>
@@ -434,50 +463,40 @@
     :error-type="qcErrorGroupedDialog.errorType"
   />
 
-  <!-- 后置质控错误详情弹窗（机构端） -->
-  <PostQcErrorDetailDialog
-    v-model="postQcErrorDialog.visible"
-    :task-id="postQcErrorDialog.taskId"
-  />
+
 </template>
 
 <script setup lang="ts">
 import request from '@/config/axios'
-import { ref, computed, onMounted, onActivated, onUnmounted } from 'vue'
+import { computed, onActivated, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from '@/hooks/web/useMessage'
 import {
-  Download,
-  Upload,
-  CircleCheck,
-  Warning,
-  Document,
-  Promotion,
   ArrowLeft,
-  WarningFilled,
+  CircleCheck,
   CircleCloseFilled,
+  Document,
+  Download,
+  Promotion,
+  QuestionFilled,
   RefreshRight,
-  InfoFilled,
-  QuestionFilled
+  Upload,
+  Warning,
+  WarningFilled
 } from '@element-plus/icons-vue'
 import { ContentWrap } from '@/components/ContentWrap'
 import ExcelPreviewDialog from '@/views/drug/import/batch/components/ExcelPreviewDialog.vue'
 import QcReportDialog from './components/QcReportDialog.vue'
 import QcErrorGroupedDialog from './components/QcErrorGroupedDialog.vue'
-import PostQcErrorDetailDialog from './components/PostQcErrorDetailDialog.vue'
 import { UploadValidateTab } from './upload-validate'
 import { PrepareTab } from './prepare'
 import { PreQcTab } from './pre-qc'
 import { SubmitReportTab } from './submit-report'
 import { NationalSubmitTab } from './national-submit'
-import {
-  ReportDataApi
-} from '@/api/drug/reportdata'
-import { ImportTemplateApi } from '@/api/drug/task/template'
-import { TemplateFieldApi } from '@/api/drug/task/template'
+import { ReportDataApi } from '@/api/drug/reportdata'
+import { ImportTemplateApi, TemplateFieldApi } from '@/api/drug/task/template'
 import { ReportStepSummaryApi } from '@/api/drug/reportstepsummary'
 import download from '@/utils/download'
-import { getProgressColor } from '@/utils/progressColor'
 import hospitalDetails from './excel-detail/hospital.vue'
 import inboundDetails from './excel-detail/inbound.vue'
 import outboundDetails from './excel-detail/outbound.vue'
@@ -558,7 +577,7 @@ const errorDialog = ref<{
   totalErrors: number
   currentPage: number
   pageSize: number
-  isWarning: boolean  // 是否为警告模式（区分错误和警告）
+  isWarning: boolean // 是否为警告模式（区分错误和警告）
 }>({
   visible: false,
   fileName: '',
@@ -581,12 +600,6 @@ const qcErrorGroupedDialog = ref({
   errorType: 1 // 1=错误，2=警告
 })
 
-// 后置质控错误详情弹窗（机构端）
-const postQcErrorDialog = ref({
-  visible: false,
-  taskId: 0
-})
-
 // ==================== 上传进度跟踪 ====================
 const isUploading = ref(false)
 const uploadingFiles = ref<string[]>([])
@@ -604,15 +617,15 @@ const errorDetailDialog = ref({
   fileName: '',
   fileType: '',
   totalRows: 0,
-  errorRows: 0,      // 错误行数（去重后）
-  errorCount: 0,     // 错误字段总数
+  errorRows: 0, // 错误行数（去重后）
+  errorCount: 0, // 错误字段总数
   passRate: 0,
   requiredErrors: [] as any[],
   typeErrors: [] as any[],
-  allErrors: [] as any[],  // 合并后的所有错误（用于分页）
-  activeTab: 'all' as 'all' | 'required' | 'type',  // 当前筛选标签
-  currentPage: 1,    // 当前页码
-  pageSize: 50,      // 每页条数
+  allErrors: [] as any[], // 合并后的所有错误（用于分页）
+  activeTab: 'all' as 'all' | 'required' | 'type', // 当前筛选标签
+  currentPage: 1, // 当前页码
+  pageSize: 50, // 每页条数
   expandedGroups: ['required', 'type'], // 默认展开的错误组（兼容旧逻辑）
   expandedTypes: [] as string[] // 控制是否展开全部（兼容旧逻辑）
 })
@@ -621,19 +634,21 @@ const errorDetailDialog = ref({
 const isQCProcessing = ref(false)
 const qcProgress = ref(0)
 const qcCurrentPhase = ref('准备开始质控...')
-const qcFileProgress = ref<Array<{
-  name: string
-  progress: number
-  status: 'pending' | 'processing' | 'success'
-}>>([])
+const qcFileProgress = ref<
+  Array<{
+    name: string
+    progress: number
+    status: 'pending' | 'processing' | 'success'
+  }>
+>([])
 
 // 表类型映射为中文名称
 const tableTypeNameMap: Record<string, string> = {
-  'hospital': '医疗机构信息',
-  'catalog': '药品目录',
-  'inbound': '入库数据',
-  'outbound': '出库数据',
-  'usage': '使用数据'
+  hospital: '医疗机构信息',
+  catalog: '药品目录',
+  inbound: '入库数据',
+  outbound: '出库数据',
+  usage: '使用数据'
 }
 
 // 审核状态相关数据
@@ -775,76 +790,88 @@ const getProcessStatus = () => {
 const viewErrorDetail = async (row: any) => {
   try {
     // 从后端获取错误详情
-    const result = await ReportDataApi.getFileValidationErrors(currentTask.value.taskId, row.fileType)
+    const result = await ReportDataApi.getFileValidationErrors(
+      currentTask.value.taskId,
+      row.fileType
+    )
 
     // 错误行数（去重后），用于计算通过率
     const errorRows = result.errorRows || 0
     // 错误字段总数（用于显示详情）
     const errorFieldCount = result.errorCount || 0
-    
+
     // 处理必填错误，添加errorType标识
     const requiredErrors = (result.requiredErrors || []).map((err: any) => ({
       ...err,
       errorType: 'required',
       currentValue: null
     }))
-    
+
     // 处理类型错误，添加errorType标识
     const typeErrors = (result.typeErrors || []).map((err: any) => ({
       ...err,
       errorType: 'type'
     }))
-    
+
     // 处理组织机构代码错误，添加errorType标识
     const orgCodeErrors = (result.orgCodeErrors || []).map((err: any) => ({
       ...err,
       errorType: 'org_code'
     }))
-    
+
     // 处理基础错误（文件级别错误），转换为统一格式
     const basicErrors = (result.basicErrors || []).map((err: any) => ({
-      rowIndex: 0,  // 文件级错误没有行号
+      rowIndex: 0, // 文件级错误没有行号
       fieldName: '文件处理',
       errorMessage: err.message || '文件处理失败',
       errorType: 'basic',
       currentValue: err.fileName || ''
     }))
-    
+
     // 如果有通用错误信息但没有其他错误，创建一个通用错误条目
     let generalErrors: any[] = []
-    if (result.generalErrorMessage && 
-        requiredErrors.length === 0 && 
-        typeErrors.length === 0 && 
-        orgCodeErrors.length === 0 &&
-        basicErrors.length === 0) {
-      generalErrors = [{
-        rowIndex: 0,
-        fieldName: '处理错误',
-        errorMessage: result.generalErrorMessage,
-        errorType: 'general',
-        currentValue: ''
-      }]
+    if (
+      result.generalErrorMessage &&
+      requiredErrors.length === 0 &&
+      typeErrors.length === 0 &&
+      orgCodeErrors.length === 0 &&
+      basicErrors.length === 0
+    ) {
+      generalErrors = [
+        {
+          rowIndex: 0,
+          fieldName: '处理错误',
+          errorMessage: result.generalErrorMessage,
+          errorType: 'general',
+          currentValue: ''
+        }
+      ]
     }
-    
+
     // 合并所有错误并按行号排序
-    const allErrors = [...requiredErrors, ...typeErrors, ...orgCodeErrors, ...basicErrors, ...generalErrors]
-        .sort((a, b) => (a.rowIndex || 0) - (b.rowIndex || 0))
-    
+    const allErrors = [
+      ...requiredErrors,
+      ...typeErrors,
+      ...orgCodeErrors,
+      ...basicErrors,
+      ...generalErrors
+    ].sort((a, b) => (a.rowIndex || 0) - (b.rowIndex || 0))
+
     // 重新计算错误行数（去重，排除文件级错误）
     const errorRowSet = new Set<number>()
-    allErrors.forEach(err => {
+    allErrors.forEach((err) => {
       if (err.rowIndex && err.rowIndex > 0) errorRowSet.add(err.rowIndex)
     })
     const actualErrorRows = errorRowSet.size
     const actualErrorCount = allErrors.length
-    
+
     // 计算通过率：保留两位小数
     let passRate = 0
     if (result.totalRows > 0) {
       const rawRate = ((result.totalRows - actualErrorRows) / result.totalRows) * 100
-      passRate = Math.round(rawRate * 100) / 100  // 保留两位小数
+      passRate = Math.round(rawRate * 100) / 100 // 保留两位小数
     }
-    
+
     errorDetailDialog.value = {
       visible: true,
       fileName: row.standardFileName || row.originalFileName,
@@ -932,14 +959,17 @@ const exportValidationErrors = () => {
 
   try {
     const fileName = errorDetailDialog.value.fileName || '校验错误'
-    const timestamp = new Date().toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }).replace(/\//g, '-').replace(/:/g, '-')
+    const timestamp = new Date()
+      .toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+      .replace(/\//g, '-')
+      .replace(/:/g, '-')
 
     // CSV表头
     let csvContent = '\uFEFF' // UTF-8 BOM
@@ -952,7 +982,10 @@ const exportValidationErrors = () => {
       if (error.errorType === 'required') errorType = '必填为空'
       else if (error.errorType === 'org_code') errorType = '机构代码不匹配'
       const fieldName = (error.fieldName || '').replace(/"/g, '""')
-      const currentValue = error.errorType === 'required' ? '(空)' : (error.currentValue || '-').toString().replace(/"/g, '""')
+      const currentValue =
+        error.errorType === 'required'
+          ? '(空)'
+          : (error.currentValue || '-').toString().replace(/"/g, '""')
       const errorMessage = (error.errorMessage || '').replace(/"/g, '""')
       csvContent += `${index + 1},"第${row}行","${errorType}","${fieldName}","${currentValue}","${errorMessage}"\n`
     })
@@ -983,7 +1016,7 @@ const exportValidationErrors = () => {
 const retryUploadFile = (fileType: string) => {
   errorDetailDialog.value.visible = false
   // 触发文件上传
-  const file = fileList.value.find(f => f.fileType === fileType)
+  const file = fileList.value.find((f) => f.fileType === fileType)
   if (file) {
     // 这里可以触发单个文件重新上传的逻辑
     message.info('请重新选择文件上传')
@@ -1085,7 +1118,7 @@ const startUpload = async () => {
   try {
     loading.value = true
     await updateCurrentStep(1)
-    currentStep.value = 1  // 更新页面显示步骤
+    currentStep.value = 1 // 更新页面显示步骤
     currentTask.value.currentStep = 1
     currentTask.value.maxCurrentStep = 1
   } finally {
@@ -1102,39 +1135,42 @@ let uploadProgressPollingInterval: ReturnType<typeof setInterval> | null = null
 const startUploadProgressPolling = () => {
   // 清除已有轮询
   stopUploadProgressPolling()
-  
+
   uploadProgressPollingInterval = setInterval(async () => {
     try {
       // 调用后端进度接口
       const progressData = await ReportDataApi.getUploadProgress(currentTask.value.taskId)
-      
+
       if (!progressData || Object.keys(progressData).length === 0) {
         return
       }
-      
+
       // 更新各文件进度
       uploadProgress.value = progressData
-      
+
       // 计算总体进度
       const fileProgresses = Object.values(progressData)
       if (fileProgresses.length > 0) {
-        const totalProgress = fileProgresses.reduce((sum: number, p: any) => sum + (p.progress || 0), 0)
+        const totalProgress = fileProgresses.reduce(
+          (sum: number, p: any) => sum + (p.progress || 0),
+          0
+        )
         const avgProgress = Math.round(totalProgress / fileProgresses.length)
         overallProgressData.value = { overallProgress: avgProgress }
-        
+
         // 检查是否所有文件都已完成（成功或失败）
-        const allCompleted = fileProgresses.every((p: any) => 
-          p.status === 'success' || p.status === 'error'
+        const allCompleted = fileProgresses.every(
+          (p: any) => p.status === 'success' || p.status === 'error'
         )
-        
+
         if (allCompleted) {
           // 所有文件处理完成，停止轮询
           stopUploadProgressPolling()
           isUploading.value = false
-          
+
           // 刷新文件列表
           await refreshFileList()
-          
+
           message.success('文件处理完成')
         }
       }
@@ -1208,7 +1244,6 @@ const handleFileChange = async (uploadFile: any) => {
     // 上传请求已发送，开始轮询进度
     message.info('文件已提交，正在处理...')
     startUploadProgressPolling()
-
   } catch (error) {
     console.error('文件上传失败:', error)
     message.error('文件上传失败，请重试')
@@ -1254,12 +1289,11 @@ const handleSingleFileUpload = async (uploadFile: any, row: any) => {
     })
 
     message.info(`${displayName}已提交，正在处理...`)
-    
+
     // 开始轮询进度（如果还没有轮询）
     if (!uploadProgressPollingInterval) {
       startUploadProgressPolling()
     }
-
   } catch (error) {
     console.error('文件上传失败:', error)
     message.error(`${displayName}上传失败，请重试`)
@@ -1290,10 +1324,10 @@ const viewFileData = async (file: any) => {
 
     // 收集所有错误行号
     if (errorInfo.requiredErrors) {
-      errorInfo.requiredErrors.forEach(err => errorRowsSet.add(err.rowIndex))
+      errorInfo.requiredErrors.forEach((err) => errorRowsSet.add(err.rowIndex))
     }
     if (errorInfo.typeErrors) {
-      errorInfo.typeErrors.forEach(err => errorRowsSet.add(err.rowIndex))
+      errorInfo.typeErrors.forEach((err) => errorRowsSet.add(err.rowIndex))
     }
 
     dataViewDialog.value.errorRows = errorRowsSet
@@ -1453,24 +1487,24 @@ const pollQcProgress = async (taskId: number) => {
     const pollInterval = setInterval(async () => {
       try {
         const response = await ReportDataApi.getQcTaskProgress(taskId)
-        
+
         console.log('[质控进度] 轮询响应:', response)
-        
+
         // 处理响应数据：response 可能直接是 data，也可能包含 data 字段
         const progressData = response.data || response
-        
+
         if (progressData) {
           const { progress, message: msg, currentStage } = progressData
-          
+
           // 转换进度为数字（处理 BigDecimal 或字符串类型）
           const progressNum = Number(progress) || 0
-          
+
           console.log('[质控进度] 进度值:', progressNum, '阶段:', currentStage, '消息:', msg)
-          
+
           // 更新进度
           qcProgress.value = Math.round(progressNum)
           qcCurrentPhase.value = msg || '正在执行质控...'
-          
+
           // 检查是否完成或失败
           if (progressNum >= 100 || currentStage === 'PRE_QC_COMPLETED') {
             console.log('[质控进度] 质控完成，停止轮询')
@@ -1504,10 +1538,10 @@ const viewQCErrors = async (row: any) => {
   if (row.qcStatus !== 4 && row.qcStatus !== 3) {
     return
   }
-  
+
   // 根据qcStatus确定errorType: qcStatus=4是错误(errorType=1), qcStatus=3是警告(errorType=2)
   const errorType = row.qcStatus === 3 ? 2 : 1
-  
+
   // 使用新的分组弹框
   qcErrorGroupedDialog.value = {
     visible: true,
@@ -1519,7 +1553,9 @@ const viewQCErrors = async (row: any) => {
 }
 
 const fixAndReupload = (row: any) => {
-  message.info(`请修正 ${row.originalFileName || row.standardFileName || row.fileName} 的错误后重新上传`)
+  message.info(
+    `请修正 ${row.originalFileName || row.standardFileName || row.fileName} 的错误后重新上传`
+  )
   currentStep.value = 1
   currentTask.value.currentStep = 1
 }
@@ -1533,7 +1569,7 @@ const openQcReportDialog = () => {
 const handleViewErrorsFromReport = (tableType: string, errorType: number = 1) => {
   // errorType: 1=错误, 2=警告
   // 找到对应的文件
-  const file = fileList.value.find(f => f.fileType === tableType)
+  const file = fileList.value.find((f) => f.fileType === tableType)
   if (file) {
     // 使用分组弹框显示错误/警告
     qcErrorGroupedDialog.value = {
@@ -1569,14 +1605,17 @@ const exportQCErrors = () => {
   try {
     // 生成CSV格式数据
     const fileName = errorDialog.value.fileName || '质检错误'
-    const timestamp = new Date().toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }).replace(/\//g, '-').replace(/:/g, '-')
+    const timestamp = new Date()
+      .toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+      .replace(/\//g, '-')
+      .replace(/:/g, '-')
 
     // CSV表头
     let csvContent = '\uFEFF' // UTF-8 BOM，确保Excel正确识别中文
@@ -1617,19 +1656,19 @@ const exportQCErrors = () => {
  */
 const getMainMessage = (message: string): string => {
   if (!message) return ''
-  
+
   // 如果消息包含换行符，取第一行作为主消息
   const lines = message.split('\n')
   if (lines.length > 1) {
     return lines[0].trim()
   }
-  
+
   // 如果消息包含"详情："，取详情前的部分
   const detailIndex = message.indexOf('详情：')
   if (detailIndex > 0) {
     return message.substring(0, detailIndex).trim()
   }
-  
+
   return message
 }
 
@@ -1638,19 +1677,19 @@ const getMainMessage = (message: string): string => {
  */
 const getCalculationDetails = (message: string): string => {
   if (!message) return ''
-  
+
   // 如果消息包含换行符，取第二行及之后作为计算详情
   const lines = message.split('\n')
   if (lines.length > 1) {
     return lines.slice(1).join('\n').trim()
   }
-  
+
   // 如果消息包含"详情："，取详情后的部分
   const detailIndex = message.indexOf('详情：')
   if (detailIndex > 0) {
     return message.substring(detailIndex).trim()
   }
-  
+
   return ''
 }
 
@@ -1675,20 +1714,30 @@ const startSubmitReport = async () => {
 }
 
 const submitReport = async () => {
-  let fileIds = selectedFileIds.value
-  if (preQCResult.value.passed) {
+  // 自动获取所有文件ID，不再依赖选择
+  let fileIds: number[] = []
+
+  if (preQCResult.value.passed && preQCResult.value.details?.length > 0) {
+    // 如果有前置质控结果，使用质控结果中的文件
     fileIds = preQCResult.value.details.map((item) => item.id)
+  } else if (fileList.value.length > 0) {
+    // 否则使用文件列表中的所有文件
+    fileIds = fileList.value.map((file) => file.id)
   }
+
   if (!fileIds.length) {
-    message.warning('请选择需要提交的文件')
+    message.warning('当前没有可提交的文件，请先上传文件')
     return
   }
+
   try {
     await message.confirm(
       '数据上报提交后将无法修改，请确认所有信息无误后再提交。提交后系统将自动进行最终审核！'
     )
     loading.value = true
+
     await ReportDataApi.submitReport(currentTask.value.taskId, fileIds)
+
     message.success('数据已成功提交上报，等待后台审核...')
 
     // 重新加载任务信息，获取最新的 reportStatus
@@ -1716,12 +1765,6 @@ const submitReport = async () => {
   }
 }
 
-// 查看后置质控错误详情
-const handleViewPostQcErrors = () => {
-  postQcErrorDialog.value.visible = true
-  postQcErrorDialog.value.taskId = currentTask.value.taskId
-}
-
 // 审核状态相关方法
 
 /** 获取审核状态样式类 */
@@ -1742,9 +1785,12 @@ const getReviewStatusText = () => {
 
 /** 获取审核状态描述 */
 const getReviewStatusDesc = () => {
-  if (reviewStatus.value === 0) return '您的上报数据已提交，管理员正在审核中，请耐心等待...'
+  if (reviewStatus.value === 0) {
+    return '您的上报数据已提交，管理员正在审核中，请耐心等待...'
+  }
   if (reviewStatus.value === 1) return '恭喜！您的上报数据已通过审核，可以提交到国家平台了'
-  if (reviewStatus.value === 2) return '很抱歉，您的上报数据未通过审核，请根据驳回原因修改后重新提交'
+  if (reviewStatus.value === 2)
+    return '很抱歉，您的上报数据未通过审核，请根据驳回原因修改后重新提交'
   return ''
 }
 
@@ -1924,7 +1970,7 @@ const submitToNationalPlatform = async () => {
 
     // 模拟提交过程
     message.info('正在提交到国家平台...')
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // 调用后端接口
     // await ReportDataApi.submitNationalPlatform(currentTask.value.taskId)
@@ -2065,9 +2111,9 @@ const loadFileList = async (taskId: number) => {
       fileFormat: file.fileFormat,
       recordCount: file.recordCount,
       // 新增：分开返回两种错误数
-      validationErrorCount: file.validationErrorCount || 0,  // 上传校验错误
-      qcErrorCount: file.qcErrorCount || 0,                  // 质控错误
-      errorCount: file.errorCount,                           // 兼容旧字段
+      validationErrorCount: file.validationErrorCount || 0, // 上传校验错误
+      qcErrorCount: file.qcErrorCount || 0, // 质控错误
+      errorCount: file.errorCount, // 兼容旧字段
       warningCount: file.warningCount,
       // 上传进度字段
       uploadProgress: file.uploadProgress || 0,
@@ -2085,28 +2131,28 @@ const loadFileList = async (taskId: number) => {
 const handleFileUploaded = async () => {
   // 1. 先刷新文件列表
   await loadFileList(currentTask.value.taskId)
-  
+
   // 2. 检测是否已经进入过质控阶段（maxCurrentStep >= 2）
   if (currentTask.value.maxCurrentStep >= 2) {
     message.warning('检测到文件变更，需要重新进行前置质控')
-    
+
     // 3. 重置质控相关状态
     // 重置步骤进度（只能到上传阶段）
     currentTask.value.maxCurrentStep = 1
     await updateCurrentStep(1)
-    
+
     // 清空质控结果
     preQCResult.value = {
       passed: false,
       details: []
     }
-    
+
     // 重置质控进度
     isQCProcessing.value = false
     qcProgress.value = 0
     qcCurrentPhase.value = '准备开始质控...'
     qcFileProgress.value = []
-    
+
     // 4. 调用后端API重置文件的质控状态（可选，取决于后端是否需要）
     try {
       await ReportDataApi.resetQcStatus(currentTask.value.taskId)
@@ -2146,7 +2192,9 @@ const loadQCResults = async (taskId: number) => {
   try {
     if (currentStep.value >= 2) {
       const files = await ReportDataApi.getFileList(taskId)
-      preQCResult.value.passed = !files.find((item) => [0, 1, 4, null].includes(item.qcStatus ?? null))
+      preQCResult.value.passed = !files.find((item) =>
+        [0, 1, 4, null].includes(item.qcStatus ?? null)
+      )
       // 完全使用后端返回的数据
       preQCResult.value.details = files.map((file: any) => ({
         id: file.id,
@@ -2160,12 +2208,12 @@ const loadQCResults = async (taskId: number) => {
         fileSize: file.fileSize,
         fileFormat: file.fileFormat,
         recordCount: file.recordCount,
-        qcErrorCount: file.qcErrorCount,  // 行级质控错误数
-        statErrorCount: file.statErrorCount,  // 统计级错误数（整体检查）
-        validationErrorCount: file.validationErrorCount,  // 上传校验错误数
+        qcErrorCount: file.qcErrorCount, // 行级质控错误数
+        statErrorCount: file.statErrorCount, // 统计级错误数（整体检查）
+        validationErrorCount: file.validationErrorCount, // 上传校验错误数
         errorCount: file.errorCount,
-        warningCount: file.warningCount,  // 行级警告数
-        statWarningCount: file.statWarningCount  // 统计级警告数
+        warningCount: file.warningCount, // 行级警告数
+        statWarningCount: file.statWarningCount // 统计级警告数
       }))
     }
   } catch (error) {
@@ -2298,7 +2346,7 @@ const handleSummaryClose = async () => {
   color: #909399;
   margin-left: 8px;
   cursor: help;
-  
+
   &:hover {
     color: #409eff;
   }
@@ -2376,7 +2424,9 @@ const handleSummaryClose = async () => {
 /* 可点击步骤的 hover 效果 - 增强版 */
 :deep(.step-clickable:hover .el-step__icon) {
   transform: scale(1.2) translateY(-3px);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4), 0 2px 6px rgba(64, 158, 255, 0.2);
+  box-shadow:
+    0 4px 12px rgba(64, 158, 255, 0.4),
+    0 2px 6px rgba(64, 158, 255, 0.2);
   filter: brightness(1.1);
 }
 
@@ -2460,7 +2510,8 @@ const handleSummaryClose = async () => {
 
 /* 动画效果 */
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1.2) translateY(-3px);
   }
   50% {
@@ -2469,7 +2520,8 @@ const handleSummaryClose = async () => {
 }
 
 @keyframes breathe {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.2);
   }
   50% {
@@ -2478,7 +2530,8 @@ const handleSummaryClose = async () => {
 }
 
 @keyframes blink {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -2880,7 +2933,8 @@ const handleSummaryClose = async () => {
 }
 
 @keyframes pulse-count {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -3751,7 +3805,8 @@ const handleSummaryClose = async () => {
 }
 
 @keyframes pulse-message {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
@@ -3819,8 +3874,12 @@ const handleSummaryClose = async () => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 上传进度详情区域（拖拽区下方） */
@@ -4128,7 +4187,8 @@ const handleSummaryClose = async () => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -4392,9 +4452,15 @@ const handleSummaryClose = async () => {
   font-weight: 700;
 }
 
-.pass-rate-badge.good .rate-value { color: #047857; }
-.pass-rate-badge.warning .rate-value { color: #d97706; }
-.pass-rate-badge.bad .rate-value { color: #dc2626; }
+.pass-rate-badge.good .rate-value {
+  color: #047857;
+}
+.pass-rate-badge.warning .rate-value {
+  color: #d97706;
+}
+.pass-rate-badge.bad .rate-value {
+  color: #dc2626;
+}
 
 .pass-rate-badge .rate-label {
   font-size: 12px;
@@ -4499,7 +4565,8 @@ const handleSummaryClose = async () => {
   border-radius: 0 0 8px 8px;
 }
 
-.validation-error-pagination :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
+.validation-error-pagination
+  :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
@@ -4507,4 +4574,5 @@ const handleSummaryClose = async () => {
 .validation-error-tips {
   margin-top: 16px;
 }
+
 </style>

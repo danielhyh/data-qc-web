@@ -209,6 +209,18 @@
               </template>
 
               <!-- 查看类按钮（任务结束与否都可以查看） -->
+              <!-- 查看后置质控详情按钮（任务状态为后置审核中） -->
+              <el-button
+                v-if="scope.row.status === 3"
+                type="warning"
+                size="small"
+                plain
+                @click="handleViewPostQcErrors(scope)"
+              >
+                <Icon icon="ep:warning" class="mr-1" />
+                后置质控详情
+              </el-button>
+              
               <el-button
                 v-if="scope.row.reportStatus !== 0"
                 type="info"
@@ -252,6 +264,13 @@
 
     <!-- 日志弹窗 -->
     <ReportLogDialog ref="reportLogRef" />
+
+    <!-- 后置质控错误详情弹窗 -->
+    <PostQcErrorGroupedDialog
+      v-model="postQcErrorDialog.visible"
+      :task-id="postQcErrorDialog.taskId"
+      :dept-name="postQcErrorDialog.deptName"
+    />
   </div>
 </template>
 
@@ -262,6 +281,8 @@ import { ImportTaskVO } from '@/api/drug/batch'
 import { ReportDataApi } from '@/api/drug/reportdata'
 import { ImportTemplateApi } from '@/api/drug/task/template'
 import ReportLogDialog from '../../import/task/ReportLogDialog.vue'
+import PostQcErrorGroupedDialog from '../../postqc/components/PostQcErrorGroupedDialog.vue'
+import { getOrgPostQcErrorsGrouped } from '@/api/drug/postqc'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProgressColor } from '@/utils/progressColor'
 import download from '@/utils/download'
@@ -276,6 +297,13 @@ const queryFormRef = ref() // 搜索的表单
 const reportLogRef = ref() // 日志弹窗ref
 const list = ref<ImportTaskVO[]>([]) // 列表的数据
 const yearOptions = ref([]) // 年份列表
+
+// 后置质控错误详情弹窗
+const postQcErrorDialog = ref({
+  visible: false,
+  taskId: 0,
+  deptName: ''
+})
 const total = ref(0) // 列表的总页数
 const queryParams = reactive({
   pageNo: 1,
@@ -465,6 +493,30 @@ const handleCheckStatus = ({ row }) => {
 const handleReportLogs = ({ row }) => {
   // 打开日志弹窗
   reportLogRef.value.open(row.taskId, row.taskName)
+}
+
+/** 查看后置质控错误详情 */
+const handleViewPostQcErrors = async ({ row }) => {
+  try {
+    // 先查询是否有错误数据
+    const errorData = await getOrgPostQcErrorsGrouped(row.taskId)
+    
+    // 如果没有错误数据，说明质控通过
+    if (!errorData || !errorData.ruleGroups || errorData.ruleGroups.length === 0) {
+      ElMessage.success('恭喜！后置质控全部通过，无错误记录')
+      return
+    }
+    
+    // 有错误数据，打开弹窗
+    postQcErrorDialog.value = {
+      visible: true,
+      taskId: row.taskId,
+      deptName: row.hospitalName || row.taskName
+    }
+  } catch (error) {
+    console.error('查询后置质控错误失败:', error)
+    ElMessage.error('查询后置质控错误失败')
+  }
 }
 
 /** 初始化 **/

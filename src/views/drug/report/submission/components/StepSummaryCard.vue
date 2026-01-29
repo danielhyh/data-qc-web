@@ -27,7 +27,7 @@
           <span>{{ stepName }}总览</span>
           <el-tag :type="statusTagType" size="small">{{ statusText }}</el-tag>
           <!-- 质控步骤显示查看报告按钮 -->
-          <el-button
+          <!-- <el-button
             v-if="stepType === 2"
             type="primary"
             size="default"
@@ -36,7 +36,7 @@
           >
             <el-icon><Document /></el-icon>
             查看报告
-          </el-button>
+          </el-button> -->
         </div>
       </template>
 

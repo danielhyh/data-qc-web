@@ -191,7 +191,7 @@ export const batchReturnSuggestedOrgs = (reportTaskId: number, extraNote?: strin
   })
 }
 
-// 批量退回所有错误机构（包含异常和警告）
+// 批量退回所有异常机构（仅异常，不含警告）
 export const batchReturnAllErrorOrgs = (reportTaskId: number, extraNote?: string) => {
   return request.post<BatchReturnResultVO>({
     url: '/admin/drug/post-qc/batch-return-all-errors',
@@ -278,9 +278,33 @@ export const getReturnCityStatistics = (reportTaskId: number) => {
 }
 
 // 导出规则机构列表Excel
-export const exportRuleOrgList = (reportTaskId: number, ruleCode: string) => {
+export const exportRuleOrgList = (reportTaskId: number, ruleCode: string): Promise<any> => {
   return request.download({
     url: '/admin/drug/post-qc/export-rule-org-list',
     params: { reportTaskId, ruleCode }
+  })
+}
+
+// 导出异常机构汇总列表Excel（包含市和区县）
+export const exportErrorOrgList = (reportTaskId: number): Promise<any> => {
+  return request.download({
+    url: '/admin/drug/post-qc/export-error-org-list',
+    params: { reportTaskId }
+  })
+}
+
+// 获取建议退回机构市属统计表
+export const getSuggestedReturnCityStatistics = (reportTaskId: number) => {
+  return request.get<PostQcReturnCityStatisticsVO>({ 
+    url: '/admin/drug/post-qc/suggested-return-city-statistics', 
+    params: { reportTaskId } 
+  })
+}
+
+// 导出所有建议退回机构列表Excel（包含市和区县）
+export const exportSuggestedReturnOrgList = (reportTaskId: number): Promise<any> => {
+  return request.download({
+    url: '/admin/drug/post-qc/export-suggested-return-org-list',
+    params: { reportTaskId }
   })
 }

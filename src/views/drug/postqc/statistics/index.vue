@@ -49,7 +49,20 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ totalErrorOrgs }}</div>
-              <div class="stat-label">错误机构数（去重）</div>
+              <div class="stat-label">异常+警告机构数（去重）</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="4">
+        <el-card shadow="hover" class="stat-card anomaly-only">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <Icon icon="ep:circle-close" />
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ totalAnomalyOrgs }}</div>
+              <div class="stat-label">仅异常机构数（去重）</div>
             </div>
           </div>
         </el-card>
@@ -86,7 +99,7 @@
     </el-alert>
 
     <el-alert
-      title="⚠️ 建议退回阈值：二三级医院错误率 ≥ 4%，基层医院错误率 ≥ 50%（仅统计异常数据，不含警告）"
+      title="⚠️ 建议退回阈值：二三级医院错误率 ≥ 4%，基层医院错误率 ≥ 40%（仅统计异常数据，不含警告）"
       type="warning"
       :closable="false"
       class="threshold-alert"
@@ -101,25 +114,41 @@
         @click="handleBatchReturnSuggested"
       >
         <Icon icon="ep:close" class="mr-1" />
-        批量退回所有建议退回的机构 ({{ totalSuggestedReturnOrgs }})
+        批量退回（建议退回+POST_QC_014+POST_QC_015）
       </el-button>
       <el-button
         type="danger"
         plain
-        :disabled="totalErrorOrgs === 0"
+        :disabled="totalAnomalyOrgs === 0"
         :loading="batchReturnAllLoading"
         @click="handleBatchReturnAllErrors"
       >
         <Icon icon="ep:warning" class="mr-1" />
-        批量退回所有错误机构（包含警告） ({{ totalErrorOrgs }})
+        批量退回所有错误机构(仅异常) ({{ totalAnomalyOrgs }})
       </el-button>
       <el-button
         type="primary"
-        :disabled="totalErrorOrgs === 0"
+        :disabled="totalAnomalyOrgs === 0"
         @click="handleViewCityStatistics"
       >
         <Icon icon="ep:data-analysis" class="mr-1" />
-        查看错误机构市属统计表
+        查看错误机构市属统计表(仅异常) ({{ totalAnomalyOrgs }})
+      </el-button>
+      <el-button
+        type="success"
+        :disabled="totalSuggestedReturnOrgs === 0"
+        @click="handleViewSuggestedReturnCityStatistics"
+      >
+        <Icon icon="ep:data-analysis" class="mr-1" />
+        查看建议退回机构市属统计表 ({{ totalSuggestedReturnOrgs }})
+      </el-button>
+      <el-button
+        type="warning"
+        :disabled="totalSuggestedReturnOrgs === 0"
+        @click="handleExportSuggestedReturnOrgList"
+      >
+        <Icon icon="ep:download" class="mr-1" />
+        导出所有建议退回机构列表 ({{ totalSuggestedReturnOrgs }})
       </el-button>
     </div>
 
@@ -149,19 +178,18 @@
                 </el-tag>
               </div>
               <div class="rule-stats">
-                <!-- 区分显示异常和警告 -->
-                <el-tag v-if="rule.totalAnomalyRecords > 0" type="danger" size="small">
+                <!-- 根据规则类型显示对应的错误数量 -->
+                <el-tag v-if="rule.executeAction === 'MARK_ANOMALY'" type="danger" size="small">
                   异常: {{ rule.totalAnomalyRecords }}
                 </el-tag>
-                <el-tag v-if="rule.totalWarningRecords > 0" type="warning" size="small">
+                <el-tag v-else-if="rule.executeAction === 'WARNING'" type="warning" size="small">
                   警告: {{ rule.totalWarningRecords }}
                 </el-tag>
-                <el-tag type="info" size="small"> 总计: {{ rule.totalErrorRecords }} </el-tag>
                 <!-- 导出按钮 -->
                 <el-button
                   type="success"
                   size="small"
-                  :loading="exportLoading[rule.ruleCode]"
+                  :loading="ruleExportLoading[rule.ruleCode]"
                   @click.stop="handleExportRuleOrgList(rule)"
                 >
                   <Icon icon="ep:download" class="mr-1" />
@@ -264,8 +292,31 @@
               <el-option label="基层医院" :value="1" />
             </el-select>
           </el-form-item>
+          <el-form-item label="是否建议退回">
+            <el-select
+              v-model="orgFilter.suggestedReturn"
+              placeholder="请选择"
+              clearable
+              style="width: 160px"
+              @change="handleOrgFilterChange"
+            >
+              <el-option label="是" :value="true" />
+              <el-option label="否" :value="false" />
+            </el-select>
+          </el-form-item>
           <el-form-item>
             <el-button @click="handleResetOrgFilter">重置</el-button>
+          </el-form-item>
+          <el-form-item>
+            <el-button
+              type="primary"
+              :icon="Download"
+              :loading="exportLoading"
+              :disabled="filteredOrgSummary.length === 0"
+              @click="handleExportErrorOrgList"
+            >
+              导出异常机构列表
+            </el-button>
           </el-form-item>
         </el-form>
       </div>
@@ -333,7 +384,7 @@
   <!-- 退回机构市属统计表弹窗 -->
   <el-dialog
     v-model="cityStatisticsDialog.visible"
-    title="错误机构市属统计表（异常+警告）"
+    title="错误机构市属统计表（仅异常）"
     width="800px"
     destroy-on-close
   >
@@ -349,19 +400,19 @@
         <el-table-column prop="primaryCount" label="基层" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.primaryCount > 0" type="success">{{ row.primaryCount }}</el-tag>
-            <span v-else style="color: #909399;">-</span>
+            <span v-else style="color: #909399">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="secondaryCount" label="二级" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.secondaryCount > 0" type="warning">{{ row.secondaryCount }}</el-tag>
-            <span v-else style="color: #909399;">-</span>
+            <span v-else style="color: #909399">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="tertiaryCount" label="三级" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.tertiaryCount > 0" type="danger">{{ row.tertiaryCount }}</el-tag>
-            <span v-else style="color: #909399;">-</span>
+            <span v-else style="color: #909399">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="totalCount" label="总计" width="120" align="center">
@@ -385,21 +436,24 @@
 <script setup lang="tsx">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Warning, Search } from '@element-plus/icons-vue'
-import { Column, TableV2FixedDir, ElMessageBox } from 'element-plus'
+import { Download, Search, Warning } from '@element-plus/icons-vue'
+import { Column, ElMessageBox, TableV2FixedDir } from 'element-plus'
 import { ContentWrap } from '@/components/ContentWrap'
 import {
+  batchReturnAllErrorOrgs,
+  batchReturnSuggestedOrgs,
+  type CityStatistics,
+  exportErrorOrgList,
+  exportRuleOrgList,
+  exportSuggestedReturnOrgList,
   getOrgSummary,
+  getReturnCityStatistics,
   getRuleErrorDetail,
   getRuleList,
   getRuleOrgErrorList,
+  getSuggestedReturnCityStatistics,
   type PostQcRuleStatistics,
-  returnOrg,
-  batchReturnSuggestedOrgs,
-  batchReturnAllErrorOrgs,
-  getReturnCityStatistics,
-  type CityStatistics,
-  exportRuleOrgList
+  returnOrg
 } from '@/api/drug/postqc'
 import { useMessage } from '@/hooks/web/useMessage'
 import PostQcErrorGroupedDialog from '../components/PostQcErrorGroupedDialog.vue'
@@ -413,7 +467,8 @@ const message = useMessage()
 const loading = ref(false)
 const batchReturnLoading = ref(false)
 const batchReturnAllLoading = ref(false)
-const exportLoading = ref<Record<string, boolean>>({}) // 导出加载状态
+const exportLoading = ref(false) // 导出异常机构列表加载状态
+const ruleExportLoading = ref<Record<string, boolean>>({}) // 规则导出加载状态
 const ruleStatistics = ref<PostQcRuleStatistics[]>([])
 const activeRules = ref<string[]>([]) // 展开的规则
 const ruleErrorDetails = ref<Record<string, any>>({}) // 规则错误详情缓存
@@ -424,11 +479,14 @@ const orgSummaryLoading = ref(false)
 // 机构筛选条件
 const orgFilter = ref({
   deptName: '',
-  hospitalLevel: undefined as number | undefined
+  hospitalLevel: undefined as number | undefined,
+  suggestedReturn: undefined as boolean | undefined
 })
 
 // 规则详情机构筛选条件（每个规则独立的筛选条件）
-const ruleOrgFilters = ref<Record<string, { deptName: string; hospitalLevel: number | undefined }>>({})
+const ruleOrgFilters = ref<Record<string, { deptName: string; hospitalLevel: number | undefined }>>(
+  {}
+)
 
 // 获取规则的筛选条件
 const getRuleOrgFilter = (ruleCode: string) => {
@@ -474,10 +532,21 @@ const totalWarningRecords = computed(() => {
     .reduce((sum, r) => sum + (r.totalWarningRecords || 0), 0)
 })
 
-// 总错误机构数（去重）
+// 总错误机构数（去重）- 包含异常和警告
 const totalErrorOrgs = computed(() => {
   const orgSet = new Set<number>()
   orgSummary.value.forEach((org) => orgSet.add(org.taskId))
+  return orgSet.size
+})
+
+// 总异常机构数（去重）- 仅包含异常数据的机构
+const totalAnomalyOrgs = computed(() => {
+  const orgSet = new Set<number>()
+  orgSummary.value.forEach((org) => {
+    if (org.anomalyRecords && org.anomalyRecords > 0) {
+      orgSet.add(org.taskId)
+    }
+  })
   return orgSet.size
 })
 
@@ -499,6 +568,11 @@ const filteredOrgSummary = computed(() => {
   // 按机构等级筛选
   if (orgFilter.value.hospitalLevel !== undefined) {
     result = result.filter((org) => org.hospitalLevel === orgFilter.value.hospitalLevel)
+  }
+
+  // 按是否建议退回筛选
+  if (orgFilter.value.suggestedReturn !== undefined) {
+    result = result.filter((org) => org.suggestedReturn === orgFilter.value.suggestedReturn)
   }
 
   return result
@@ -534,6 +608,7 @@ const handleOrgFilterChange = () => {
 const handleResetOrgFilter = () => {
   orgFilter.value.deptName = ''
   orgFilter.value.hospitalLevel = undefined
+  orgFilter.value.suggestedReturn = undefined
 }
 
 // 重置规则筛选条件
@@ -644,23 +719,6 @@ const getErrorDataColumns = (ruleCode: string, executeAction: string): Column[] 
     title: '总记录数',
     width: 100,
     align: 'center'
-  },
-  {
-    dataKey: 'errorRate',
-    title: '错误率',
-    width: 100,
-    align: 'center',
-    cellRenderer: ({ rowData }: any) => {
-      // 错误率只计算异常数，不包括警告数
-      const anomalyRate = rowData.totalRecords > 0 
-        ? ((rowData.anomalyRecords || 0) / rowData.totalRecords) * 100 
-        : 0
-      return (
-        <el-tag type={getErrorRateType(anomalyRate, rowData.hospitalLevel)}>
-          {anomalyRate.toFixed(2)}%
-        </el-tag>
-      )
-    }
   },
   {
     dataKey: 'actions',
@@ -813,24 +871,39 @@ const loadRuleErrorDetail = async (ruleCode: string) => {
 
 // 表类型映射
 const tableTypeMap: Record<string, string> = {
+  // 标准枚举类型
   USAGE_DEFAULT: '使用数据',
   INBOUND_DEFAULT: '入库数据',
   OUTBOUND_DEFAULT: '出库数据',
   CATALOG_DEFAULT: '目录数据',
-  HOSPITAL_DEFAULT: '机构信息'
+  HOSPITAL_DEFAULT: '机构信息',
+  
+  // 原始表名映射
+  drug_usage: '使用数据',
+  drug_inbound: '入库数据',
+  drug_outbound: '出库数据',
+  drug_catalog: '目录数据',
+  drug_hospital: '机构信息',
+  
+  // 带后缀的表名
+  drug_usage_default: '使用数据',
+  drug_inbound_default: '入库数据',
+  drug_outbound_default: '出库数据',
+  drug_catalog_default: '目录数据',
+  drug_hospital_default: '机构信息'
 }
 
 // 获取表类型中文名（支持逗号分隔的多个表类型）
 const getTableTypeName = (tableType: string) => {
   if (!tableType) return '未知'
-  
+
   // 如果包含逗号，说明是多个表类型
   if (tableType.includes(',')) {
-    const types = tableType.split(',').map(t => t.trim())
-    const names = types.map(t => tableTypeMap[t] || t)
+    const types = tableType.split(',').map((t) => t.trim())
+    const names = types.map((t) => tableTypeMap[t] || t)
     return names.join('、')
   }
-  
+
   // 单个表类型
   return tableTypeMap[tableType] || tableType
 }
@@ -912,8 +985,8 @@ const viewOrgErrors = (row: any) => {
 const handleReturnOrg = async (row: any) => {
   try {
     const { value: reason } = await ElMessageBox.prompt(
-      '请输入退回原因（可选）', 
-      `退回机构【${row.deptName}】`, 
+      '请输入退回原因（可选）',
+      `退回机构【${row.deptName}】`,
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -937,11 +1010,16 @@ const handleReturnOrg = async (row: any) => {
 // 批量退回所有建议退回的机构
 const handleBatchReturnSuggested = async () => {
   const count = totalSuggestedReturnOrgs.value
-  
+
   try {
     // 1. 确认操作
     await ElMessageBox.confirm(
-      `确定要批量退回 ${count} 个建议退回的机构吗？\n系统将自动生成退回原因。`,
+      `确定要批量退回所有符合条件的机构吗？\n\n` +
+        `退回范围：\n` +
+        `1. 建议退回机构（错误率超过阈值）\n` +
+        `2. POST_QC_014规则错误机构\n` +
+        `3. POST_QC_015规则错误机构\n\n` +
+        `去重后预计退回约 ${count} 个机构`,
       '批量退回确认',
       {
         confirmButtonText: '继续',
@@ -949,7 +1027,7 @@ const handleBatchReturnSuggested = async () => {
         type: 'warning'
       }
     )
-    
+
     // 2. 可选：允许管理员添加补充说明
     const { value: extraNote } = await ElMessageBox.prompt(
       '您可以添加补充说明（可选）',
@@ -961,25 +1039,24 @@ const handleBatchReturnSuggested = async () => {
         inputPlaceholder: '例如：请在3个工作日内完成修正并重新上报...'
       }
     ).catch(() => ({ value: '' })) // 如果取消，使用空字符串
-    
+
     // 3. 执行批量退回
     batchReturnLoading.value = true
     const reportId = Number(route.query.reportTaskId)
     const result = await batchReturnSuggestedOrgs(reportId, extraNote || undefined)
-    
+
     // 4. 显示结果
     if (result.failedCount > 0) {
       message.warning(
         `批量退回完成：成功 ${result.successCount} 个，失败 ${result.failedCount} 个\n` +
-        `失败机构：${result.failedOrgs.join('、')}`
+          `失败机构：${result.failedOrgs.join('、')}`
       )
     } else {
       message.success(`批量退回成功：共 ${result.successCount} 个机构`)
     }
-    
+
     // 5. 刷新数据
     await loadOrgSummary()
-    
   } catch (error) {
     if (error !== 'cancel') {
       console.error('批量退回失败:', error)
@@ -990,22 +1067,22 @@ const handleBatchReturnSuggested = async () => {
   }
 }
 
-// 批量退回所有错误机构（包含异常和警告）
+// 批量退回所有错误机构（仅异常）
 const handleBatchReturnAllErrors = async () => {
-  const count = totalErrorOrgs.value
-  
+  const count = totalAnomalyOrgs.value
+
   try {
     // 1. 确认操作
     await ElMessageBox.confirm(
-      `确定要批量退回所有 ${count} 个错误机构吗？\n包含异常数据和警告数据的机构都将被退回。`,
-      '批量退回所有错误机构',
+      `确定要批量退回所有 ${count} 个异常机构吗？\n仅退回包含异常数据的机构，不包含仅有警告的机构。`,
+      '批量退回所有异常机构',
       {
         confirmButtonText: '继续',
         cancelButtonText: '取消',
         type: 'warning'
       }
     )
-    
+
     // 2. 可选：允许管理员添加补充说明
     const { value: extraNote } = await ElMessageBox.prompt(
       '您可以添加补充说明（可选）',
@@ -1014,28 +1091,27 @@ const handleBatchReturnAllErrors = async () => {
         confirmButtonText: '确定退回',
         cancelButtonText: '取消',
         inputType: 'textarea',
-        inputPlaceholder: '例如：请核实并修正所有数据问题后重新上报...'
+        inputPlaceholder: '例如：请核实并修正所有异常数据后重新上报...'
       }
     ).catch(() => ({ value: '' })) // 如果取消，使用空字符串
-    
+
     // 3. 执行批量退回
     batchReturnAllLoading.value = true
     const reportId = Number(route.query.reportTaskId)
     const result = await batchReturnAllErrorOrgs(reportId, extraNote || undefined)
-    
+
     // 4. 显示结果
     if (result.failedCount > 0) {
       message.warning(
         `批量退回完成：成功 ${result.successCount} 个，失败 ${result.failedCount} 个\n` +
-        `失败机构：${result.failedOrgs.join('、')}`
+          `失败机构：${result.failedOrgs.join('、')}`
       )
     } else {
       message.success(`批量退回成功：共 ${result.successCount} 个机构`)
     }
-    
+
     // 5. 刷新数据
     await loadOrgSummary()
-    
   } catch (error) {
     if (error !== 'cancel') {
       console.error('批量退回失败:', error)
@@ -1084,12 +1160,14 @@ const loadOrgSummary = async () => {
   try {
     const result = await getOrgSummary(reportId)
     orgSummary.value = result.orgList || []
-    
+
     // 调试：打印前3个机构的等级信息
     if (orgSummary.value.length > 0) {
       console.log('机构等级调试信息（前3个）:')
       orgSummary.value.slice(0, 3).forEach((org, index) => {
-        console.log(`机构${index + 1}: ${org.deptName}, hospitalLevel=${org.hospitalLevel}, hospitalLevelName=${org.hospitalLevelName}`)
+        console.log(
+          `机构${index + 1}: ${org.deptName}, hospitalLevel=${org.hospitalLevel}, hospitalLevelName=${org.hospitalLevelName}`
+        )
       })
     }
   } catch (error) {
@@ -1146,15 +1224,130 @@ const handleExportRuleOrgList = async (rule: PostQcRuleStatistics) => {
     return
   }
 
-  exportLoading.value[rule.ruleCode] = true
+  ruleExportLoading.value[rule.ruleCode] = true
   try {
-    await exportRuleOrgList(reportId, rule.ruleCode)
+    const data = await exportRuleOrgList(reportId, rule.ruleCode)
+
+    // 从响应中提取文件名（如果后端设置了Content-Disposition）
+    const fileName = `${rule.ruleName}_机构汇总列表.xlsx`
+
+    // 使用download工具触发文件下载
+    const blob = new Blob([data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.click()
+    window.URL.revokeObjectURL(url)
+
     message.success('导出成功')
   } catch (error) {
     console.error('导出失败:', error)
     message.error('导出失败，请重试')
   } finally {
-    exportLoading.value[rule.ruleCode] = false
+    ruleExportLoading.value[rule.ruleCode] = false
+  }
+}
+
+// 导出异常机构汇总列表
+const handleExportErrorOrgList = async () => {
+  const reportId = Number(route.query.reportTaskId)
+  if (!reportId) {
+    message.error('缺少报送任务ID')
+    return
+  }
+
+  if (filteredOrgSummary.value.length === 0) {
+    message.warning('暂无可导出的数据')
+    return
+  }
+
+  exportLoading.value = true
+  try {
+    const data = await exportErrorOrgList(reportId)
+
+    const fileName = '异常机构汇总列表.xlsx'
+
+    const blob = new Blob([data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    message.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    message.error('导出失败，请重试')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+// 查看建议退回机构市属统计表
+const handleViewSuggestedReturnCityStatistics = async () => {
+  const reportId = Number(route.query.reportTaskId)
+  if (!reportId) {
+    message.error('缺少报送任务ID')
+    return
+  }
+
+  cityStatisticsDialog.value.visible = true
+  cityStatisticsDialog.value.loading = true
+
+  try {
+    const result = await getSuggestedReturnCityStatistics(reportId)
+    cityStatisticsDialog.value.data = result.cityStatisticsList || []
+    cityStatisticsDialog.value.totalStatistics = result.totalStatistics
+  } catch (error) {
+    console.error('加载建议退回机构市属统计失败:', error)
+    message.error('加载建议退回机构市属统计失败')
+  } finally {
+    cityStatisticsDialog.value.loading = false
+  }
+}
+
+// 导出所有建议退回机构列表
+const handleExportSuggestedReturnOrgList = async () => {
+  const reportId = Number(route.query.reportTaskId)
+  if (!reportId) {
+    message.error('缺少报送任务ID')
+    return
+  }
+
+  // 检查是否有建议退回的机构
+  if (totalSuggestedReturnOrgs.value === 0) {
+    message.warning('暂无建议退回的机构')
+    return
+  }
+
+  exportLoading.value = true
+  try {
+    const data = await exportSuggestedReturnOrgList(reportId)
+
+    const fileName = '建议退回机构列表.xlsx'
+
+    const blob = new Blob([data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    message.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    message.error('导出失败，请重试')
+  } finally {
+    exportLoading.value = false
   }
 }
 
@@ -1169,41 +1362,43 @@ const handleExportCityStatistics = () => {
   }
 
   // 构建Excel数据
-  const excelData = data.map(item => ({
-    '所属市': item.cityName,
-    '基层': item.primaryCount || 0,
-    '二级': item.secondaryCount || 0,
-    '三级': item.tertiaryCount || 0,
-    '总计': item.totalCount || 0
+  const excelData = data.map((item) => ({
+    所属市: item.cityName,
+    基层: item.primaryCount || 0,
+    二级: item.secondaryCount || 0,
+    三级: item.tertiaryCount || 0,
+    总计: item.totalCount || 0
   }))
 
   // 添加合计行
   if (total) {
     excelData.push({
-      '所属市': '总计',
-      '基层': total.primaryCount || 0,
-      '二级': total.secondaryCount || 0,
-      '三级': total.tertiaryCount || 0,
-      '总计': total.totalCount || 0
+      所属市: '总计',
+      基层: total.primaryCount || 0,
+      二级: total.secondaryCount || 0,
+      三级: total.tertiaryCount || 0,
+      总计: total.totalCount || 0
     })
   }
 
   // 使用xlsx库导出
-  import('xlsx').then(XLSX => {
-    const ws = XLSX.utils.json_to_sheet(excelData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '退回机构市属统计表')
-    
-    // 生成文件名（包含时间戳）
-    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const filename = `退回机构市属统计表_${timestamp}.xlsx`
-    
-    XLSX.writeFile(wb, filename)
-    message.success('导出成功')
-  }).catch(error => {
-    console.error('导出失败:', error)
-    message.error('导出失败，请重试')
-  })
+  import('xlsx')
+    .then((XLSX) => {
+      const ws = XLSX.utils.json_to_sheet(excelData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, '退回机构市属统计表')
+
+      // 生成文件名（包含时间戳）
+      const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+      const filename = `退回机构市属统计表_${timestamp}.xlsx`
+
+      XLSX.writeFile(wb, filename)
+      message.success('导出成功')
+    })
+    .catch((error) => {
+      console.error('导出失败:', error)
+      message.error('导出失败，请重试')
+    })
 }
 
 onMounted(() => {
@@ -1294,6 +1489,16 @@ onMounted(() => {
       }
       .stat-value {
         color: #f56c6c;
+      }
+    }
+
+    &.anomaly-only {
+      .stat-icon {
+        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+      }
+      .stat-value {
+        color: #ef4444;
       }
     }
 
