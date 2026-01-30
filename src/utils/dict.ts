@@ -242,4 +242,5 @@ export enum DICT_TYPE {
   BUSINESS_MODULE = 'business_module', // 业务模块编码
   MENU_CATEGORY = 'menu_category', // 菜单分类
   MANAGEMENT_LEVEL = 'management_level', // 管理级别
+  DATA_UPLOAD_STATUS = 'data_upload_status'
 }
