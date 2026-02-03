@@ -79,7 +79,7 @@
         :formatter="dateFormatter"
         width="180px"
       />
-      <el-table-column label="操作" align="center" min-width="120px">
+      <el-table-column label="操作" align="center" min-width="180px">
         <template #default="scope">
           <el-button
             link
@@ -87,6 +87,23 @@
             @click="showProgress(scope.row)"
           >
             详情
+          </el-button>
+          <el-button
+            v-if="scope.row.status === 'running' || scope.row.status === 'pausing'"
+            link
+            type="warning"
+            @click="handlePause(scope.row.id)"
+            :disabled="scope.row.status === 'pausing'"
+          >
+            {{ scope.row.status === 'pausing' ? '暂停中...' : '暂停' }}
+          </el-button>
+          <el-button
+            v-if="scope.row.status === 'paused'"
+            link
+            type="success"
+            @click="handleResume(scope.row.id)"
+          >
+            恢复
           </el-button>
           <el-button
             v-if="scope.row.status === 'failed'"
@@ -157,12 +174,35 @@
         <el-icon class="is-loading"><Loading /></el-icon>
         <span style="margin-left: 8px">任务进行中，数据实时更新...</span>
       </div>
+      <div v-if="currentTask?.status === 'pausing'" style="margin-top: 15px; text-align: center; color: #e6a23c">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span style="margin-left: 8px">正在暂停，等待当前部门上传完成...</span>
+      </div>
+      <div v-if="currentTask?.status === 'paused'" style="margin-top: 15px; text-align: center; color: #909399">
+        <el-icon><VideoPause /></el-icon>
+        <span style="margin-left: 8px">任务已暂停，可点击恢复按钮继续上传</span>
+      </div>
     </div>
 
     <template #footer>
       <el-button @click="progressDialogVisible = false">关闭</el-button>
       <el-button type="primary" @click="refreshProgress" :loading="progressLoading">
         刷新
+      </el-button>
+      <el-button
+        v-if="currentTask?.status === 'running' || currentTask?.status === 'pausing'"
+        type="warning"
+        @click="handlePauseInDialog"
+        :disabled="currentTask?.status === 'pausing'"
+      >
+        {{ currentTask?.status === 'pausing' ? '暂停中...' : '暂停任务' }}
+      </el-button>
+      <el-button
+        v-if="currentTask?.status === 'paused'"
+        type="success"
+        @click="handleResumeInDialog"
+      >
+        恢复任务
       </el-button>
     </template>
   </el-dialog>
@@ -304,8 +344,8 @@ const showProgress = async (task: UploadTaskVO) => {
   progressDialogVisible.value = true
   await loadProgress()
   
-  // 如果任务正在运行，启动自动刷新
-  if (task.status === 'running') {
+  // 如果任务正在运行或暂停中，启动自动刷新
+  if (task.status === 'running' || task.status === 'pausing') {
     startProgressPolling()
   }
 }
@@ -335,8 +375,8 @@ const refreshProgress = async () => {
   const updatedTask = list.value.find(t => t.id === currentTask.value?.id)
   if (updatedTask) {
     currentTask.value = updatedTask
-    // 如果任务已完成，停止轮询
-    if (updatedTask.status !== 'running') {
+    // 如果任务已完成或已暂停，停止轮询
+    if (updatedTask.status !== 'running' && updatedTask.status !== 'pausing') {
       stopProgressPolling()
     }
   }
@@ -391,6 +431,53 @@ const handleRetry = async (taskId: number) => {
       console.error('重试失败:', error)
     }
   }
+}
+
+/** 暂停上报 */
+const handlePause = async (taskId: number) => {
+  try {
+    await message.confirm('确定要暂停上报任务吗？当前部门上传完成后将暂停。')
+    await UploadTaskApi.pauseUpload(taskId)
+    message.success('暂停指令已发送，等待当前部门上传完成...')
+    await getList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('暂停失败:', error)
+      message.error('暂停任务失败')
+    }
+  }
+}
+
+/** 恢复上报 */
+const handleResume = async (taskId: number) => {
+  try {
+    await message.confirm('确定要恢复上报任务吗？将从上次暂停的位置继续上传。')
+    await UploadTaskApi.resumeUpload(taskId)
+    message.success('任务已恢复，正在继续上传...')
+    await getList()
+    await checkReadyToStart()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('恢复失败:', error)
+      message.error('恢复任务失败')
+    }
+  }
+}
+
+/** 在进度弹窗中暂停 */
+const handlePauseInDialog = async () => {
+  if (!currentTask.value?.id) return
+  await handlePause(currentTask.value.id)
+  await refreshProgress()
+}
+
+/** 在进度弹窗中恢复 */
+const handleResumeInDialog = async () => {
+  if (!currentTask.value?.id) return
+  await handleResume(currentTask.value.id)
+  await refreshProgress()
+  // 恢复后启动轮询
+  startProgressPolling()
 }
 
 /** 监听弹窗关闭，停止轮询 */
