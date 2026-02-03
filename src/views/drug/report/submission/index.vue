@@ -150,8 +150,8 @@
         <el-table-column label="操作" align="center" width="260px" fixed="right">
           <template #default="scope">
             <div class="action-links">
-              <!-- 任务未结束时显示操作按钮（status=5为已完成） -->
-              <template v-if="scope.row.status !== 5">
+              <!-- 任务未结束且未上报至国家平台时显示操作按钮（status: 4=国家上报中, 5=已完成） -->
+              <template v-if="![4, 5].includes(scope.row.status)">
                 <!-- 上报按钮（仅未上报状态显示） -->
                 <el-button
                   v-if="scope.row.reportStatus === 0"

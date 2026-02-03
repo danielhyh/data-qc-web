@@ -1235,7 +1235,7 @@ const handleExportRuleOrgList = async (rule: PostQcRuleStatistics) => {
     const data = await exportRuleOrgList(reportId, rule.ruleCode)
 
     // 从响应中提取文件名（如果后端设置了Content-Disposition）
-    const fileName = `${rule.ruleName}_机构汇总列表.xlsx`
+    const fileName = `${rule.ruleName}_机构错误详情列表.xlsx`
 
     // 使用download工具触发文件下载
     const blob = new Blob([data], {
