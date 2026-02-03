@@ -62,4 +62,14 @@ export const UploadTaskApi = {
   retryUpload: async (taskId: number) => {
     return await request.get({ url: `/data/upload/retry?taskId=${taskId}` })
   },
+
+  // 暂停数据上报任务
+  pauseUpload: async (taskId: number) => {
+    return await request.post({ url: `/drug/upload-task/pause?taskId=${taskId}` })
+  },
+
+  // 恢复数据上报任务
+  resumeUpload: async (taskId: number) => {
+    return await request.post({ url: `/drug/upload-task/resume?taskId=${taskId}` })
+  },
 }
