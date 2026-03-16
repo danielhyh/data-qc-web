@@ -455,7 +455,7 @@
         </template>
         <template v-else>
           <el-button @click="detailDialogVisible = false">关闭</el-button>
-          <el-button type="primary" @click="handleStartEdit">修改</el-button>
+          <el-button v-if="isAdmin" type="primary" @click="handleStartEdit">修改</el-button>
         </template>
       </template>
     </Dialog>
@@ -475,6 +475,7 @@ import { Dialog } from '@/components/Dialog'
 import { ContentWrap } from '@/components/ContentWrap'
 import { Icon } from '@/components/Icon'
 import { ArrowLeft } from '@element-plus/icons-vue'
+import { CACHE_KEY, useCache } from '@/hooks/web/useCache'
 import dayjs from 'dayjs'
 
 /** 填报记录查询列表 */
@@ -530,6 +531,15 @@ const detailData = ref<any>({})
 const detailRecords = ref<any[]>([])
 const isEditing = ref(false) // 是否处于编辑状态
 const editSubmitting = ref(false) // 编辑提交中
+
+// 判断当前用户是否为管理员（可修改填报数据）
+const isAdmin = computed(() => {
+  const { wsCache } = useCache()
+  const userInfo = wsCache.get(CACHE_KEY.USER)
+  const roles: string[] = userInfo?.roles || []
+  const adminRoles = ['super_admin', 'provincial_admin', 'city_admin', 'district_admin']
+  return roles.some((role: string) => adminRoles.includes(role))
+})
 
 // 填报明细药品数量（按药品名称去重）
 const detailDrugCount = computed(() => {
