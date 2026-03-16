@@ -47,7 +47,7 @@
     <!-- 操作区域 -->
     <el-card class="filter-card" shadow="never">
       <el-row :gutter="20">
-        <el-col :span="12">
+        <el-col :span="10">
           <!-- 创建任务按钮组 -->
           <el-button type="success" @click="createFromTemplate">
             <Icon icon="ep:upload" />
@@ -62,16 +62,19 @@
             下载导入模板
           </el-button>
         </el-col>
-        <el-col :span="12">
+        <el-col :span="14">
           <!-- 查询条件 -->
           <div class="filter-search-wrapper">
             <el-form :inline="true" class="filter-form">
-              <el-form-item label="状态筛选" prop="status">
+              <el-form-item v-if="wsCache.get('user').user.id === 1" label="编号" prop="taskNo" style="margin-right: 8px;">
+                <el-input v-model="queryParams.taskNo" clearable style="width: 160px"/>
+              </el-form-item>
+              <el-form-item label="状态" prop="status">
                 <el-select
                   v-model="queryParams.status"
-                  placeholder="请选择任务状态"
+                  placeholder="请选择状态"
                   clearable
-                  class="!w-200px"
+                  style="width: 130px"
                 >
                   <el-option label="待处理" :value="0" />
                   <el-option label="处理中" :value="1" />
@@ -304,11 +307,13 @@ import { YpidApi } from '@/api/drug/ypid'
 import { useRouter } from 'vue-router'
 import type { UploadUserFile } from 'element-plus'
 import { ElLoading, ElMessage } from 'element-plus'
+const { wsCache } = useCache()
 
 // 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
 import StatCard from '@/components/StatCard/index.vue'
 import TemplateDownloadDialog from '@/views/drug/import/template/components/TemplateDownloadDialog.vue'
+import {useCache} from "@/hooks/web/useCache";
 
 defineOptions({ name: 'YpidComparisonIndex' })
 
@@ -328,7 +333,8 @@ const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
   keyword: undefined as string | undefined,
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
+  taskNo: undefined as string | undefined
 })
 
 // 统计数据

@@ -364,6 +364,16 @@
               >
                 <template #default="scope">
                   <span v-if="scope.row.supplyStatus === 5" class="not-available-text">-</span>
+                  <template v-else-if="isEditing">
+                    <el-input-number
+                      v-model="scope.row.weekUsageAmount"
+                      :min="0"
+                      :precision="2"
+                      :controls="false"
+                      size="small"
+                      style="width: 110px"
+                    />
+                  </template>
                   <span v-else class="number-value usage">
                     {{ formatNumber(scope.row.weekUsageAmount) }}
                   </span>
@@ -378,6 +388,16 @@
               >
                 <template #default="scope">
                   <span v-if="scope.row.supplyStatus === 5" class="not-available-text">-</span>
+                  <template v-else-if="isEditing">
+                    <el-input-number
+                      v-model="scope.row.currentStockAmount"
+                      :min="0"
+                      :precision="2"
+                      :controls="false"
+                      size="small"
+                      style="width: 110px"
+                    />
+                  </template>
                   <span v-else class="number-value stock">
                     {{ formatNumber(scope.row.currentStockAmount) }}
                   </span>
@@ -386,12 +406,26 @@
               <el-table-column
                 label="供应情况"
                 prop="supplyStatus"
-                width="100"
+                width="120"
                 align="center"
                 class-name="header-bold"
               >
                 <template #default="scope">
-                  <dict-tag :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
+                  <template v-if="isEditing">
+                    <el-select
+                      v-model="scope.row.supplyStatus"
+                      size="small"
+                      style="width: 100px"
+                    >
+                      <el-option
+                        v-for="opt in supplyStatusOptions"
+                        :key="opt.value"
+                        :label="opt.label"
+                        :value="opt.value"
+                      />
+                    </el-select>
+                  </template>
+                  <dict-tag v-else :type="DICT_TYPE.SUPPLY_STATUS" :value="scope.row.supplyStatus" />
                 </template>
               </el-table-column>
 <!--              <el-table-column
@@ -413,7 +447,16 @@
       </div>
 
       <template #footer>
-        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <template v-if="isEditing">
+          <el-button @click="handleCancelEdit">取消</el-button>
+          <el-button type="primary" :loading="editSubmitting" @click="handleSubmitEdit">
+            提交修改
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="handleStartEdit">修改</el-button>
+        </template>
       </template>
     </Dialog>
     </div>
@@ -485,6 +528,8 @@ const detailDialogVisible = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<any>({})
 const detailRecords = ref<any[]>([])
+const isEditing = ref(false) // 是否处于编辑状态
+const editSubmitting = ref(false) // 编辑提交中
 
 // 填报明细药品数量（按药品名称去重）
 const detailDrugCount = computed(() => {
@@ -807,6 +852,7 @@ const handleDetail = async (row: any) => {
   detailDialogVisible.value = true
   detailData.value = { ...row }
   detailLoading.value = true
+  isEditing.value = false
   
   try {
     // 获取填报明细数据
@@ -834,6 +880,49 @@ const handleDetail = async (row: any) => {
     detailLoading.value = false
   }
 }
+
+/** 进入编辑模式 */
+const handleStartEdit = () => {
+  isEditing.value = true
+}
+
+/** 取消编辑 */
+const handleCancelEdit = () => {
+  isEditing.value = false
+  // 重新加载数据，丢弃修改
+  if (detailData.value.taskId) {
+    handleDetail(detailData.value)
+  }
+}
+
+/** 提交修改 */
+const handleSubmitEdit = async () => {
+  const items = detailRecords.value.map(record => ({
+    id: record.id,
+    weekUsageAmount: record.supplyStatus === 5 ? null : record.weekUsageAmount,
+    currentStockAmount: record.supplyStatus === 5 ? null : record.currentStockAmount,
+    supplyStatus: record.supplyStatus
+  }))
+  try {
+    editSubmitting.value = true
+    await ReportRecordApi.batchUpdateReportRecord(items)
+    message.success('修改成功')
+    isEditing.value = false
+    // 刷新列表
+    getList()
+  } catch (error) {
+    console.error('提交修改失败:', error)
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+/** 供应情况选项 */
+const supplyStatusOptions = [
+  { label: '充足', value: 1 },
+  { label: '短缺', value: 3 },
+  { label: '未使用', value: 5 }
+]
 
 /** 格式化数字 */
 const formatNumber = (value: number | undefined): string => {

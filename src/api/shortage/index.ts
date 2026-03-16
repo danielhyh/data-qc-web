@@ -288,7 +288,11 @@ export const ReportRecordApi = {
 
   // 获取周期状态（根据专区ID和周期编码）
   getPeriodStatus: (zoneId: number, periodCode: string) =>
-    request.get({ url: `/shortage/report-period/status`, params: { zoneId, periodCode } })
+    request.get({ url: `/shortage/report-period/status`, params: { zoneId, periodCode } }),
+
+  // 批量修改填报记录
+  batchUpdateReportRecord: (items: { id: number; weekUsageAmount?: number; currentStockAmount?: number; supplyStatus?: number }[]) =>
+    request.put({ url: `/shortage/report-record/batch-update`, data: { items } })
 }
 
 // ========== 供应状态枚举 ==========
