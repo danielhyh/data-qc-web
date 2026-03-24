@@ -142,7 +142,7 @@
             <span class="score-text">{{ row.matchScore }}%</span>
           </template>
         </el-table-column>
-        <el-table-column label="选择" width="60" align="center">
+        <el-table-column label="选择" width="80" align="center">
           <template #default="{ row }">
             <el-radio
               v-model="selectedCandidateId"

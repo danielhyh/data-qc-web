@@ -8,44 +8,6 @@
       back-button-text="返回YPID比对列表"
       @back-click="handleBackClick"
     />
-    
-
-    <!-- 统计概览 -->
-<!--    <div class="stats-overview">
-      <el-row :gutter="16">
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard title="药品总数" :value="statistics.totalDrugs" icon="Box" color="#409eff" />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="已匹配药品"
-            :value="statistics.matchedDrugs"
-            icon="CircleCheck"
-            color="#67c23a"
-            :description="`占比: ${calculateRate(statistics.matchedDrugs, statistics.totalDrugs)}%`"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="未匹配药品"
-            :value="statistics.unmatchedDrugs"
-            icon="Warning"
-            color="#e6a23c"
-            :description="`占比: ${calculateRate(statistics.unmatchedDrugs, statistics.totalDrugs)}%`"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="匹配率"
-            :value="statistics.matchRate"
-            suffix="%"
-            icon="DataLine"
-            color="#909399"
-            :trend="statistics.matchRateTrend"
-          />
-        </el-col>
-      </el-row>
-    </div>-->
 
     <!-- 搜索区域 -->
     <ContentWrap>
@@ -147,12 +109,17 @@
       <el-table
         v-loading="loading"
         :data="drugList"
-        stripe
         highlight-current-row
         :max-height="tableMaxHeight"
         :height="tableHeight"
       >
-        <el-table-column type="index" label="序号" width="80" :index="calculateGlobalIndex" align="center" />
+        <el-table-column
+          type="index"
+          label="序号"
+          width="80"
+          :index="calculateGlobalIndex"
+          align="center"
+        />
         <el-table-column prop="ypid" label="YPID编码" width="150">
           <template #default="{ row }">
             <el-link type="primary" @click="handleViewDetail(row)">
@@ -186,9 +153,6 @@
           min-width="200"
           show-overflow-tooltip
         />
-
-
-
 
         <el-table-column
           prop="specification"
@@ -225,7 +189,7 @@
 
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleViewDetail(row)">
+            <el-button type="primary" size="small" @click="handleViewDetail(row)">
               <el-icon><View /></el-icon>
               查看详情
             </el-button>
@@ -398,7 +362,10 @@ const handleExport = async () => {
  * 下载标准库文件
  */
 const handleDownloadStandardLibrary = () => {
-  window.open('https://sxwtzb.snhic.cn/sxwjwypjc/admin-api/infra/file/29/get/YPID_12_download_v20251212.zip', '_blank')
+  window.open(
+    'https://sxwtzb.snhic.cn/sxwjwypjc/admin-api/infra/file/29/get/YPID_12_download_v20251212.zip',
+    '_blank'
+  )
 }
 
 const handleViewDetail = (row: YpidDrugVO) => {
@@ -442,14 +409,11 @@ const getCategoryTag = (category: string) => {
 const handleBackClick = () => {
   router.push('/monitoring-org/ypidcompare-comparison')
 }
-
 </script>
 
 <style scoped>
 .ypid-search-container {
   padding: 20px;
-  background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
 }
 
 .stats-overview {

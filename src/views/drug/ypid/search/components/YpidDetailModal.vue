@@ -1,6 +1,6 @@
 <!-- src/views/drug/ypid/search/components/YpidDetailModal.vue -->
 <template>
-  <el-dialog
+  <Dialog
     v-model="visible"
     title="YPID药品详情"
     width="800px"
@@ -170,7 +170,7 @@
         </el-button>
       </div>
     </template>
-  </el-dialog>
+  </Dialog>
 </template>
 
 <script setup lang="ts">

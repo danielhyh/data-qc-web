@@ -530,9 +530,7 @@ onMounted(() => {
 
 <style scoped>
 .ypid-task-container {
-  min-height: calc(100vh - 50px);
   padding: 20px;
-  background-color: #f5f5f5;
 }
 
 .stats-overview {

@@ -1,49 +1,5 @@
 <template>
   <div class="ypid-task-container">
-    <!-- 页面头部 -->
-    <PageHeader
-      title="YPID比对"
-      content="管理YPID药品编码匹配任务，支持从质控结果创建和模板导入创建，实现药品编码的智能匹配"
-      tagType="primary"
-    />
-
-    <!-- 统计概览 -->
-    <div class="stats-overview">
-      <el-row :gutter="16">
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard title="总任务数" :value="statistics.total" icon="Files" color="#409eff" />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="进行中"
-            :value="statistics.processing"
-            icon="Clock"
-            color="#e6a23c"
-            :description="`占比: ${calculateRate(statistics.processing, statistics.total)}%`"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="已完成"
-            :value="statistics.completed"
-            icon="CircleCheck"
-            color="#67c23a"
-            :description="`占比: ${calculateRate(statistics.completed, statistics.total)}%`"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="平均匹配率"
-            :value="statistics.avgMatchRate"
-            suffix="%"
-            icon="DataLine"
-            color="#909399"
-            :trend="statistics.matchRateTrend"
-          />
-        </el-col>
-      </el-row>
-    </div>
-
     <!-- 操作区域 -->
     <el-card class="filter-card" shadow="never">
       <el-row :gutter="20">
@@ -110,12 +66,11 @@
       <el-table
         v-loading="loading"
         :data="list"
-        :stripe="true"
         :show-overflow-tooltip="true"
         :max-height="tableMaxHeight"
         :height="tableHeight"
       >
-        <el-table-column type="index" label="序号" width="60" :index="calculateIndex" />
+        <el-table-column type="index" label="序号" width="80" :index="calculateIndex" />
         <el-table-column prop="taskNo" label="任务编号" width="200" />
         <el-table-column prop="status" label="状态" width="200">
           <template #default="{ row }">
@@ -156,9 +111,16 @@
         </el-table-column>
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="gotoBatchMatch(row)"> 批量匹配 </el-button>
-            <!--            <el-button link type="primary" @click="viewReport(row)"> 查看报告 </el-button>-->
-            <el-button link type="success" @click="exportResult(row)"> 导出结果 </el-button>
+            <div class="action-links">
+              <el-button type="primary" size="small" @click="gotoBatchMatch(row)">
+                <Icon icon="ep:operation" class="mr-1" />
+                批量匹配
+              </el-button>
+              <el-button type="success" size="small" plain @click="exportResult(row)">
+                <Icon icon="ep:download" class="mr-1" />
+                导出结果
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -213,7 +175,7 @@
     </el-dialog>
 
     <!-- 从模板导入创建对话框 -->
-    <el-dialog v-model="templateCreateVisible" title="从模板导入创建YPID匹配任务" width="600px">
+    <Dialog v-model="templateCreateVisible" title="从模板导入创建YPID匹配任务" width="600px">
       <el-form :model="templateCreateForm" label-width="120px">
         <el-form-item label="任务名称">
           <el-input v-model="templateCreateForm.taskName" placeholder="请输入任务名称" />
@@ -238,9 +200,9 @@
         </el-form-item>
          <el-tooltip content="高于阈值的数据将自动确认" placement="top">
         <el-form-item label="自动应用">
-         
+
             <el-switch v-model="templateCreateForm.autoApplyEnabled" />
-         
+
         </el-form-item>
         </el-tooltip>
         <el-form-item v-if="templateCreateForm.autoApplyEnabled" label="自动应用阈值">
@@ -259,40 +221,7 @@
           创建任务
         </el-button>
       </template>
-    </el-dialog>
-
-    <!-- 从模板导入创建对话框 -->
-    <el-dialog v-model="templateCreateVisible2" title="从模板导入创建YPID匹配任务" width="600px">
-      <el-form :model="templateCreateForm" label-width="120px">
-        <el-form-item label="任务名称">
-          <el-input v-model="templateCreateForm.taskName" placeholder="请输入任务名称" />
-        </el-form-item>
-        <el-form-item label="上传文件">
-          <el-upload
-            ref="uploadRef2"
-            v-model:file-list="uploadedFile2"
-            :auto-upload="false"
-            :limit="1"
-            accept=".xlsx,.xls"
-            action="none"
-          >
-            <el-button type="primary">
-              <Icon icon="ep:upload" />
-              选择Excel文件
-            </el-button>
-            <template #tip>
-              <div class="el-upload__tip">只支持xlsx/xls格式文件</div>
-            </template>
-          </el-upload>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="templateCreateVisible2 = false">取消</el-button>
-        <el-button type="primary" @click="handlerTemplateCreate2" :loading="templateCreateLoading2">
-          创建任务
-        </el-button>
-      </template>
-    </el-dialog>
+    </Dialog>
 
     <TemplateDownloadDialog ref="downloadDialog" />
   </div>
@@ -679,12 +608,6 @@ onMounted(() => {
 <style scoped>
 .ypid-task-container {
   padding: 20px;
-  background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
-}
-
-.stats-overview {
-  margin-bottom: 20px;
 }
 
 .filter-card,
@@ -728,14 +651,6 @@ onMounted(() => {
   color: #666;
 }
 
-.text-right {
-  text-align: right;
-}
-
-.w-200px {
-  width: 200px;
-}
-
 .mr-5px {
   margin-right: 5px;
 }
@@ -752,5 +667,24 @@ onMounted(() => {
 
 .filter-form :deep(.el-form-item) {
   margin-bottom: 0;
+}
+
+/* 操作按钮区域 */
+.action-links {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+
+  :deep(.el-button) {
+    margin: 0;
+    padding: 4px 0;
+    font-weight: 500;
+
+    .mr-1 {
+      margin-right: 4px;
+    }
+  }
 }
 </style>

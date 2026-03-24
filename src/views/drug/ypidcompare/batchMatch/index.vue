@@ -995,8 +995,6 @@ const getConfirmUserText = (confirmUser: number | string) => {
 <style scoped>
 .ypid-batch-match-page {
   padding: 20px;
-  background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
 }
 
 .match-content {

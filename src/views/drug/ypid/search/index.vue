@@ -6,43 +6,6 @@
       content="查询标准药品编码库，支持按编码、药品名称、生产企业等多维度搜索"
     />
 
-    <!-- 统计概览 -->
-<!--    <div class="stats-overview">
-      <el-row :gutter="16">
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard title="药品总数" :value="statistics.totalDrugs" icon="Box" color="#409eff" />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="已匹配药品"
-            :value="statistics.matchedDrugs"
-            icon="CircleCheck"
-            color="#67c23a"
-            :description="`占比: ${calculateRate(statistics.matchedDrugs, statistics.totalDrugs)}%`"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="未匹配药品"
-            :value="statistics.unmatchedDrugs"
-            icon="Warning"
-            color="#e6a23c"
-            :description="`占比: ${calculateRate(statistics.unmatchedDrugs, statistics.totalDrugs)}%`"
-          />
-        </el-col>
-        <el-col :xs="12" :sm="6" :md="6" :lg="6">
-          <StatCard
-            title="匹配率"
-            :value="statistics.matchRate"
-            suffix="%"
-            icon="DataLine"
-            color="#909399"
-            :trend="statistics.matchRateTrend"
-          />
-        </el-col>
-      </el-row>
-    </div>-->
-
     <!-- 搜索区域 -->
     <ContentWrap>
       <el-form
